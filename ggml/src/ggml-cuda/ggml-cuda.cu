@@ -50,6 +50,7 @@
 #include "ggml-cuda/ssm-scan.cuh"
 #include "ggml-cuda/sum.cuh"
 #include "ggml-cuda/sumrows.cuh"
+#include "ggml-cuda/moe-partition.cuh"
 #include "ggml-cuda/top-k.cuh"
 #include "ggml-cuda/mean.cuh"
 #include "ggml-cuda/tsembd.cuh"
@@ -706,6 +707,23 @@ ggml_backend_cuda_context::~ggml_backend_cuda_context() {
 
     if (copy_event != nullptr) {
         CUDA_CHECK(cudaEventDestroy(copy_event));
+    }
+    if (prefetch_fork_event != nullptr) {
+        CUDA_CHECK(cudaEventDestroy(prefetch_fork_event));
+    }
+    if (prefetch_join_event != nullptr) {
+        CUDA_CHECK(cudaEventDestroy(prefetch_join_event));
+    }
+    if (prefetch_stream != nullptr) {
+        CUDA_CHECK(cudaStreamSynchronize(prefetch_stream));
+        CUDA_CHECK(cudaStreamDestroy(prefetch_stream));
+    }
+    for (cudaEvent_t ev : prefetch_stage_inflight) {
+        CUDA_CHECK(cudaEventDestroy(ev));
+    }
+    prefetch_stage_inflight.clear();
+    if (prefetch_stage != nullptr) {
+        CUDA_CHECK(cudaFreeHost(prefetch_stage));
     }
     for (int i = 0; i < GGML_CUDA_MAX_DEVICES; ++i) {
         for (int j = 0; j < GGML_CUDA_MAX_STREAMS; ++j) {
@@ -2358,6 +2376,12 @@ static bool ggml_cuda_compute_forward(ggml_backend_cuda_context & ctx, struct gg
         case GGML_OP_ARGSORT:
             ggml_cuda_op_argsort(ctx, dst);
             break;
+        case GGML_OP_MOE_PARTITION_IDS:
+            ggml_cuda_op_moe_partition_ids(ctx, dst);
+            break;
+        case GGML_OP_MOE_PARTITION_WGT:
+            ggml_cuda_op_moe_partition_wgt(ctx, dst);
+            break;
         case GGML_OP_FLASH_ATTN_EXT:
             ggml_cuda_flash_attn_ext(ctx, dst);
             break;
@@ -2443,6 +2467,167 @@ static void ggml_backend_cuda_set_tensor_async(ggml_backend_t backend, ggml_tens
     GGML_ASSERT(buf->buft == ggml_backend_cuda_buffer_type(cuda_ctx->device) && "unsupported buffer type");
 
     CUDA_CHECK(cudaMemcpyAsync((char *) tensor->data + offset, data, size, cudaMemcpyHostToDevice, cuda_ctx->stream()));
+}
+
+// order the prefetch side stream after the current position of the compute stream,
+// so prefetches never race with already-queued consumers of the cache slots
+static void ggml_backend_cuda_prefetch_begin(ggml_backend_t backend) {
+    ggml_backend_cuda_context * cuda_ctx = (ggml_backend_cuda_context *) backend->context;
+    ggml_cuda_set_device(cuda_ctx->device);
+    if (cuda_ctx->prefetch_stream == nullptr) {
+        CUDA_CHECK(cudaStreamCreateWithFlags(&cuda_ctx->prefetch_stream, cudaStreamNonBlocking));
+    }
+    if (cuda_ctx->prefetch_fork_event == nullptr) {
+        CUDA_CHECK(cudaEventCreateWithFlags(&cuda_ctx->prefetch_fork_event, cudaEventDisableTiming));
+    }
+    CUDA_CHECK(cudaEventRecord(cuda_ctx->prefetch_fork_event, cuda_ctx->stream()));
+    CUDA_CHECK(cudaStreamWaitEvent(cuda_ctx->prefetch_stream, cuda_ctx->prefetch_fork_event, 0));
+}
+
+static void ggml_backend_cuda_prefetch_set_async(ggml_backend_t backend, ggml_tensor * tensor, const void * data, size_t offset, size_t size) {
+    ggml_backend_cuda_context * cuda_ctx = (ggml_backend_cuda_context *) backend->context;
+    ggml_backend_buffer_t buf = tensor->view_src ? tensor->view_src->buffer : tensor->buffer;
+
+    GGML_ASSERT(buf->buft == ggml_backend_cuda_buffer_type(cuda_ctx->device) && "unsupported buffer type");
+    ggml_cuda_set_device(cuda_ctx->device);
+    if (cuda_ctx->prefetch_stream == nullptr) {
+        CUDA_CHECK(cudaStreamCreateWithFlags(&cuda_ctx->prefetch_stream, cudaStreamNonBlocking));
+    }
+
+    // registered/pinned sources DMA directly, no staging copy on this thread
+    {
+        cudaPointerAttributes attrs;
+        if (cudaPointerGetAttributes(&attrs, data) == cudaSuccess && attrs.type == cudaMemoryTypeHost) {
+            CUDA_CHECK(cudaMemcpyAsync((char *) tensor->data + offset, data, size, cudaMemcpyHostToDevice, cuda_ctx->prefetch_stream));
+            return;
+        }
+        (void) cudaGetLastError(); // clear the probe error for unregistered ranges
+    }
+
+    // stage pageable sources through pinned memory; the driver would otherwise chunk the
+    // copy through its own staging at a fraction of the pinned H2D rate
+    std::lock_guard<std::mutex> stage_lock(cuda_ctx->prefetch_stage_mtx);
+    if (!cuda_ctx->prefetch_stage_init) {
+        cuda_ctx->prefetch_stage_init = true;
+        size_t stage_size = 64ull*1024*1024;
+        const char * env = getenv("LLAMA_MOE_PREFETCH_STAGE_MB");
+        if (env != nullptr && atoi(env) > 0) {
+            stage_size = (size_t) atoi(env) << 20;
+        }
+        if (cudaMallocHost(&cuda_ctx->prefetch_stage, stage_size) == cudaSuccess) {
+            cuda_ctx->prefetch_stage_size = stage_size;
+        } else {
+            (void) cudaGetLastError();
+            cuda_ctx->prefetch_stage = nullptr;
+        }
+    }
+    if (cuda_ctx->prefetch_stage != nullptr && size <= cuda_ctx->prefetch_stage_size / 4) {
+        const size_t need = (size + 255) & ~(size_t) 255;
+        if (cuda_ctx->prefetch_stage_off + need > cuda_ctx->prefetch_stage_size) {
+            // ring wrap: all in-flight copies are ahead of the new write offset, drain them
+            while (!cuda_ctx->prefetch_stage_inflight.empty()) {
+                CUDA_CHECK(cudaEventSynchronize(cuda_ctx->prefetch_stage_inflight.front()));
+                CUDA_CHECK(cudaEventDestroy(cuda_ctx->prefetch_stage_inflight.front()));
+                cuda_ctx->prefetch_stage_inflight.pop_front();
+            }
+            cuda_ctx->prefetch_stage_off = 0;
+        } else {
+            // in-flight copies lie behind the write offset; reclaim completed events only
+            while (!cuda_ctx->prefetch_stage_inflight.empty()) {
+                const cudaError_t res = cudaEventQuery(cuda_ctx->prefetch_stage_inflight.front());
+                if (res == cudaErrorNotReady) {
+                    break;
+                }
+                CUDA_CHECK(res);
+                CUDA_CHECK(cudaEventDestroy(cuda_ctx->prefetch_stage_inflight.front()));
+                cuda_ctx->prefetch_stage_inflight.pop_front();
+            }
+        }
+        char * stage = (char *) cuda_ctx->prefetch_stage + cuda_ctx->prefetch_stage_off;
+        cuda_ctx->prefetch_stage_off += need;
+        memcpy(stage, data, size);
+        CUDA_CHECK(cudaMemcpyAsync((char *) tensor->data + offset, stage, size, cudaMemcpyHostToDevice, cuda_ctx->prefetch_stream));
+        cudaEvent_t ev = nullptr;
+        CUDA_CHECK(cudaEventCreateWithFlags(&ev, cudaEventDisableTiming));
+        CUDA_CHECK(cudaEventRecord(ev, cuda_ctx->prefetch_stream));
+        cuda_ctx->prefetch_stage_inflight.push_back(ev);
+        return;
+    }
+
+    CUDA_CHECK(cudaMemcpyAsync((char *) tensor->data + offset, data, size, cudaMemcpyHostToDevice, cuda_ctx->prefetch_stream));
+}
+// record a completion event on the prefetch side stream; returned handle is consumed by
+// ggml_backend_cuda_prefetch_event_query
+static void * ggml_backend_cuda_prefetch_event_record(ggml_backend_t backend) {
+    ggml_backend_cuda_context * cuda_ctx = (ggml_backend_cuda_context *) backend->context;
+    if (cuda_ctx->prefetch_stream == nullptr) {
+        return nullptr;
+    }
+    cudaEvent_t ev = nullptr;
+    CUDA_CHECK(cudaEventCreateWithFlags(&ev, cudaEventDisableTiming));
+    CUDA_CHECK(cudaEventRecord(ev, cuda_ctx->prefetch_stream));
+    return (void *) ev;
+}
+
+// returns true once the event has completed (and destroys it); false while still in flight
+static bool ggml_backend_cuda_prefetch_event_query(ggml_backend_t backend, void * event) {
+    GGML_UNUSED(backend);
+    cudaEvent_t ev = (cudaEvent_t) event;
+    const cudaError_t res = cudaEventQuery(ev);
+    if (res == cudaErrorNotReady) {
+        return false;
+    }
+    CUDA_CHECK(res);
+    CUDA_CHECK(cudaEventDestroy(ev));
+    return true;
+}
+
+// pin a host range so later prefetch copies from it skip staging; page-aligns the range
+// and registers in chunks because WDDM rejects very large single registrations
+static size_t ggml_backend_cuda_pin_host_memory(ggml_backend_t backend, void * data, size_t size) {
+    ggml_backend_cuda_context * cuda_ctx = (ggml_backend_cuda_context *) backend->context;
+    ggml_cuda_set_device(cuda_ctx->device);
+    // already pinned (e.g. CUDA_Host buffers): nothing to do
+    {
+        cudaPointerAttributes attrs;
+        if (cudaPointerGetAttributes(&attrs, data) == cudaSuccess && attrs.type == cudaMemoryTypeHost) {
+            return size;
+        }
+        (void) cudaGetLastError();
+    }
+    const uintptr_t page = 4096;
+    const uintptr_t begin = ((uintptr_t) data) & ~(page - 1);
+    const uintptr_t end   = (((uintptr_t) data + size) + page - 1) & ~(page - 1);
+    const size_t chunk = 32ull*1024*1024;
+    size_t pinned = 0;
+    for (uintptr_t p = begin; p < end; p += chunk) {
+        const size_t n = (size_t) std::min((uintptr_t) chunk, end - p);
+        const cudaError_t res = cudaHostRegister((void *) p, n, cudaHostRegisterDefault);
+        if (res != cudaSuccess) {
+            static int logged = 0;
+            if (logged++ < 3) {
+                fprintf(stderr, "[CUDA] cudaHostRegister(%p, %zu) failed: %s\n", (void *) p, n, cudaGetErrorString(res));
+            }
+            (void) cudaGetLastError();
+            continue;
+        }
+        pinned += n;
+    }
+    return pinned;
+}
+
+// order the compute stream after all queued prefetch copies
+static void ggml_backend_cuda_prefetch_wait(ggml_backend_t backend) {
+    ggml_backend_cuda_context * cuda_ctx = (ggml_backend_cuda_context *) backend->context;
+    if (cuda_ctx->prefetch_stream == nullptr) {
+        return;
+    }
+    ggml_cuda_set_device(cuda_ctx->device);
+    if (cuda_ctx->prefetch_join_event == nullptr) {
+        CUDA_CHECK(cudaEventCreateWithFlags(&cuda_ctx->prefetch_join_event, cudaEventDisableTiming));
+    }
+    CUDA_CHECK(cudaEventRecord(cuda_ctx->prefetch_join_event, cuda_ctx->prefetch_stream));
+    CUDA_CHECK(cudaStreamWaitEvent(cuda_ctx->stream(), cuda_ctx->prefetch_join_event, 0));
 }
 
 static void ggml_backend_cuda_get_tensor_async(ggml_backend_t backend, const ggml_tensor * tensor, void * data, size_t offset, size_t size) {
@@ -4286,8 +4471,7 @@ static enum ggml_status ggml_backend_cuda_graph_compute(ggml_backend_t backend, 
 
     ggml_cuda_graph * graph = cuda_ctx->cuda_graph(graph_key);
     if (graph->is_enabled()) {
-        const bool graph_compatible = ggml_cuda_graph_check_compability(cgraph);
-        if (graph_compatible) {
+        if (ggml_cuda_graph_check_compability(cgraph)) {
             const bool properties_changed = ggml_cuda_graph_update_required(cuda_ctx, cgraph);
 
             if (!graph->warmup_complete) {
@@ -4617,6 +4801,12 @@ static const ggml_backend_i ggml_backend_cuda_interface = {
     /* .event_record            = */ ggml_backend_cuda_event_record,
     /* .event_wait              = */ ggml_backend_cuda_event_wait,
     /* .graph_optimize          = */ ggml_backend_cuda_graph_optimize,
+    /* .prefetch_begin          = */ ggml_backend_cuda_prefetch_begin,
+    /* .prefetch_set_async      = */ ggml_backend_cuda_prefetch_set_async,
+    /* .prefetch_wait           = */ ggml_backend_cuda_prefetch_wait,
+    /* .prefetch_event_record   = */ ggml_backend_cuda_prefetch_event_record,
+    /* .prefetch_event_query    = */ ggml_backend_cuda_prefetch_event_query,
+    /* .pin_host_memory         = */ ggml_backend_cuda_pin_host_memory,
 };
 
 static ggml_guid_t ggml_backend_cuda_guid() {
@@ -5041,8 +5231,11 @@ static bool ggml_backend_cuda_device_supports_op(ggml_backend_dev_t dev, const g
                     case GGML_TYPE_IQ4_NL:
                     case GGML_TYPE_MXFP4:
                         // 32-value sub-blocks, the row size does not guarantee
-                        // the QK_K super-blocks the get_rows kernel iterates on
-                        return op->src[0]->ne[0] % QK_K == 0;
+                        // a QK_K super-block. IQ4_NL has its own 32-value
+                        // gather kernel; MXFP4 remains on the QK_K path.
+                        return op->src[0]->type == GGML_TYPE_IQ4_NL
+                            ? op->src[0]->ne[0] % QK4_NL == 0
+                            : op->src[0]->ne[0] % QK_K == 0;
                     default:
                         return false;
                 }
@@ -5057,7 +5250,8 @@ static bool ggml_backend_cuda_device_supports_op(ggml_backend_dev_t dev, const g
                            (
                                (op->type == GGML_TYPE_F32 || op->type == GGML_TYPE_F16 || op->type == GGML_TYPE_BF16 ||
                                op->type == GGML_TYPE_Q4_0 || op->type == GGML_TYPE_Q4_1 || op->type == GGML_TYPE_Q5_0 ||
-                               op->type == GGML_TYPE_Q5_1 || op->type == GGML_TYPE_Q8_0 || op->type == GGML_TYPE_IQ4_NL) &&
+                               op->type == GGML_TYPE_Q5_1 || op->type == GGML_TYPE_Q8_0 || op->type == GGML_TYPE_IQ4_NL ||
+                               op->type == GGML_TYPE_TBQ4_0 || op->type == GGML_TYPE_TBQ3_0) &&
                                op->src[0]->type == GGML_TYPE_F32
                            ) || (
                                op->type == GGML_TYPE_F16 && op->src[0]->type == GGML_TYPE_F16
@@ -5091,6 +5285,18 @@ static bool ggml_backend_cuda_device_supports_op(ggml_backend_dev_t dev, const g
                     return true;
                 }
                 if (src0_type == GGML_TYPE_Q4_0 && src1_type == GGML_TYPE_F32) {
+                    return true;
+                }
+                if (src0_type == GGML_TYPE_F32 && src1_type == GGML_TYPE_TBQ4_0) {
+                    return true;
+                }
+                if (src0_type == GGML_TYPE_TBQ4_0 && src1_type == GGML_TYPE_F32) {
+                    return true;
+                }
+                if (src0_type == GGML_TYPE_F32 && src1_type == GGML_TYPE_TBQ3_0) {
+                    return true;
+                }
+                if (src0_type == GGML_TYPE_TBQ3_0 && src1_type == GGML_TYPE_F32) {
                     return true;
                 }
                 if (src0_type == GGML_TYPE_F32 && src1_type == GGML_TYPE_Q4_1) {
@@ -5287,6 +5493,9 @@ static bool ggml_backend_cuda_device_supports_op(ggml_backend_dev_t dev, const g
             return ggml_is_contiguous(op->src[0]) && ggml_is_contiguous(op->src[1]);
         case GGML_OP_SUM:
             return ggml_is_contiguous_rows(op->src[0]);
+        case GGML_OP_MOE_PARTITION_IDS:
+        case GGML_OP_MOE_PARTITION_WGT:
+            return true;
         case GGML_OP_TOP_K:
         case GGML_OP_ARGSORT:
 #ifndef GGML_CUDA_USE_CUB
@@ -5369,6 +5578,17 @@ static int64_t get_op_batch_size(const ggml_tensor * op) {
 
 static bool ggml_backend_cuda_device_offload_op(ggml_backend_dev_t dev, const ggml_tensor * op) {
     ggml_backend_cuda_device_context * dev_ctx = (ggml_backend_cuda_device_context *) dev->context;
+
+    // the CPU half of the MoE GPU/CPU split must stay on the CPU even when the
+    // op offload threshold would otherwise send every small MUL_MAT_ID to the GPU
+    if (op->op == GGML_OP_MUL_MAT_ID && op->src[2] != nullptr && strstr(op->src[2]->name, "_ids_cpu") != nullptr) {
+        return false;
+    }
+
+    // the fused CPU MoE op has no CUDA implementation
+    if (op->op == GGML_OP_MOE_CPU) {
+        return false;
+    }
 
     return get_op_batch_size(op) >= dev_ctx->op_offload_min_batch_size;
 }

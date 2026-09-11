@@ -6,7 +6,11 @@
 
 // note: almost all graphs require at least sqrtf, so include cmath globally
 #include <cmath>
+#include <future>
 #include <map>
+#include <mutex>
+#include <unordered_map>
+#include <unordered_set>
 
 class llama_memory_hybrid_idx_context;
 
@@ -2282,6 +2286,116 @@ struct llama_model_qwen4exp : public llama_model_base {
 
     void load_arch_hparams(llama_model_loader & ml) override;
     void load_arch_tensors(llama_model_loader & ml) override;
+
+    // A bounded host-RAM cache for the lazily mmap'ed PLE hash-embedding table.
+    // Entries are 64 KiB-aligned groups of complete table rows.  The cache retains
+    // the original on-disk representation, so quantization is never changed.
+    struct ple_row_cache {
+        void configure(const ggml_tensor * table);
+        bool enabled() const;
+        void gather(const std::vector<int32_t> & rows, std::vector<float> & out) const;
+        // Materialize complete raw pages for a lower-level cache.  This keeps
+        // the CPU L2 in the path; callers never reach into the mmap directly.
+        void copy_pages(const std::vector<int64_t> & page_indices, std::vector<uint8_t> & out) const;
+        void prefetch(const std::vector<int32_t> & rows, size_t rows_per_token) const;
+        void prefetch_async(std::vector<int32_t> rows, size_t rows_per_token) const;
+
+    private:
+        struct page {
+            int64_t              index = -1;
+            uint64_t             last_use = 0;
+            size_t               prev = (size_t) -1;
+            size_t               next = (size_t) -1;
+            std::vector<uint8_t> data;
+        };
+
+        static constexpr size_t no_slot = (size_t) -1;
+
+        mutable std::mutex                         mutex;
+        const ggml_tensor *                        table = nullptr;
+        const ggml_type_traits *                   traits = nullptr;
+        size_t                                     row_bytes = 0;
+        int64_t                                    rows_per_page = 0;
+        size_t                                     page_bytes = 0;
+        size_t                                     max_pages = 0;
+        mutable uint64_t                           clock = 0;
+        mutable uint64_t                           page_hits = 0;
+        mutable uint64_t                           page_misses = 0;
+        mutable uint64_t                           prefetch_pages = 0;
+        mutable std::vector<page>                  pages;
+        mutable std::unordered_map<int64_t, size_t> page_to_slot;
+        mutable size_t                             lru_head = no_slot;
+        mutable size_t                             lru_tail = no_slot;
+        // Kept last so its destructor joins an in-flight async prefetch while
+        // all cache state it may touch is still alive.
+        mutable std::mutex                         prefetch_mutex;
+        mutable std::future<void>                  prefetch_task;
+    };
+
+    mutable ple_row_cache ple_cache;
+
+    // Optional GPU L1 over raw quantized PLE pages.  A row maps through the
+    // page_id -> GPU-slot table, after which CUDA gathers/dequantizes the
+    // original quantization format locally.
+    struct ple_gpu_row_cache {
+        ~ple_gpu_row_cache();
+
+        // backend must be the CUDA backend owned by the active graph scheduler;
+        // a private backend makes the scheduler treat this table as a copyable
+        // foreign input rather than a resident GPU weight.
+        void configure(const ggml_tensor * table, ggml_backend_t backend);
+        bool enabled() const;
+        ggml_tensor * tensor() const;
+        void gather(const std::vector<int32_t> & rows, const ple_row_cache & source,
+                    std::vector<int32_t> & slots) const;
+        // Prompt tokens for the next micro-batch are exact. Populate their
+        // raw pages through an independent CUDA copy stream while this batch
+        // computes, then gather() fences before those slots are consumed.
+        void prefetch_async(std::vector<int32_t> rows, const ple_row_cache & source) const;
+
+    private:
+        struct page {
+            int64_t key = -1;
+            size_t prev = (size_t) -1;
+            size_t next = (size_t) -1;
+        };
+        static constexpr size_t no_slot = (size_t) -1;
+
+        void reset();
+        void wait_prefetch() const;
+
+        mutable std::mutex                         mutex;
+        const ggml_tensor *                        source_table = nullptr;
+        ggml_context *                              ctx = nullptr;
+        ggml_backend_t                              backend = nullptr;
+        ggml_backend_t                              copy_backend = nullptr;
+        bool                                         owns_backend = false;
+        ggml_backend_buffer_t                       buffer = nullptr;
+        ggml_tensor *                               cache_table = nullptr;
+        int64_t                                     n_cols = 0;
+        size_t                                      row_bytes = 0;
+        int64_t                                     rows_per_page = 0;
+        size_t                                      page_bytes = 0;
+        size_t                                      max_pages = 0;
+        mutable std::vector<page>                   pages;
+        mutable std::unordered_map<int64_t, size_t> page_to_slot;
+        // Pages referenced by the graph currently in flight. Lookahead never
+        // overwrites them, even when the cache is otherwise full.
+        mutable std::unordered_set<int64_t>         active_pages;
+        mutable size_t                              lru_head = no_slot;
+        mutable size_t                              lru_tail = no_slot;
+        mutable uint64_t                            hits = 0;
+        mutable uint64_t                            misses = 0;
+        mutable uint64_t                            prefetch_pages = 0;
+        mutable std::mutex                          prefetch_mutex;
+        mutable std::future<void>                   prefetch_task;
+    };
+
+    mutable ple_gpu_row_cache ple_gpu_cache;
+
+    // The server knows all prompt tokens before it splits them into model
+    // batches.  Use that view to prefetch an exact, bounded future PLE window.
+    void prefetch_ple(const std::vector<llama_token> & tokens, size_t begin, size_t end) const;
 
     struct graph : public llm_build_delta_net_base {
         graph(const llama_model & model, const llm_graph_params & params);

@@ -364,6 +364,14 @@ llama_model * llama_model_create(llama_model_loader & ml, const llama_model_para
     return llama_model_create(arch, params);
 }
 
+void llama_model_prefetch_ple(const llama_model * model, const std::vector<llama_token> & tokens, size_t begin, size_t end) {
+    if (model == nullptr || model->arch != LLM_ARCH_QWEN4EXP) {
+        return;
+    }
+
+    static_cast<const llama_model_qwen4exp *>(model)->prefetch_ple(tokens, begin, end);
+}
+
 struct ggml_backend_meta_split_state llama_meta_device_get_split_state(const struct ggml_tensor * tensor, void * userdata) {
     const llama_meta_device_get_split_state_userdata * ud = (const llama_meta_device_get_split_state_userdata *) userdata;
     const llama_hparams & hparams = ud->model->hparams;

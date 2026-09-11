@@ -11,6 +11,7 @@
 #include "common.h"
 #include "fit.h"
 #include "llama.h"
+#include "../../src/llama-model.h"
 #include "log.h"
 #include "sampling.h"
 #include "speculative.h"
@@ -112,6 +113,17 @@ struct server_batch {
     llama_batch batch;
     bool batch_rendered = false;
 
+    // A prompt batch knows the exact next token range, but llama_decode() is
+    // asynchronous.  Keep the request here and launch it only *after* the
+    // current graph has been submitted, so the PLE copy stream can overlap
+    // the graph instead of delaying its input preparation.
+    struct ple_prefetch_request {
+        const std::vector<llama_token> * tokens = nullptr;
+        size_t begin = 0;
+        size_t end = 0;
+    };
+    std::vector<ple_prefetch_request> ple_prefetch;
+
     struct token {
         int32_t id_slot;
         llama_token token;
@@ -177,6 +189,7 @@ struct server_batch {
     void clear() {
         tokens.clear();
         embd.clear();
+        ple_prefetch.clear();
         common_batch_clear(batch);
         slot_batched      = nullptr;
         alora_scale       = -1.0f;
@@ -852,8 +865,31 @@ public:
 
     server_state_callback_t callback_state = [](server_state, json) -> void {};
 
+    static server_context_impl * prof_self;
+
+    static void prof_print() {
+        const server_context_impl * self = prof_self;
+        if (self == nullptr) {
+            return;
+        }
+        auto avg = [](int64_t t, int64_t n) { return n > 0 ? (double) t / n / 1000.0 : 0.0; };
+        fprintf(stderr, "[SERVER-PROF] calls: pre=%lld decode=%lld post=%lld sampl=%lld | ms/call: pre_decode=%.3f decode=%.3f post_decode=%.3f sampl=%.3f\n",
+                (long long) self->n_pre_decode, (long long) self->n_decode,
+                (long long) self->n_post_decode, (long long) self->n_sampl,
+                avg(self->t_pre_decode, self->n_pre_decode), avg(self->t_decode, self->n_decode),
+                avg(self->t_post_decode, self->n_post_decode), avg(self->t_sampl, self->n_sampl));
+    }
+
     server_context_impl() {
         mtmd_helper_log_set(common_log_default_callback, nullptr);
+        static const bool prof_enabled = []() {
+            const char * env = getenv("LLAMA_TOKEN_PROF");
+            return env != nullptr && atoi(env) != 0;
+        }();
+        if (prof_enabled) {
+            prof_self = this;
+            atexit(&server_context_impl::prof_print);
+        }
     }
 
     ~server_context_impl() {
@@ -2742,26 +2778,34 @@ private:
     int64_t n_decode      = 0;
     int64_t n_post_decode = 0;
     int64_t n_sampl       = 0;
-// #define DEBUG_TIMINGS
+    static bool prof_timers_enabled() {
 #ifdef DEBUG_TIMINGS
+        return true;
+#else
+        static const bool en = []() {
+            const char * env = getenv("LLAMA_TOKEN_PROF");
+            return env != nullptr && atoi(env) != 0;
+        }();
+        return en;
+#endif
+    }
+
     struct scoped_timer {
         int64_t & t;
         int64_t & n;
-        int64_t t_start;
+        int64_t   t_start = 0;
         scoped_timer(int64_t & t_, int64_t & n_) : t(t_), n(n_) {
-            t_start = ggml_time_us();
+            if (prof_timers_enabled()) {
+                t_start = ggml_time_us();
+            }
         }
         ~scoped_timer() {
-            t += ggml_time_us() - t_start;
-            n++;
+            if (t_start != 0) {
+                t += ggml_time_us() - t_start;
+                n++;
+            }
         }
     };
-#else
-    struct scoped_timer {
-        scoped_timer(int64_t &, int64_t &) {}
-        ~scoped_timer() {}
-    };
-#endif
 
     void update_slots() {
 #ifdef DEBUG_TIMINGS
@@ -3556,6 +3600,17 @@ private:
 
                     const auto n_tokens_start = slot.prompt.n_tokens() - n_tokens_cur;
 
+                    // Save the exact next range. The actual lookahead begins
+                    // immediately after llama_decode() submits this batch, not
+                    // here: starting it now makes input setup wait on a copy
+                    // that is supposed to overlap GPU evaluation.
+                    if (n_tokens_cur > 0 && !input_tokens.has_mtmd &&
+                            slot.prompt.n_tokens() < slot.task->n_tokens()) {
+                        batch.ple_prefetch.push_back({
+                                &input_tokens.get_tokens(),
+                                (size_t) slot.prompt.n_tokens(), (size_t) slot.task->n_tokens() });
+                    }
+
                     const bool near_prompt_end = slot.task->n_tokens() < slot.prompt.n_tokens() + n_ubatch;
 
                     const bool is_user_start = spans.is_user_start(n_tokens_start);
@@ -3653,6 +3708,18 @@ private:
         int ret = 0;
         queue_tasks.yield_to_queue([&]() {
             ret = llama_decode(ctx_tgt, batch_view);
+            // llama_decode() queues CUDA work. Start the deterministic next
+            // prompt-range copy afterwards on the independent PLE copy stream
+            // so it can overlap the graph just submitted. Do this once per
+            // rendered server batch; the normal CLI path has one such view.
+            if (ret == 0 && off + batch_view.n_tokens == batch.size()) {
+                for (const auto & request : batch.ple_prefetch) {
+                    if (request.tokens != nullptr && request.begin < request.end) {
+                        llama_model_prefetch_ple(
+                                llama_get_model(ctx_tgt), *request.tokens, request.begin, request.end);
+                    }
+                }
+            }
             if (ret == 0 && has_output) {
                 llama_synchronize(ctx_tgt);
             }
@@ -4126,6 +4193,8 @@ private:
 //
 // server_context (public API)
 //
+
+server_context_impl * server_context_impl::prof_self = nullptr;
 
 server_context::server_context() : impl(new server_context_impl()) {}
 server_context::~server_context() = default;

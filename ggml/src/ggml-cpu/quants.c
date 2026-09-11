@@ -8,8 +8,11 @@
 
 #include "arch-fallback.h"
 
+#include "../ggml-turboq-tables.h"
+
 #include <string.h>
 #include <assert.h>
+#include <math.h>
 #include <float.h>
 #include <stdlib.h> // for qsort
 #include <stdio.h>  // for GGML_ASSERT
@@ -114,6 +117,18 @@ void quantize_row_tq2_0(const float * GGML_RESTRICT x, void * GGML_RESTRICT vy, 
     assert(k % QK_K == 0);
     block_tq2_0 * GGML_RESTRICT y = vy;
     quantize_row_tq2_0_ref(x, y, k);
+}
+
+void quantize_row_tbq3_0(const float * GGML_RESTRICT x, void * GGML_RESTRICT vy, int64_t k) {
+    assert(k % QK_K == 0);
+    block_tbq3_0 * GGML_RESTRICT y = vy;
+    quantize_row_tbq3_0_ref(x, y, k);
+}
+
+void quantize_row_tbq4_0(const float * GGML_RESTRICT x, void * GGML_RESTRICT vy, int64_t k) {
+    assert(k % QK_K == 0);
+    block_tbq4_0 * GGML_RESTRICT y = vy;
+    quantize_row_tbq4_0_ref(x, y, k);
 }
 
 //===================================== Q8_K ==============================================
@@ -525,6 +540,67 @@ void ggml_vec_dot_tq1_0_q8_K_generic(int n, float * GGML_RESTRICT s, size_t bs, 
         }
 
         sumf += (float) sum * (GGML_CPU_FP16_TO_FP32(x[i].d) * y[i].d);
+    }
+
+    *s = sumf;
+}
+
+// TurboQuant codebook dot products: x approx = d * codebook[idx] / sqrt(QK_K),
+// y (q8_K) = d * qs; fold both scales into one float per block
+
+void ggml_vec_dot_tbq3_0_q8_K_generic(int n, float * GGML_RESTRICT s, size_t bs, const void * GGML_RESTRICT vx, size_t bx, const void * GGML_RESTRICT vy, size_t by, int nrc) {
+    assert(nrc == 1);
+    assert(n % QK_K == 0);
+    UNUSED(nrc);
+    UNUSED(bx);
+    UNUSED(by);
+    UNUSED(bs);
+
+    const block_tbq3_0 * GGML_RESTRICT x = vx;
+    const block_q8_K   * GGML_RESTRICT y = vy;
+
+    const int nb = n / QK_K;
+    const float scale_down = 1.0f / sqrtf((float) QK_K);
+    float sumf = 0.0f;
+
+    for (int i = 0; i < nb; ++i) {
+        float sum = 0.0f;
+        for (int g = 0; g < QK_K / 8; ++g) {
+            const uint32_t bits = (uint32_t) x[i].qs[g * 3 + 0]
+                                | ((uint32_t) x[i].qs[g * 3 + 1] << 8)
+                                | ((uint32_t) x[i].qs[g * 3 + 2] << 16);
+            for (int j = 0; j < 8; ++j) {
+                sum += turboq_codebook_3bit[(bits >> (j * 3)) & 0x7] * (float) y[i].qs[g * 8 + j];
+            }
+        }
+        sumf += sum * (y[i].d * GGML_CPU_FP16_TO_FP32(x[i].d) * scale_down);
+    }
+
+    *s = sumf;
+}
+
+void ggml_vec_dot_tbq4_0_q8_K_generic(int n, float * GGML_RESTRICT s, size_t bs, const void * GGML_RESTRICT vx, size_t bx, const void * GGML_RESTRICT vy, size_t by, int nrc) {
+    assert(nrc == 1);
+    assert(n % QK_K == 0);
+    UNUSED(nrc);
+    UNUSED(bx);
+    UNUSED(by);
+    UNUSED(bs);
+
+    const block_tbq4_0 * GGML_RESTRICT x = vx;
+    const block_q8_K   * GGML_RESTRICT y = vy;
+
+    const int nb = n / QK_K;
+    const float scale_down = 1.0f / sqrtf((float) QK_K);
+    float sumf = 0.0f;
+
+    for (int i = 0; i < nb; ++i) {
+        float sum = 0.0f;
+        for (int j = 0; j < QK_K; j += 2) {
+            sum += turboq_codebook_4bit[x[i].qs[j / 2] & 0x0F]        * (float) y[i].qs[j]
+                 + turboq_codebook_4bit[(x[i].qs[j / 2] >> 4) & 0x0F] * (float) y[i].qs[j + 1];
+        }
+        sumf += sum * (y[i].d * GGML_CPU_FP16_TO_FP32(x[i].d) * scale_down);
     }
 
     *s = sumf;

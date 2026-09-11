@@ -1,5 +1,7 @@
 #include "llama-graph.h"
 
+#include "ggml-backend.h"
+
 #include "llama-impl.h"
 #include "llama-model.h"
 #include "llama-batch.h"
@@ -17,6 +19,7 @@
 #include "llama-memory-recurrent.h"
 
 #include <cassert>
+#include <cstdlib>
 #include <cmath>
 #include <cstring>
 #include <numeric>
@@ -1910,7 +1913,8 @@ ggml_tensor * llm_graph_context::build_moe_ffn(
          ggml_tensor * up_exps_s,
          ggml_tensor * gate_exps_s,
          ggml_tensor * down_exps_s,
-         ggml_tensor * selected_experts_in) const {
+         ggml_tensor * selected_experts_in,
+         ggml_tensor ** smoe_gpu_out) const {
     return build_moe_ffn(
         cur,
         gate_inp,  /* gate_inp_b  */ nullptr,
@@ -1931,7 +1935,8 @@ ggml_tensor * llm_graph_context::build_moe_ffn(
         up_exps_s,
         gate_exps_s,
         down_exps_s,
-        selected_experts_in
+        selected_experts_in,
+        smoe_gpu_out
     );
 }
 
@@ -1959,7 +1964,8 @@ ggml_tensor * llm_graph_context::build_moe_ffn(
          ggml_tensor * up_exps_s,
          ggml_tensor * gate_exps_s,
          ggml_tensor * down_exps_s,
-         ggml_tensor * selected_experts_in) const {
+         ggml_tensor * selected_experts_in,
+         ggml_tensor ** smoe_gpu_out) const {
     const int64_t n_embd   = cur->ne[0];
     const int64_t n_tokens = cur->ne[1];
     const bool weight_before_ffn = arch == LLM_ARCH_LLAMA4; // for llama4, we apply the sigmoid-ed weights before the FFN
@@ -1967,6 +1973,12 @@ ggml_tensor * llm_graph_context::build_moe_ffn(
     ggml_tensor * logits = nullptr;
 
     if (probs_in == nullptr) {
+        // The backend uses this tensor as Fate's cross-layer prediction input:
+        // at layer i it evaluates the next layer's gate with the current gate
+        // input on the CPU, while the current layer's experts run on the GPU.
+        // This node is only a named observation point and does not change the
+        // model graph or the router result.
+        cb(cur, "ffn_moe_gate_input", il);
         logits = build_lora_mm(gate_inp, cur); // [n_expert, n_tokens]
         if (gating_op == LLAMA_EXPERT_GATING_FUNC_TYPE_SQRT_SOFTPLUS) {
             ggml_mul_mat_set_prec(logits, GGML_PREC_F32);
@@ -2099,12 +2111,14 @@ ggml_tensor * llm_graph_context::build_moe_ffn(
     //call early so that topk-moe can be used
     ggml_build_forward_expand(gf, weights);
 
-    cur = ggml_reshape_3d(ctx0, cur, n_embd, 1, n_tokens);
+    // one MoE expert pipeline; in split mode it is instantiated once per device half
+    auto build_moe_path = [&](ggml_tensor * path_cur, ggml_tensor * path_ids, ggml_tensor * path_weights) -> ggml_tensor * {
+    ggml_tensor * cur = ggml_reshape_3d(ctx0, path_cur, n_embd, 1, n_tokens);
 
     if (weight_before_ffn) {
         // repeat cur to [n_embd, n_expert_used, n_tokens]
         ggml_tensor * repeated = ggml_repeat_4d(ctx0, cur, n_embd, n_expert_used, n_tokens, 1);
-        cur = ggml_mul(ctx0, repeated, weights);
+        cur = ggml_mul(ctx0, repeated, path_weights);
         cb(cur, "ffn_moe_weighted", il);
     }
 
@@ -2113,7 +2127,7 @@ ggml_tensor * llm_graph_context::build_moe_ffn(
 
     if (gate_up_exps) {
         // merged gate_up path: one mul_mat_id, then split into gate and up views
-        ggml_tensor * gate_up = build_lora_mm_id(gate_up_exps, cur, selected_experts, up_exps_s); // [n_ff*2, n_expert_used, n_tokens]
+        ggml_tensor * gate_up = build_lora_mm_id(gate_up_exps, cur, path_ids, up_exps_s); // [n_ff*2, n_expert_used, n_tokens]
         cb(gate_up, "ffn_moe_gate_up", il);
 
         if (up_exps_s) {
@@ -2121,7 +2135,7 @@ ggml_tensor * llm_graph_context::build_moe_ffn(
         }
 
         if (gate_up_exps_b) {
-            gate_up = ggml_add_id(ctx0, gate_up, gate_up_exps_b, selected_experts);
+            gate_up = ggml_add_id(ctx0, gate_up, gate_up_exps_b, path_ids);
             cb(gate_up, "ffn_moe_gate_up_biased", il);
         }
 
@@ -2132,7 +2146,7 @@ ggml_tensor * llm_graph_context::build_moe_ffn(
         cb(up, "ffn_moe_up", il);
     } else {
         // separate gate and up path
-        up = build_lora_mm_id(up_exps, cur, selected_experts, up_exps_s); // [n_ff, n_expert_used, n_tokens]
+        up = build_lora_mm_id(up_exps, cur, path_ids, up_exps_s); // [n_ff, n_expert_used, n_tokens]
         cb(up, "ffn_moe_up", il);
 
         if (up_exps_s) {
@@ -2140,12 +2154,12 @@ ggml_tensor * llm_graph_context::build_moe_ffn(
         }
 
         if (up_exps_b) {
-            up = ggml_add_id(ctx0, up, up_exps_b, selected_experts);
+            up = ggml_add_id(ctx0, up, up_exps_b, path_ids);
             cb(up, "ffn_moe_up_biased", il);
         }
 
         if (gate_exps) {
-            cur = build_lora_mm_id(gate_exps, cur, selected_experts, gate_exps_s); // [n_ff, n_expert_used, n_tokens]
+            cur = build_lora_mm_id(gate_exps, cur, path_ids, gate_exps_s); // [n_ff, n_expert_used, n_tokens]
             cb(cur, "ffn_moe_gate", il);
         } else {
             cur = up;
@@ -2156,7 +2170,7 @@ ggml_tensor * llm_graph_context::build_moe_ffn(
         }
 
         if (gate_exps_b) {
-            cur = ggml_add_id(ctx0, cur, gate_exps_b, selected_experts);
+            cur = ggml_add_id(ctx0, cur, gate_exps_b, path_ids);
             cb(cur, "ffn_moe_gate_biased", il);
         }
     }
@@ -2246,7 +2260,7 @@ ggml_tensor * llm_graph_context::build_moe_ffn(
             GGML_ABORT("fatal error");
     }
 
-    experts = build_lora_mm_id(down_exps, cur, selected_experts, down_exps_s); // [n_embd, n_expert_used, n_tokens]
+    experts = build_lora_mm_id(down_exps, cur, path_ids, down_exps_s); // [n_embd, n_expert_used, n_tokens]
     cb(experts, "ffn_moe_down", il);
 
     if (down_exps_s) {
@@ -2254,12 +2268,12 @@ ggml_tensor * llm_graph_context::build_moe_ffn(
     }
 
     if (down_exps_b) {
-        experts = ggml_add_id(ctx0, experts, down_exps_b, selected_experts);
+        experts = ggml_add_id(ctx0, experts, down_exps_b, path_ids);
         cb(experts, "ffn_moe_down_biased", il);
     }
 
     if (!weight_before_ffn) {
-        experts = ggml_mul(ctx0, experts, weights);
+        experts = ggml_mul(ctx0, experts, path_weights);
         cb(experts, "ffn_moe_weighted", il);
     }
 
@@ -2296,6 +2310,123 @@ ggml_tensor * llm_graph_context::build_moe_ffn(
     cb(moe_out, "ffn_moe_out", il);
 
     return moe_out;
+    };
+
+    static const bool moe_split = []() {
+        const char * e = getenv("LLAMA_MOE_SPLIT");
+        if (e == nullptr || atoi(e) == 0) {
+            return false;
+        }
+        // the split needs the runtime expert cache; without a budget it degenerates to
+        // all-CPU experts with extra scheduling overhead, which plain --cpu-moe does better
+        const char * m = getenv("LLAMA_MOE_CACHE_MIB");
+        if (m == nullptr || (strcmp(m, "auto") != 0 && atoll(m) <= 0)) {
+            static bool warned = false;
+            if (!warned) {
+                fprintf(stderr, "llama-graph: LLAMA_MOE_SPLIT ignored: LLAMA_MOE_CACHE_MIB not set\n");
+                warned = true;
+            }
+            return false;
+        }
+        return true;
+    }();
+
+    if (moe_split && n_tokens == 1) {
+        // single-token decode: split the experts between the GPU (cache-resident)
+        // and the CPU (the rest). All five leaves are filled by the scheduler
+        // hook in ggml_backend_sched_compute_splits once the router output of
+        // this layer is known.
+        ggml_tensor * ids_gpu = nullptr;
+        ggml_tensor * wgt_gpu = nullptr;
+        ggml_tensor * ids_cpu = nullptr;
+        ggml_tensor * wgt_cpu = nullptr;
+        ggml_tensor * cur_cpu = nullptr;
+
+        // device-side partition: a tiny kernel splits the router topk against the
+        // residency table on the GPU; ids/weights never leave the device and the
+        // CPU half consumes them through the scheduler's cross-backend copies
+        ggml_tensor * table = ggml_moe_partition_table_tensor(ctx0, il, n_expert, hparams.n_layer());
+        if (table != nullptr) {
+            ggml_tensor * pids = ggml_moe_partition_ids(ctx0, selected_experts, weights, table);
+            ggml_tensor * pwgt = ggml_moe_partition_wgt(ctx0, selected_experts, weights, pids);
+            ggml_format_name(pids, "ffn_moe_part_ids-%d", il);
+            ggml_format_name(pwgt, "ffn_moe_part_wgt-%d", il);
+
+            ids_gpu = ggml_reshape_2d(ctx0, ggml_view_1d(ctx0, pids, n_expert_used, 0),             n_expert_used, 1);
+            ids_cpu = ggml_reshape_2d(ctx0, ggml_view_1d(ctx0, pids, n_expert_used, n_expert_used), n_expert_used, 1);
+            wgt_gpu = ggml_reshape_3d(ctx0, ggml_view_1d(ctx0, pwgt, n_expert_used, 0),             1, n_expert_used, 1);
+            wgt_cpu = ggml_reshape_3d(ctx0, ggml_view_1d(ctx0, pwgt, n_expert_used, n_expert_used), 1, n_expert_used, 1);
+            ggml_format_name(ids_gpu, "ffn_moe_ids_gpu-%d", il);
+            ggml_format_name(wgt_gpu, "ffn_moe_wgt_gpu-%d", il);
+            ggml_format_name(ids_cpu, "ffn_moe_ids_cpu-%d", il);
+            ggml_format_name(wgt_cpu, "ffn_moe_wgt_cpu-%d", il);
+            // keep the router outputs alive past the partition kernels: the view
+            // nodes are never executed, they only extend the allocator lifetimes
+            // of the tensors the device kernels read
+            ggml_tensor * part_keep_ids = ggml_view_1d(ctx0, selected_experts, selected_experts->ne[0], 0);
+            ggml_tensor * part_keep_wgt = ggml_view_1d(ctx0, weights, 1, 0);
+            ggml_format_name(part_keep_ids, "ffn_moe_part_keep_ids-%d", il);
+            ggml_format_name(part_keep_wgt, "ffn_moe_part_keep_wgt-%d", il);
+            ggml_build_forward_expand(gf, part_keep_ids);
+            ggml_build_forward_expand(gf, part_keep_wgt);
+        } else {
+            ids_gpu = ggml_new_tensor_2d(ctx0, GGML_TYPE_I32, n_expert_used, n_tokens);
+            wgt_gpu = ggml_new_tensor_3d(ctx0, GGML_TYPE_F32, 1, n_expert_used, n_tokens);
+            ids_cpu = ggml_new_tensor_2d(ctx0, GGML_TYPE_I32, n_expert_used, n_tokens);
+            wgt_cpu = ggml_new_tensor_3d(ctx0, GGML_TYPE_F32, 1, n_expert_used, n_tokens);
+            cur_cpu = ggml_new_tensor_3d(ctx0, GGML_TYPE_F32, n_embd, 1, n_tokens);
+            ggml_format_name(ids_gpu, "ffn_moe_ids_gpu-%d", il);
+            ggml_format_name(wgt_gpu, "ffn_moe_wgt_gpu-%d", il);
+            ggml_format_name(ids_cpu, "ffn_moe_ids_cpu-%d", il);
+            ggml_format_name(wgt_cpu, "ffn_moe_wgt_cpu-%d", il);
+            ggml_format_name(cur_cpu, "ffn_moe_cur_cpu-%d", il);
+            ggml_set_input(ids_gpu);
+            ggml_set_input(wgt_gpu);
+            ggml_set_input(ids_cpu);
+            ggml_set_input(wgt_cpu);
+            ggml_set_input(cur_cpu);
+        }
+        // the scheduler hook reads the routing weights from this tensor
+        ggml_format_name(weights, "ffn_moe_wgt_final-%d", il);
+
+        ggml_tensor * out_gpu = build_moe_path(cur,     ids_gpu, wgt_gpu);
+        if (smoe_gpu_out != nullptr) {
+            *smoe_gpu_out = out_gpu;
+        }
+
+        // fused single-node CPU path (LLAMA_MOE_FUSED_CPU=0 to fall back):
+        // one ggml op computes gate/up/swiglu/down/weighted-sum for all CPU experts,
+        // replacing ~13 nodes and their per-node barriers
+        static const bool moe_fused_cpu = []() {
+            const char * e = getenv("LLAMA_MOE_FUSED_CPU");
+            return e == nullptr || atoi(e) != 0;
+        }();
+
+        const bool cpu_fused = moe_fused_cpu &&
+            gate_up_exps == nullptr && gate_exps != nullptr && up_exps != nullptr &&
+            up_exps_s == nullptr && gate_exps_s == nullptr && down_exps_s == nullptr &&
+            type_op == LLM_FFN_SILU && !weight_before_ffn &&
+            (il < 0 || hparams.swiglu_clamp_exp[il] <= 1e-6f);
+
+        // devpart has no host-filled cur_cpu leaf: the CPU half reads the GPU
+        // activation directly, the scheduler inserts the cross-backend copy
+        ggml_tensor * out_cpu = nullptr;
+        ggml_tensor * cur_for_cpu = cur_cpu != nullptr ? cur_cpu : cur;
+        if (cpu_fused) {
+            out_cpu = ggml_moe_cpu(ctx0, gate_exps, up_exps, down_exps, cur_for_cpu, ids_cpu, wgt_cpu);
+            ggml_format_name(out_cpu, "ffn_moe_cpu_fused-%d", il);
+            cb(out_cpu, "ffn_moe_cpu_fused", il);
+            ggml_build_forward_expand(gf, out_cpu);
+        } else {
+            out_cpu = build_moe_path(cur_for_cpu, ids_cpu, wgt_cpu);
+        }
+
+        ggml_tensor * moe_out = ggml_add(ctx0, out_gpu, out_cpu);
+        cb(moe_out, "ffn_moe_out", il);
+        return moe_out;
+    }
+
+    return build_moe_path(cur, selected_experts, weights);
 }
 
 // input embeddings with optional lora

@@ -8,6 +8,7 @@
 #include <cstdlib>
 #include <memory>
 #include <mutex>
+#include <deque>
 
 #if defined(GGML_USE_HIP)
 #define GGML_COMMON_DECL_HIP
@@ -1417,6 +1418,20 @@ struct ggml_backend_cuda_context {
     std::string name;
     cudaEvent_t copy_event = nullptr;
 
+    // side stream for MoE expert prefetch (LLAMA_MOE_PREFETCH), overlaps host->device
+    // copies with compute; the fork/join events order it against the compute stream
+    cudaStream_t prefetch_stream     = nullptr;
+    cudaEvent_t  prefetch_fork_event = nullptr;
+    cudaEvent_t  prefetch_join_event = nullptr;
+    // pinned staging ring for prefetch copies: pageable sources are memcpy'd here first so
+    // the side stream copies at full pinned H2D rate; single stream => in-order completion
+    bool        prefetch_stage_init = false;
+    void *      prefetch_stage      = nullptr;
+    size_t      prefetch_stage_size = 0;
+    size_t      prefetch_stage_off  = 0;
+    std::mutex  prefetch_stage_mtx;
+    std::deque<cudaEvent_t> prefetch_stage_inflight;
+
     cudaStream_t streams[GGML_CUDA_MAX_DEVICES][GGML_CUDA_MAX_STREAMS] = { { nullptr } };
     cublasHandle_t cublas_handles[GGML_CUDA_MAX_DEVICES][GGML_CUDA_MAX_STREAMS] = {nullptr};
     void * cublas_workspaces[GGML_CUDA_MAX_DEVICES][GGML_CUDA_MAX_STREAMS] = {nullptr};
@@ -1427,7 +1442,7 @@ struct ggml_backend_cuda_context {
 #ifdef USE_CUDA_GRAPH
     std::unordered_map<uint64_t, std::unique_ptr<ggml_cuda_graph>> cuda_graphs;
 
-    static const size_t max_cuda_graphs = 64;
+    static const size_t max_cuda_graphs = 512;
 
     int64_t last_graph_eviction_sweep = 0;
 

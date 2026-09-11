@@ -1,5 +1,6 @@
 #include "common.cuh"
 #include "convert.cuh"
+#include "turboq-device.cuh"
 
 static __device__ __forceinline__ void dequantize_q1_0(const void * vx, const int64_t ib, const int iqs, float2 & v){
     const block_q1_0 * x = (const block_q1_0 *) vx;
@@ -117,6 +118,34 @@ static __device__ __forceinline__ void dequantize_q8_0(const void * vx, const in
 
     v.x *= d;
     v.y *= d;
+}
+// value = d * codebook[idx] / sqrt(QK_K), see ggml-turboq.c
+static __device__ __forceinline__ void dequantize_tbq4_0(const void * vx, const int64_t ib, const int iqs, float2 & v){
+    const block_tbq4_0 * x = (const block_tbq4_0 *) vx;
+
+    const float d = __half2float(x[ib].d) * (1.0f/16.0f);
+
+    const int vui = x[ib].qs[iqs];
+
+    v.x = d * turboq_codebook_4bit_gpu[vui & 0xF];
+    v.y = d * turboq_codebook_4bit_gpu[vui >> 4];
+}
+
+// 3-bit indices packed 8 values per 3 bytes, LSB first
+static __device__ __forceinline__ void dequantize_tbq3_0(const void * vx, const int64_t ib, const int iqs, float2 & v){
+    const block_tbq3_0 * x = (const block_tbq3_0 *) vx;
+
+    const float d = __half2float(x[ib].d) * (1.0f/16.0f);
+
+    uint32_t bits;
+    {
+        const uint8_t * q = x[ib].qs + 3*(iqs/4);
+        bits = (uint32_t)q[0] | ((uint32_t)q[1] << 8) | ((uint32_t)q[2] << 16);
+    }
+    bits >>= 3*(iqs % 4);
+
+    v.x = d * turboq_codebook_3bit_gpu[bits & 0x7];
+    v.y = d * turboq_codebook_3bit_gpu[(bits >> 3) & 0x7];
 }
 
 //================================== k-quants

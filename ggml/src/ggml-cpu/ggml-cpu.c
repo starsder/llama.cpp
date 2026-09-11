@@ -236,6 +236,18 @@ static const struct ggml_type_traits_cpu type_traits_cpu[GGML_TYPE_COUNT] = {
         .vec_dot_type             = GGML_TYPE_Q8_0,
         .nrows                    = 1,
     },
+    [GGML_TYPE_TBQ3_0] = {
+        .from_float               = quantize_row_tbq3_0,
+        .vec_dot                  = ggml_vec_dot_tbq3_0_q8_K,
+        .vec_dot_type             = GGML_TYPE_Q8_K,
+        .nrows                    = 1,
+    },
+    [GGML_TYPE_TBQ4_0] = {
+        .from_float               = quantize_row_tbq4_0,
+        .vec_dot                  = ggml_vec_dot_tbq4_0_q8_K,
+        .vec_dot_type             = GGML_TYPE_Q8_K,
+        .nrows                    = 1,
+    },
     [GGML_TYPE_Q4_0] = {
         .from_float               = quantize_row_q4_0,
         .vec_dot                  = ggml_vec_dot_q4_0_q8_0,
@@ -1451,6 +1463,291 @@ UseGgmlGemm2:;
     }
 }
 
+static void * incr_ptr_aligned(void ** p, size_t size, size_t align);
+
+// LLAMA_MOE_PHASE_TIMING accumulators (written by ith==0 only)
+static uint64_t g_moe_phase_us[5] = {0};
+static uint64_t g_moe_phase_calls = 0;
+
+static void moe_phase_print(void) {
+    if (g_moe_phase_calls == 0) {
+        return;
+    }
+    fprintf(stderr, "[MOE-CPU] phases per call (us): A=%llu B=%llu C=%llu D=%llu E=%llu calls=%llu\n",
+            (unsigned long long) g_moe_phase_us[0]/g_moe_phase_calls,
+            (unsigned long long) g_moe_phase_us[1]/g_moe_phase_calls,
+            (unsigned long long) g_moe_phase_us[2]/g_moe_phase_calls,
+            (unsigned long long) g_moe_phase_us[3]/g_moe_phase_calls,
+            (unsigned long long) g_moe_phase_us[4]/g_moe_phase_calls,
+            (unsigned long long) g_moe_phase_calls);
+}
+
+// ggml_compute_forward_moe_cpu
+
+// fused MoE expert FFN for single-token decode:
+//   dst[r] = sum_a w[a] * <down[r,:,id_a], silu(gate[:,id_a].x) * (up[:,id_a].x)>
+// ids entries outside [0, n_expert) are skipped; this is how the scheduler hook
+// masks the experts that are computed on the GPU instead (LLAMA_MOE_SPLIT).
+#if defined(__AVX2__)
+#define MOE_MM256_SET_M128I(a, b) _mm256_insertf128_si256(_mm256_castsi128_si256(b), (a), 1)
+static inline float moe_hsum_float_8(const __m256 x) {
+    __m128 res = _mm256_extractf128_ps(x, 1);
+    res = _mm_add_ps(res, _mm256_castps256_ps128(x));
+    res = _mm_add_ps(res, _mm_movehl_ps(res, res));
+    res = _mm_add_ss(res, _mm_movehdup_ps(res));
+    return _mm_cvtss_f32(res);
+}
+static inline __m256i moe_mul_add_epi8(const __m256i x, const __m256i y) {
+    const __m256i ax = _mm256_sign_epi8(x, x);
+    const __m256i sy = _mm256_sign_epi8(y, x);
+    return _mm256_maddubs_epi16(ax, sy);
+}
+// 4-row IQ4_NL x Q8_0 dot: four weight rows share one activation stream, and the
+// interleaved row streams raise memory-level parallelism vs the single-row
+// ggml_vec_dot_iq4_nl_q8_0 (phase D was stuck at ~13 GB/s with one row in flight).
+static void moe_dot_iq4_nl_q8_0_x4(int n, float * GGML_RESTRICT s4,
+        const block_iq4_nl * x0, const block_iq4_nl * x1,
+        const block_iq4_nl * x2, const block_iq4_nl * x3,
+        const block_q8_0 * y) {
+    static const int8_t kv_iq4nl[16] = {
+        -127, -104, -83, -65, -49, -35, -22, -10, 1, 13, 25, 38, 53, 69, 89, 113,
+    };
+    const int nb = n / QK4_NL;
+    GGML_ASSERT(n % QK4_NL == 0);
+
+    const __m128i values128 = _mm_loadu_si128((const __m128i *) kv_iq4nl);
+    const __m128i m4b  = _mm_set1_epi8(0x0f);
+    const __m256i mone = _mm256_set1_epi16(1);
+    const block_iq4_nl * GGML_RESTRICT xr[4] = { x0, x1, x2, x3 };
+
+    __m256 accum[4] = { _mm256_setzero_ps(), _mm256_setzero_ps(), _mm256_setzero_ps(), _mm256_setzero_ps() };
+    for (int ib = 0; ib + 1 < nb; ib += 2) {
+        const __m256i q8b_1 = _mm256_loadu_si256((const __m256i *) y[ib + 0].qs);
+        const __m256i q8b_2 = _mm256_loadu_si256((const __m256i *) y[ib + 1].qs);
+        for (int j = 0; j < 4; ++j) {
+            const __m128i q4bits_1 = _mm_loadu_si128((const __m128i *) xr[j][ib + 0].qs);
+            const __m128i q4bits_2 = _mm_loadu_si128((const __m128i *) xr[j][ib + 1].qs);
+            const __m256i q4b_1 = MOE_MM256_SET_M128I(_mm_shuffle_epi8(values128, _mm_and_si128(_mm_srli_epi16(q4bits_1, 4), m4b)),
+                                                      _mm_shuffle_epi8(values128, _mm_and_si128(q4bits_1, m4b)));
+            const __m256i q4b_2 = MOE_MM256_SET_M128I(_mm_shuffle_epi8(values128, _mm_and_si128(_mm_srli_epi16(q4bits_2, 4), m4b)),
+                                                      _mm_shuffle_epi8(values128, _mm_and_si128(q4bits_2, m4b)));
+            const __m256i p16_1 = moe_mul_add_epi8(q4b_1, q8b_1);
+            const __m256i p16_2 = moe_mul_add_epi8(q4b_2, q8b_2);
+            const __m256i p_1 = _mm256_madd_epi16(p16_1, mone);
+            const __m256i p_2 = _mm256_madd_epi16(p16_2, mone);
+            accum[j] = _mm256_fmadd_ps(_mm256_set1_ps(GGML_CPU_FP16_TO_FP32(y[ib + 0].d)*GGML_CPU_FP16_TO_FP32(xr[j][ib + 0].d)),
+                    _mm256_cvtepi32_ps(p_1), accum[j]);
+            accum[j] = _mm256_fmadd_ps(_mm256_set1_ps(GGML_CPU_FP16_TO_FP32(y[ib + 1].d)*GGML_CPU_FP16_TO_FP32(xr[j][ib + 1].d)),
+                    _mm256_cvtepi32_ps(p_2), accum[j]);
+        }
+    }
+    for (int j = 0; j < 4; ++j) {
+        s4[j] = moe_hsum_float_8(accum[j]);
+    }
+}
+#endif
+
+static void ggml_compute_forward_moe_cpu(
+        const struct ggml_compute_params * params,
+        struct ggml_tensor * dst) {
+
+    const struct ggml_tensor * gate = dst->src[0];
+    const struct ggml_tensor * up   = dst->src[1];
+    const struct ggml_tensor * down = dst->src[2];
+    const struct ggml_tensor * cur  = dst->src[3];
+    const struct ggml_tensor * ids  = dst->src[4];
+    const struct ggml_tensor * wgt  = dst->src[5];
+
+    const int64_t n_embd   = gate->ne[0];
+    const int64_t n_ff     = gate->ne[1];
+    const int64_t n_expert = gate->ne[2];
+    const int64_t n_used   = ids->ne[0];
+
+    GGML_ASSERT(ids->ne[1] == 1 && ids->ne[2] == 1 && ids->ne[3] == 1);
+    GGML_ASSERT(cur->ne[0] == n_embd && cur->ne[1]*cur->ne[2]*cur->ne[3] == 1);
+    GGML_ASSERT(dst->ne[0] == n_embd && dst->ne[1] == 1 && dst->ne[2] == 1 && dst->ne[3] == 1);
+    GGML_ASSERT(down->ne[0] == n_ff && down->ne[1] == n_embd && down->ne[2] == n_expert);
+    GGML_ASSERT(ggml_is_contiguous(gate) && ggml_is_contiguous(up) && ggml_is_contiguous(down));
+    GGML_ASSERT(ggml_is_contiguous(cur) && ggml_is_contiguous(ids) && ggml_is_contiguous(wgt));
+    GGML_ASSERT(cur->type == GGML_TYPE_F32 && ids->type == GGML_TYPE_I32 && wgt->type == GGML_TYPE_F32);
+    GGML_ASSERT(dst->type == GGML_TYPE_F32 && dst->nb[0] == sizeof(float));
+
+    const int ith = params->ith;
+    const int nth = params->nth;
+    // LLAMA_MOE_PHASE_TIMING=1: ith==0 measures each phase (barrier-bounded, so thread 0's
+    // numbers are the true phase durations); accumulated and printed at process exit
+    static int phase_timing = -1;
+    if (phase_timing < 0) {
+        phase_timing = getenv("LLAMA_MOE_PHASE_TIMING") != NULL;
+        if (phase_timing) {
+            atexit(moe_phase_print);
+        }
+    }
+    int64_t tm_ph = 0;
+    if (phase_timing && ith == 0) {
+        tm_ph = ggml_time_us();
+    }
+#define MOE_PHASE_MARK(i) do { \
+        if (tm_ph != 0) { \
+            const int64_t now = ggml_time_us(); \
+            g_moe_phase_us[i] += (uint64_t) (now - tm_ph); \
+            tm_ph = now; \
+            if (i == 4) { g_moe_phase_calls++; } \
+        } \
+    } while (0)
+
+    const enum ggml_type    vdt_g = type_traits_cpu[gate->type].vec_dot_type;
+    const enum ggml_type    vdt_u = type_traits_cpu[up->type].vec_dot_type;
+    const enum ggml_type    vdt_d = type_traits_cpu[down->type].vec_dot_type;
+
+    ggml_vec_dot_t    const vec_dot_g = type_traits_cpu[gate->type].vec_dot;
+    ggml_vec_dot_t    const vec_dot_u = type_traits_cpu[up->type].vec_dot;
+    ggml_vec_dot_t    const vec_dot_d = type_traits_cpu[down->type].vec_dot;
+    ggml_from_float_t const from_float_g = type_traits_cpu[vdt_g].from_float;
+    ggml_from_float_t const from_float_u = type_traits_cpu[vdt_u].from_float;
+    ggml_from_float_t const from_float_d = type_traits_cpu[vdt_d].from_float;
+    GGML_ASSERT(vec_dot_g != NULL && vec_dot_u != NULL && vec_dot_d != NULL);
+    GGML_ASSERT(from_float_g != NULL && from_float_u != NULL && from_float_d != NULL);
+
+    const size_t xq_g_size = ggml_row_size(vdt_g, n_embd);
+    const size_t xq_u_size = ggml_row_size(vdt_u, n_embd);
+    const size_t aq_size   = ggml_row_size(vdt_d, n_ff);
+
+    void * wdata_cur = params->wdata;
+
+    int32_t * a_m   = incr_ptr_aligned(&wdata_cur, sizeof(int32_t),              CACHE_LINE_SIZE);
+    int32_t * a_ids = incr_ptr_aligned(&wdata_cur, n_used*sizeof(int32_t),      CACHE_LINE_SIZE);
+    float   * a_w   = incr_ptr_aligned(&wdata_cur, n_used*sizeof(float),        CACHE_LINE_SIZE);
+    char    * xq_g  = incr_ptr_aligned(&wdata_cur, xq_g_size,                   CACHE_LINE_SIZE);
+    char    * xq_u  = incr_ptr_aligned(&wdata_cur, xq_u_size,                   CACHE_LINE_SIZE);
+    float   * act   = incr_ptr_aligned(&wdata_cur, n_used*n_ff*sizeof(float),   CACHE_LINE_SIZE);
+    char    * act_q = incr_ptr_aligned(&wdata_cur, n_used*aq_size,              CACHE_LINE_SIZE);
+    float   * part  = incr_ptr_aligned(&wdata_cur, n_used*n_embd*sizeof(float), CACHE_LINE_SIZE);
+
+    GGML_ASSERT(params->wsize >= (size_t)((char *) wdata_cur - (char *) params->wdata));
+
+    const char * xq_up = vdt_u == vdt_g ? xq_g : xq_u;
+
+    // phase A: compact the active expert list, quantize the input row
+    if (ith == 0) {
+        int32_t m = 0;
+        for (int64_t i = 0; i < n_used; ++i) {
+            const int32_t id = ((const int32_t *) ids->data)[i];
+            if (id < 0 || id >= n_expert) {
+                continue;
+            }
+            a_ids[m] = id;
+            a_w[m]   = ((const float *) wgt->data)[i];
+            ++m;
+        }
+        *a_m = m;
+        if (m > 0) {
+            from_float_g((const float *) cur->data, xq_g, n_embd);
+            if (vdt_u != vdt_g) {
+                from_float_u((const float *) cur->data, xq_u, n_embd);
+            }
+        }
+    }
+
+    ggml_barrier(params->threadpool);
+    MOE_PHASE_MARK(0);
+
+    const int32_t m = *a_m;
+
+    // phase B: gate/up dots + swiglu, split by (expert, ffn row)
+    if (m > 0) {
+        const int64_t units = (int64_t) m*n_ff;
+        const int64_t dr    = (units + nth - 1)/nth;
+        const int64_t u0    = dr*ith;
+        const int64_t u1    = MIN(u0 + dr, units);
+
+        for (int64_t u = u0; u < u1; ++u) {
+            const int64_t a = u / n_ff;
+            const int64_t k = u % n_ff;
+
+            const char * w_g = (const char *) gate->data + a_ids[a]*gate->nb[2] + k*gate->nb[1];
+            const char * w_u = (const char *) up->data   + a_ids[a]*up->nb[2]   + k*up->nb[1];
+
+            float g, v;
+            vec_dot_g(n_embd, &g, 0, w_g, 0, xq_g,  0, 1);
+            vec_dot_u(n_embd, &v, 0, w_u, 0, xq_up, 0, 1);
+
+            act[a*n_ff + k] = ggml_silu_f32(g)*v; // same as ggml_vec_swiglu_f32
+        }
+    }
+
+    ggml_barrier(params->threadpool);
+
+    // phase C: quantize the activations (one expert per thread)
+    for (int32_t a = ith; a < m; a += nth) {
+        from_float_d(act + a*n_ff, act_q + a*aq_size, n_ff);
+    }
+
+    ggml_barrier(params->threadpool);
+    MOE_PHASE_MARK(1);
+    MOE_PHASE_MARK(2);
+
+    // phase D: down dots, split by (expert, embd row)
+    if (m > 0) {
+        #if defined(__AVX2__)
+        if (down->type == GGML_TYPE_IQ4_NL && n_embd % 4 == 0) {
+            // 4 rows per unit: one activation stream feeds four weight streams
+            const int64_t ngrp  = n_embd/4;
+            const int64_t units = (int64_t) m*ngrp;
+            const int64_t dr    = (units + nth - 1)/nth;
+            const int64_t u0    = dr*ith;
+            const int64_t u1    = MIN(u0 + dr, units);
+            for (int64_t u = u0; u < u1; ++u) {
+                const int64_t a = u / ngrp;
+                const int64_t g = u % ngrp;
+                const block_iq4_nl * xd = (const block_iq4_nl *) ((const char *) down->data + a_ids[a]*down->nb[2]) + g*4*(n_ff/QK4_NL);
+                moe_dot_iq4_nl_q8_0_x4(n_ff, part + a*n_embd + g*4, xd,
+                        (const block_iq4_nl *) ((const char *) xd + down->nb[1]),
+                        (const block_iq4_nl *) ((const char *) xd + 2*down->nb[1]),
+                        (const block_iq4_nl *) ((const char *) xd + 3*down->nb[1]),
+                        (const block_q8_0 *) (act_q + a*aq_size));
+            }
+        } else
+#endif
+        {
+            const int64_t units = (int64_t) m*n_embd;
+            const int64_t dr    = (units + nth - 1)/nth;
+            const int64_t u0    = dr*ith;
+            const int64_t u1    = MIN(u0 + dr, units);
+
+            for (int64_t u = u0; u < u1; ++u) {
+                const int64_t a = u / n_embd;
+                const int64_t r = u % n_embd;
+
+                const char * w_d = (const char *) down->data + a_ids[a]*down->nb[2] + r*down->nb[1];
+
+                vec_dot_d(n_ff, &part[a*n_embd + r], 0, w_d, 0, act_q + a*aq_size, 0, 1);
+            }
+        }
+    }
+
+    ggml_barrier(params->threadpool);
+
+    // phase E: deterministic weighted reduction (fixed expert order; zero when m == 0)
+    {
+        float * dst_f = (float *) dst->data;
+
+        const int64_t dr = (n_embd + nth - 1)/nth;
+        const int64_t r0 = dr*ith;
+        const int64_t r1 = MIN(r0 + dr, n_embd);
+
+        for (int64_t r = r0; r < r1; ++r) {
+            float s = 0.0f;
+            for (int32_t a = 0; a < m; ++a) {
+                s += a_w[a]*part[a*n_embd + r];
+            }
+            dst_f[r] = s;
+        }
+    }
+    MOE_PHASE_MARK(3);
+    MOE_PHASE_MARK(4);
+}
+
 // ggml_compute_forward_mul_mat_id
 
 #define MMID_MATRIX_ROW(row_id, i1) matrix_rows[(row_id)*ids->ne[0]*ids->ne[1] + (i1)]
@@ -1628,7 +1925,14 @@ static void ggml_compute_forward_mul_mat_id(
             for (int id = 0; id < n_ids; ++id) {
                 const int32_t i02 = *(const int32_t *) ((const char *) ids->data + iid1*ids->nb[1] + id*ids->nb[0]);
 
-                assert(i02 >= 0 && i02 < n_as);
+                if (i02 < 0) {
+                    // sentinel id used by the MoE GPU/CPU split: no expert to compute;
+                    // zero the output row so the weighted sum stays exact
+                    memset((char *) dst->data + id*dst->nb[1] + iid1*dst->nb[2], 0, dst->ne[0]*dst->nb[0]);
+                    continue;
+                }
+
+                assert(i02 < n_as);
 
                 MMID_MATRIX_ROW(i02, matrix_row_counts[i02]) = (struct mmid_row_mapping) {id, iid1};
                 matrix_row_counts[i02] += 1;
@@ -1840,6 +2144,10 @@ static void ggml_compute_forward(struct ggml_compute_params * params, struct ggm
         case GGML_OP_MUL_MAT_ID:
             {
                 ggml_compute_forward_mul_mat_id(params, tensor);
+            } break;
+        case GGML_OP_MOE_CPU:
+            {
+                ggml_compute_forward_moe_cpu(params, tensor);
             } break;
         case GGML_OP_OUT_PROD:
             {
@@ -2331,6 +2639,7 @@ static int ggml_get_n_tasks(struct ggml_tensor * node, int n_threads) {
         case GGML_OP_MUL_MAT:
         case GGML_OP_MUL_MAT_ID:
         case GGML_OP_OUT_PROD:
+        case GGML_OP_MOE_CPU:
             {
                 n_tasks = n_threads;
             } break;
@@ -2878,6 +3187,19 @@ struct ggml_cplan ggml_graph_plan(
                         // atomic_current_chunk
                         cur += CACHE_LINE_SIZE*n_as + CACHE_LINE_SIZE;
                     } break;
+                case GGML_OP_MOE_CPU:
+                    {
+                        const int64_t n_embd = node->src[0]->ne[0];
+                        const int64_t n_ff   = node->src[0]->ne[1];
+                        const int64_t n_used = node->src[4]->ne[0];
+                        cur  = CACHE_LINE_SIZE*8; // per-region alignment slop
+                        cur += sizeof(int32_t) + n_used*(sizeof(int32_t) + sizeof(float));
+                        cur += ggml_row_size(type_traits_cpu[node->src[0]->type].vec_dot_type, n_embd);
+                        cur += ggml_row_size(type_traits_cpu[node->src[1]->type].vec_dot_type, n_embd);
+                        cur += n_used*n_ff*sizeof(float);
+                        cur += n_used*ggml_row_size(type_traits_cpu[node->src[2]->type].vec_dot_type, n_ff);
+                        cur += n_used*n_embd*sizeof(float);
+                    } break;
                 case GGML_OP_OUT_PROD:
                     {
                         if (ggml_is_quantized(node->src[0]->type) ||
@@ -3106,11 +3428,17 @@ static thread_ret_t ggml_graph_compute_thread(void * data) {
 
         // TODO: move fused-op detection into ggml_graph_plan so fusion decisions are made once at planning time
         // Try fused ops, fall back to normal compute
+        static int node_timing_env = -1; if (node_timing_env < 0) node_timing_env = getenv("GGML_CPU_NODE_TIMING") != NULL;
+        const bool do_timing = node_timing_env && state->ith == 0;
+        const int64_t t_node0 = do_timing ? ggml_time_us() : 0;
         const int n_fused = ggml_cpu_try_fuse_ops(cgraph, node_n, &params, cplan);
         if (n_fused > 0) {
             node_n += n_fused;
         } else {
             ggml_compute_forward(&params, node);
+        }
+        if (do_timing) {
+            fprintf(stderr, "[CPUNODE] %s %s %lld us\n", ggml_op_name(node->op), node->name, (long long)(ggml_time_us() - t_node0));
         }
 
         if (state->ith == 0 && cplan->abort_callback &&

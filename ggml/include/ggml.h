@@ -430,7 +430,9 @@ extern "C" {
         GGML_TYPE_NVFP4   = 40, // NVFP4 (4 blocks, E4M3 scale)
         GGML_TYPE_Q1_0    = 41,
         GGML_TYPE_Q2_0    = 42,
-        GGML_TYPE_COUNT   = 43,
+        GGML_TYPE_TBQ3_0  = 43, // TurboQuant 3-bit
+        GGML_TYPE_TBQ4_0  = 44, // TurboQuant 4-bit
+        GGML_TYPE_COUNT   = 45,
     };
 
     // precision
@@ -475,6 +477,8 @@ extern "C" {
         GGML_FTYPE_MOSTLY_NVFP4   = 26, // except 1d tensors
         GGML_FTYPE_MOSTLY_Q1_0    = 27, // except 1d tensors
         GGML_FTYPE_MOSTLY_Q2_0    = 28, // except 1d tensors
+        GGML_FTYPE_MOSTLY_TBQ3_0  = 29, // except 1d tensors
+        GGML_FTYPE_MOSTLY_TBQ4_0  = 30, // except 1d tensors
     };
 
     // available tensor operations:
@@ -589,6 +593,13 @@ extern "C" {
         GGML_OP_OPT_STEP_SGD,
 
         GGML_OP_GLU,
+
+        GGML_OP_MOE_CPU,
+
+        // device-side MoE split partition: read router topk + residency table on
+        // device, produce the GPU/CPU id and weight rows without a host roundtrip
+        GGML_OP_MOE_PARTITION_IDS,
+        GGML_OP_MOE_PARTITION_WGT,
 
         GGML_OP_COUNT,
     };
@@ -1454,6 +1465,38 @@ extern "C" {
             struct ggml_tensor  * as,
             struct ggml_tensor  * b,
             struct ggml_tensor  * ids);
+
+    // fused MoE expert FFN for single-token decode on the CPU backend:
+    //   dst[r] = sum_a w[a] * <down[r,:,id_a], silu(gate[:,id_a].x) * (up[:,id_a].x)>
+    // ids entries outside [0, n_expert) are skipped (used to mask experts computed elsewhere)
+    GGML_API struct ggml_tensor * ggml_moe_cpu(
+            struct ggml_context * ctx,
+            struct ggml_tensor  * gate,    // [n_embd, n_ff, n_expert], quantized
+            struct ggml_tensor  * up,      // [n_embd, n_ff, n_expert], quantized
+            struct ggml_tensor  * down,    // [n_ff, n_embd, n_expert], quantized
+            struct ggml_tensor  * cur,     // [n_embd, 1, 1] f32
+            struct ggml_tensor  * ids,     // [n_used, 1] i32
+            struct ggml_tensor  * weights);// [1, n_used, 1] f32
+
+    // device-side MoE partition (direct-read mode): scan the router topk against the
+    // per-layer residency table and emit, without any host roundtrip:
+    //   ids dst  i32 [2*k]: [0..k) slot indices for the GPU path (dup-slot padding),
+    //                       [k..2k) expert ids for the CPU path (-1 = handled by GPU)
+    //   wgt dst  f32 [2*k]: [0..k) GPU weights, [k..2k) CPU weights (zeroed counterpart)
+    // src[0] = router topk ids i32 [k], src[1] = router weights f32 [k],
+    // src[2] = residency table i32 [n_expert] (-1 = not resident)
+    GGML_API struct ggml_tensor * ggml_moe_partition_ids(
+            struct ggml_context * ctx,
+            struct ggml_tensor  * topk,
+            struct ggml_tensor  * weights,
+            struct ggml_tensor  * table);
+
+    // src[2] here is the partition ids output above (residency decided once)
+    GGML_API struct ggml_tensor * ggml_moe_partition_wgt(
+            struct ggml_context * ctx,
+            struct ggml_tensor  * topk,
+            struct ggml_tensor  * weights,
+            struct ggml_tensor  * part_ids);
 
     // A: m columns, n rows,
     // B: p columns, n rows,

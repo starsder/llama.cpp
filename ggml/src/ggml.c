@@ -689,6 +689,22 @@ static const struct ggml_type_traits type_traits[GGML_TYPE_COUNT] = {
         .to_float                 = (ggml_to_float_t) dequantize_row_q2_0,
         .from_float_ref           = (ggml_from_float_t) quantize_row_q2_0_ref,
     },
+    [GGML_TYPE_TBQ3_0] = {
+        .type_name                = "tbq3_0",
+        .blck_size                = QK_K,
+        .type_size                = sizeof(block_tbq3_0),
+        .is_quantized             = true,
+        .to_float                 = (ggml_to_float_t) dequantize_row_tbq3_0,
+        .from_float_ref           = (ggml_from_float_t) quantize_row_tbq3_0_ref,
+    },
+    [GGML_TYPE_TBQ4_0] = {
+        .type_name                = "tbq4_0",
+        .blck_size                = QK_K,
+        .type_size                = sizeof(block_tbq4_0),
+        .is_quantized             = true,
+        .to_float                 = (ggml_to_float_t) dequantize_row_tbq4_0,
+        .from_float_ref           = (ggml_from_float_t) quantize_row_tbq4_0_ref,
+    },
     [GGML_TYPE_Q4_0] = {
         .type_name                = "q4_0",
         .blck_size                = QK4_0,
@@ -1098,9 +1114,15 @@ static const char * GGML_OP_NAME[GGML_OP_COUNT] = {
     "OPT_STEP_SGD",
 
     "GLU",
+
+
+    "MOE_CPU",
+
+    "MOE_PARTITION_IDS",
+    "MOE_PARTITION_WGT",
 };
 
-static_assert(GGML_OP_COUNT == 101, "GGML_OP_COUNT != 101");
+static_assert(GGML_OP_COUNT == 104, "GGML_OP_COUNT != 104");
 
 static const char * GGML_OP_SYMBOL[GGML_OP_COUNT] = {
     "none",
@@ -1213,9 +1235,15 @@ static const char * GGML_OP_SYMBOL[GGML_OP_COUNT] = {
     "sgd(x)",
 
     "glu(x)",
+
+
+    "moe_cpu(gate,up,down,x,ids,w)",
+
+    "moe_partition_ids(topk,w,table)",
+    "moe_partition_wgt(topk,w,ids)",
 };
 
-static_assert(GGML_OP_COUNT == 101, "GGML_OP_COUNT != 101");
+static_assert(GGML_OP_COUNT == 104, "GGML_OP_COUNT != 104");
 
 static_assert(GGML_OP_POOL_COUNT == 2, "GGML_OP_POOL_COUNT != 2");
 
@@ -1434,6 +1462,8 @@ enum ggml_type ggml_ftype_to_ggml_type(enum ggml_ftype ftype) {
         case GGML_FTYPE_MOSTLY_Q4_1:          wtype = GGML_TYPE_Q4_1;  break;
         case GGML_FTYPE_MOSTLY_Q1_0:          wtype = GGML_TYPE_Q1_0;  break;
         case GGML_FTYPE_MOSTLY_Q2_0:          wtype = GGML_TYPE_Q2_0;  break;
+        case GGML_FTYPE_MOSTLY_TBQ3_0:        wtype = GGML_TYPE_TBQ3_0; break;
+        case GGML_FTYPE_MOSTLY_TBQ4_0:        wtype = GGML_TYPE_TBQ4_0; break;
         case GGML_FTYPE_MOSTLY_Q5_0:          wtype = GGML_TYPE_Q5_0;  break;
         case GGML_FTYPE_MOSTLY_Q5_1:          wtype = GGML_TYPE_Q5_1;  break;
         case GGML_FTYPE_MOSTLY_Q8_0:          wtype = GGML_TYPE_Q8_0;  break;
@@ -3359,6 +3389,77 @@ struct ggml_tensor * ggml_mul_mat_id(
     result->src[0] = as;
     result->src[1] = b;
     result->src[2] = ids;
+
+    return result;
+}
+
+// ggml_moe_cpu
+
+struct ggml_tensor * ggml_moe_cpu(
+        struct ggml_context * ctx,
+        struct ggml_tensor  * gate,
+        struct ggml_tensor  * up,
+        struct ggml_tensor  * down,
+        struct ggml_tensor  * cur,
+        struct ggml_tensor  * ids,
+        struct ggml_tensor  * weights) {
+    GGML_ASSERT(ids->type == GGML_TYPE_I32);
+    GGML_ASSERT(gate->ne[0] == down->ne[1]);  // n_embd
+    GGML_ASSERT(gate->ne[1] == down->ne[0]);  // n_ff
+    GGML_ASSERT(gate->ne[2] == down->ne[2]);  // n_expert
+    GGML_ASSERT(up->ne[0] == gate->ne[0] && up->ne[1] == gate->ne[1] && up->ne[2] == gate->ne[2]);
+    GGML_ASSERT(cur->ne[0] == gate->ne[0]);
+    GGML_ASSERT(ids->ne[1] == 1 && cur->ne[1] == 1);  // single token
+
+    struct ggml_tensor * result = ggml_new_tensor_2d(ctx, GGML_TYPE_F32, gate->ne[0], 1);
+
+    result->op     = GGML_OP_MOE_CPU;
+    result->src[0] = gate;
+    result->src[1] = up;
+    result->src[2] = down;
+    result->src[3] = cur;
+    result->src[4] = ids;
+    result->src[5] = weights;
+
+    return result;
+}
+
+// ggml_moe_partition_ids/wgt: device-side MoE split partition (direct-read mode)
+
+struct ggml_tensor * ggml_moe_partition_ids(
+        struct ggml_context * ctx,
+        struct ggml_tensor  * topk,
+        struct ggml_tensor  * weights,
+        struct ggml_tensor  * table) {
+    GGML_ASSERT(topk->type == GGML_TYPE_I32 && topk->ne[1] == 1);
+    GGML_ASSERT(weights->type == GGML_TYPE_F32 && weights->ne[0] * weights->ne[1] == topk->ne[0]);
+    GGML_ASSERT(table->type == GGML_TYPE_I32);
+
+    const int64_t k = topk->ne[0];
+    struct ggml_tensor * result = ggml_new_tensor_1d(ctx, GGML_TYPE_I32, 2 * k);
+
+    result->op     = GGML_OP_MOE_PARTITION_IDS;
+    result->src[0] = topk;
+    result->src[1] = weights;
+    result->src[2] = table;
+
+    return result;
+}
+
+struct ggml_tensor * ggml_moe_partition_wgt(
+        struct ggml_context * ctx,
+        struct ggml_tensor  * topk,
+        struct ggml_tensor  * weights,
+        struct ggml_tensor  * part_ids) {
+    GGML_ASSERT(part_ids->op == GGML_OP_MOE_PARTITION_IDS);
+
+    const int64_t k = topk->ne[0];
+    struct ggml_tensor * result = ggml_new_tensor_1d(ctx, GGML_TYPE_F32, 2 * k);
+
+    result->op     = GGML_OP_MOE_PARTITION_WGT;
+    result->src[0] = topk;
+    result->src[1] = weights;
+    result->src[2] = part_ids;
 
     return result;
 }
@@ -7992,6 +8093,8 @@ size_t ggml_quantize_chunk(
     switch (type) {
         case GGML_TYPE_Q1_0:    result = quantize_q1_0   (src + start, (char *) dst + start_row * row_size, nrows, n_per_row, imatrix); break;
         case GGML_TYPE_Q2_0:    result = quantize_q2_0   (src + start, (char *) dst + start_row * row_size, nrows, n_per_row, imatrix); break;
+        case GGML_TYPE_TBQ3_0:  result = quantize_tbq3_0 (src + start, (char *) dst + start_row * row_size, nrows, n_per_row, imatrix); break;
+        case GGML_TYPE_TBQ4_0:  result = quantize_tbq4_0 (src + start, (char *) dst + start_row * row_size, nrows, n_per_row, imatrix); break;
         case GGML_TYPE_Q4_0:    result = quantize_q4_0   (src + start, (char *) dst + start_row * row_size, nrows, n_per_row, imatrix); break;
         case GGML_TYPE_Q4_1:    result = quantize_q4_1   (src + start, (char *) dst + start_row * row_size, nrows, n_per_row, imatrix); break;
         case GGML_TYPE_Q5_0:    result = quantize_q5_0   (src + start, (char *) dst + start_row * row_size, nrows, n_per_row, imatrix); break;

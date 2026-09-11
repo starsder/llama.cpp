@@ -778,6 +778,10 @@ protected:
 llama_model * llama_model_create(llm_arch arch, const llama_model_params & params);
 llama_model * llama_model_create(llama_model_loader & ml, const llama_model_params & params);
 
+// Internal server hook.  Most architectures are a no-op; qwen4exp uses the
+// complete prompt token sequence to prefetch deterministic PLE table rows.
+LLAMA_API void llama_model_prefetch_ple(const llama_model * model, const std::vector<llama_token> & tokens, size_t begin, size_t end);
+
 // model must inherit from this
 struct llama_model_base : public llama_model {
     friend struct llama_model;

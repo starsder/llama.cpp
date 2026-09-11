@@ -353,6 +353,14 @@ extern "C" {
     // Set a callback to be called for each resulting node during graph compute
     GGML_API void                 ggml_backend_sched_set_eval_callback(ggml_backend_sched_t sched, ggml_backend_sched_eval_callback callback, void * user_data);
 
+    // device-side MoE split partition (LLAMA_MOE_DEVPART=1, requires LLAMA_MOE_SPLIT=1
+    // and LLAMA_MOE_DIRECT_READ=1): the per-layer GPU/CPU expert split is computed on
+    // the device from a persistent residency table instead of a host roundtrip
+    GGML_API bool                 ggml_moe_cache_devpart(void);
+    // per-layer residency table tensor for GGML_OP_MOE_PARTITION_IDS (i32 [n_expert],
+    // persistent device buffer; returns NULL when devpart is inactive)
+    GGML_API struct ggml_tensor * ggml_moe_partition_table_tensor(struct ggml_context * ctx, int layer, int n_expert, int n_layers);
+
     //
     // Meta backend
     //

@@ -2,6 +2,7 @@
 
 #include "ggml-common.h"
 #include "convert.cuh"
+#include "turboq-device.cuh"
 
 static __device__ __forceinline__ int best_index_int8(int n, const int8_t * val, float x) {
     if (x <= val[0]) return 0;
@@ -187,8 +188,67 @@ static __device__ void quantize_f32_iq4_nl_block(const float * __restrict__ x, b
 }
 
 // Wrapper functions for cpy.cu compatibility
+// block L2 norm -> codebook indices, see ggml-turboq.c
+static __device__ void quantize_f32_tbq4_0_block(const float * __restrict__ x, block_tbq4_0 * __restrict__ y) {
+    float norm_sq = 0.0f;
+    for (int j = 0; j < QK_K; ++j) {
+        norm_sq += x[j]*x[j];
+    }
+    const float norm = fmaxf(sqrtf(norm_sq), 1e-10f);
+    const float inv  = 16.0f/norm; // sqrt(QK_K)/norm
+
+    y->d = __float2half(norm);
+
+    for (int j = 0; j < QK_K; ++j) {
+        const float val = x[j]*inv;
+        int idx = 0;
+        while (idx < 15 && val >= turboq_boundaries_4bit_gpu[idx]) {
+            idx++;
+        }
+        if (j % 2 == 0) {
+            y->qs[j/2] = (uint8_t) idx;
+        } else {
+            y->qs[j/2] |= (uint8_t)(idx << 4);
+        }
+    }
+}
+
+static __device__ void quantize_f32_tbq3_0_block(const float * __restrict__ x, block_tbq3_0 * __restrict__ y) {
+    float norm_sq = 0.0f;
+    for (int j = 0; j < QK_K; ++j) {
+        norm_sq += x[j]*x[j];
+    }
+    const float norm = fmaxf(sqrtf(norm_sq), 1e-10f);
+    const float inv  = 16.0f/norm; // sqrt(QK_K)/norm
+
+    y->d = __float2half(norm);
+
+    for (int g = 0; g < QK_K/8; ++g) {
+        uint32_t bits = 0;
+        for (int j = 0; j < 8; ++j) {
+            const float val = x[8*g + j]*inv;
+            int idx = 0;
+            while (idx < 7 && val >= turboq_boundaries_3bit_gpu[idx]) {
+                idx++;
+            }
+            bits |= ((uint32_t) idx) << (3*j);
+        }
+        y->qs[3*g + 0] = (uint8_t)(bits & 0xFF);
+        y->qs[3*g + 1] = (uint8_t)((bits >> 8) & 0xFF);
+        y->qs[3*g + 2] = (uint8_t)((bits >> 16) & 0xFF);
+    }
+}
+
 static __device__ void cpy_blck_f32_q4_0(const char * cxi, char * cdsti) {
     quantize_f32_q4_0_block((const float *)cxi, (block_q4_0 *)cdsti);
+}
+
+static __device__ void cpy_blck_f32_tbq4_0(const char * cxi, char * cdsti) {
+    quantize_f32_tbq4_0_block((const float *)cxi, (block_tbq4_0 *)cdsti);
+}
+
+static __device__ void cpy_blck_f32_tbq3_0(const char * cxi, char * cdsti) {
+    quantize_f32_tbq3_0_block((const float *)cxi, (block_tbq3_0 *)cdsti);
 }
 
 static __device__ void cpy_blck_f32_q4_1(const char * cxi, char * cdsti) {

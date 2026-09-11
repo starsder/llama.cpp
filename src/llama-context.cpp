@@ -15,10 +15,107 @@
 
 #include <cinttypes>
 #include <cmath>
+#include <cstdio>
+#include <cstdlib>
 #include <cstring>
+#include <chrono>
 #include <limits>
+#include <map>
 #include <stdexcept>
 #include <string>
+#include <vector>
+
+// end-to-end per-frame pipeline profiler (LLAMA_TOKEN_PROF=1): sequential named
+// segments per llama_decode call, aggregated separately for prefill (n_tokens > 1)
+// and decode frames.  The time between two marks is attributed to the later
+// mark's name, so uninstrumented stretches fold into the phase that follows them
+// and the table covers the full frame wall time.
+namespace {
+
+struct token_prof_state {
+    bool enabled = false;
+    bool cur_prefill = false;
+    std::chrono::steady_clock::time_point last;
+    std::chrono::steady_clock::time_point frame0;
+    std::vector<std::string> order;
+    std::map<std::string, uint64_t> seg_us[2]; // [0] = decode, [1] = prefill
+    uint64_t wall_us[2]  = {0, 0};
+    uint64_t n_frames[2] = {0, 0};
+
+    static token_prof_state & get() {
+        static token_prof_state state;
+        return state;
+    }
+
+    static void print() {
+        token_prof_state & p = get();
+        if (!p.enabled) {
+            return;
+        }
+        for (int bucket = 1; bucket >= 0; --bucket) {
+            const uint64_t n = p.n_frames[bucket];
+            if (n == 0) {
+                continue;
+            }
+            fprintf(stderr, "[TOKEN-PROF] %s: frames=%llu wall=%.2f ms/frame |",
+                    bucket ? "prefill" : "decode", (unsigned long long) n, p.wall_us[bucket] / 1000.0 / n);
+            for (const auto & name : p.order) {
+                auto it = p.seg_us[bucket].find(name);
+                if (it != p.seg_us[bucket].end() && it->second > 0) {
+                    fprintf(stderr, " %s=%.2f", name.c_str(), it->second / 1000.0 / n);
+                }
+            }
+            fprintf(stderr, " (ms/frame)\n");
+        }
+    }
+
+    void begin(bool prefill) {
+        if (!enabled) {
+            return;
+        }
+        cur_prefill = prefill;
+        frame0 = std::chrono::steady_clock::now();
+        last = frame0;
+    }
+
+    void mark(const char * name) {
+        if (!enabled) {
+            return;
+        }
+        const auto now = std::chrono::steady_clock::now();
+        const uint64_t us = (uint64_t) std::chrono::duration_cast<std::chrono::microseconds>(now - last).count();
+        last = now;
+        auto & seg = seg_us[cur_prefill ? 1 : 0];
+        if (seg.find(name) == seg.end()) {
+            order.push_back(name);
+        }
+        seg[name] += us;
+    }
+
+    void end() {
+        if (!enabled) {
+            return;
+        }
+        const auto now = std::chrono::steady_clock::now();
+        wall_us[cur_prefill ? 1 : 0] += (uint64_t) std::chrono::duration_cast<std::chrono::microseconds>(now - frame0).count();
+        n_frames[cur_prefill ? 1 : 0]++;
+    }
+};
+
+void token_prof_init() {
+    token_prof_state & p = token_prof_state::get();
+    static bool checked = false;
+    if (!checked) {
+        checked = true;
+        const char * env = getenv("LLAMA_TOKEN_PROF");
+        p.enabled = env != nullptr && atoi(env) != 0;
+        if (p.enabled) {
+            atexit(token_prof_state::print);
+        }
+    }
+}
+
+} // namespace
 
 //
 // llama_context
@@ -1337,6 +1434,8 @@ llm_graph_result * llama_context::process_ubatch(const llama_ubatch & ubatch, ll
         return nullptr;
     }
 
+    token_prof_state::get().mark("mem_apply");
+
     auto * res = gf_res_prev.get();
     auto * gf  = res->get_gf();
 
@@ -1380,6 +1479,8 @@ llm_graph_result * llama_context::process_ubatch(const llama_ubatch & ubatch, ll
         }
     }
 
+    token_prof_state::get().mark("graph_build");
+
     // set the input data for the input tensors
     {
         //const auto t_start_us = ggml_time_us();
@@ -1390,6 +1491,8 @@ llm_graph_result * llama_context::process_ubatch(const llama_ubatch & ubatch, ll
         //LLAMA_LOG_INFO("graph set inputs time: %.3f ms\n", (ggml_time_us() - t_start_us)/1000.0);
     }
 
+    token_prof_state::get().mark("set_inputs");
+
     const auto status = graph_compute(res->get_gf(), ubatch.n_tokens > 1);
     if (status != GGML_STATUS_SUCCESS) {
         LLAMA_LOG_ERROR("%s: failed to compute graph, compute status: %d\n", __func__, status);
@@ -1398,6 +1501,8 @@ llm_graph_result * llama_context::process_ubatch(const llama_ubatch & ubatch, ll
     }
 
     ret = GGML_STATUS_SUCCESS;
+
+    token_prof_state::get().mark("compute");
 
     return res;
 }
@@ -1655,6 +1760,9 @@ int llama_context::decode(const llama_batch & batch_inp) {
         return -1;
     }
 
+    token_prof_init();
+    token_prof_state::get().begin(batch_inp.n_tokens > 1);
+
     const auto & vocab   = model.vocab;
     const auto & hparams = model.hparams;
 
@@ -1801,6 +1909,8 @@ int llama_context::decode(const llama_batch & batch_inp) {
 
     int64_t n_outputs_prev = 0;
     int64_t n_tokens_prev  = 0;
+
+    token_prof_state::get().mark("batch_init");
 
     do {
         const auto & ubatch = mctx->get_ubatch();
@@ -1975,9 +2085,13 @@ int llama_context::decode(const llama_batch & batch_inp) {
             copy_tensor_async_rows(res->t_candidates,     sampling.candidates, stride, n_outputs_prev, sched.get(), &sampling.candidates_count);
         }
 
+        token_prof_state::get().mark("extract");
+
         n_outputs_prev += n_outputs;
         n_tokens_prev  += ubatch.n_tokens;
     } while (mctx->next());
+
+    token_prof_state::get().mark("out_map");
 
     // set to total number of outputs in the batch, for use in llama_get_logits_ith
     n_outputs = n_outputs_all;
@@ -2031,6 +2145,9 @@ int llama_context::decode(const llama_batch & batch_inp) {
 
     // wait for the computation to finish (automatically done when obtaining the model output)
     //synchronize();
+
+    token_prof_state::get().mark("decode_exit");
+    token_prof_state::get().end();
 
     return 0;
 }

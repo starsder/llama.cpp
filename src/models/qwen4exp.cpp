@@ -4,7 +4,803 @@
 #include "llama-memory-recurrent.h"
 
 #include <algorithm>
+#include <chrono>
 #include <cinttypes>
+#include <cstring>
+#include <cstdlib>
+#include <future>
+#include <unordered_set>
+
+// PLE tables are normally accessed directly through the lazy mmap.  That is
+// correct but leaves residency entirely to the OS page cache, which makes a
+// workload with a small hot n-gram set needlessly vulnerable to page faults.
+// Keep raw (not dequantized) table pages in a bounded LRU and dequantize only
+// the rows needed by the current ubatch.  The staging tensor is F32, exactly
+// like ggml_get_rows(), so this is a lossless change of data movement only.
+void llama_model_qwen4exp::ple_row_cache::configure(const ggml_tensor * new_table) {
+    std::lock_guard<std::mutex> lock(mutex);
+
+    if (table == new_table) {
+        return;
+    }
+
+    table = new_table;
+    traits = nullptr;
+    row_bytes = 0;
+    rows_per_page = 0;
+    page_bytes = 0;
+    max_pages = 0;
+    clock = 0;
+    page_hits = 0;
+    page_misses = 0;
+    prefetch_pages = 0;
+    pages.clear();
+    page_to_slot.clear();
+    lru_head = no_slot;
+    lru_tail = no_slot;
+
+    const char * cache_mib_env = getenv("LLAMA_PLE_CACHE_MIB");
+    if (new_table == nullptr || cache_mib_env == nullptr || cache_mib_env[0] == '\0') {
+        return;
+    }
+
+    char * end = nullptr;
+    const unsigned long long cache_mib = strtoull(cache_mib_env, &end, 10);
+    if (end == cache_mib_env || *end != '\0' || cache_mib == 0) {
+        LLAMA_LOG_WARN("%s: LLAMA_PLE_CACHE_MIB must be a positive integer; PLE cache disabled\n", __func__);
+        return;
+    }
+
+    traits = ggml_get_type_traits(new_table->type);
+    if (traits == nullptr || traits->to_float == nullptr || new_table->ne[0] <= 0 || new_table->ne[1] <= 0) {
+        LLAMA_LOG_WARN("%s: PLE tensor type %s cannot be row-cached; PLE cache disabled\n",
+                __func__, ggml_type_name(new_table->type));
+        traits = nullptr;
+        return;
+    }
+
+    row_bytes = ggml_row_size(new_table->type, new_table->ne[0]);
+    if (new_table->nb[1] != row_bytes) {
+        LLAMA_LOG_WARN("%s: PLE tensor rows are not contiguous; PLE cache disabled\n", __func__);
+        traits = nullptr;
+        return;
+    }
+
+    constexpr size_t target_page_bytes = 64ull * 1024ull;
+    rows_per_page = std::max<int64_t>(1, target_page_bytes / row_bytes);
+    page_bytes = (size_t) rows_per_page * row_bytes;
+    const size_t cache_bytes = (size_t) cache_mib * 1024ull * 1024ull;
+    max_pages = cache_bytes / page_bytes;
+    if (max_pages == 0) {
+        LLAMA_LOG_WARN("%s: LLAMA_PLE_CACHE_MIB=%llu is smaller than one %zu KiB PLE page; PLE cache disabled\n",
+                __func__, cache_mib, page_bytes/1024);
+        traits = nullptr;
+        return;
+    }
+
+    pages.reserve(max_pages);
+    page_to_slot.reserve(max_pages * 2);
+    // llama-cli's TUI suppresses normal INFO logs, while this one is a user
+    // requested cache diagnostic.  Keep it visible without a log-level flag.
+    fprintf(stderr, "[PLE-LRU] enabled %llu MiB: %zu pages x %zu KiB, %" PRId64
+            " rows/page, tensor=%s (%s)\n",
+            cache_mib, max_pages, page_bytes/1024, rows_per_page,
+            ggml_get_name(new_table), ggml_type_name(new_table->type));
+}
+
+bool llama_model_qwen4exp::ple_row_cache::enabled() const {
+    std::lock_guard<std::mutex> lock(mutex);
+    // TENSOR_READ_LAZY deliberately lives in a host mmap.  When users opt to
+    // load the complete (quantized) table on CUDA, do not insert a CPU F32
+    // staging path between it and get_rows: CUDA can gather/dequantize the
+    // original rows locally with no PCIe traffic per token.
+    return traits != nullptr && max_pages != 0 && table != nullptr && table->buffer != nullptr &&
+            ggml_backend_buffer_is_host(table->buffer);
+}
+
+void llama_model_qwen4exp::ple_row_cache::gather(const std::vector<int32_t> & rows, std::vector<float> & out) const {
+    std::lock_guard<std::mutex> lock(mutex);
+    GGML_ASSERT(table != nullptr && traits != nullptr && max_pages != 0);
+    GGML_ASSERT(table->buffer != nullptr && ggml_backend_buffer_is_host(table->buffer));
+    GGML_ASSERT(table->data != nullptr);
+
+    const int64_t n_cols = table->ne[0];
+    const int64_t n_rows = table->ne[1];
+    const uint64_t hits_before = page_hits;
+    const uint64_t misses_before = page_misses;
+    out.resize(rows.size() * n_cols);
+
+    auto move_to_mru = [&](size_t slot) {
+        page & current = pages[slot];
+        if (lru_head == slot) {
+            return;
+        }
+
+        if (current.prev != no_slot) {
+            pages[current.prev].next = current.next;
+        }
+        if (current.next != no_slot) {
+            pages[current.next].prev = current.prev;
+        }
+        if (lru_tail == slot) {
+            lru_tail = current.prev;
+        }
+
+        current.prev = no_slot;
+        current.next = lru_head;
+        if (lru_head != no_slot) {
+            pages[lru_head].prev = slot;
+        } else {
+            lru_tail = slot;
+        }
+        lru_head = slot;
+    };
+
+    for (size_t i = 0; i < rows.size(); ++i) {
+        const int64_t row = rows[i];
+        GGML_ASSERT(row >= 0 && row < n_rows);
+
+        const int64_t page_index = row / rows_per_page;
+        size_t slot = 0;
+        const auto found = page_to_slot.find(page_index);
+        if (found != page_to_slot.end()) {
+            slot = found->second;
+            ++page_hits;
+        } else {
+            ++page_misses;
+            if (pages.size() < max_pages) {
+                slot = pages.size();
+                pages.emplace_back();
+                pages.back().data.resize(page_bytes);
+            } else {
+                // The tail is the least recently used page.  Eviction is O(1)
+                // even after a multi-gigabyte decode fills the cache.
+                slot = lru_tail;
+                GGML_ASSERT(slot != no_slot);
+                page_to_slot.erase(pages[slot].index);
+            }
+
+            page & dst_page = pages[slot];
+            const int64_t first_row = page_index * rows_per_page;
+            const int64_t rows_here = std::min(rows_per_page, n_rows - first_row);
+            memcpy(dst_page.data.data(),
+                   (const uint8_t *) table->data + first_row * table->nb[1],
+                   (size_t) rows_here * row_bytes);
+            dst_page.index = page_index;
+            page_to_slot.emplace(page_index, slot);
+        }
+
+        page & cached = pages[slot];
+        cached.last_use = ++clock;
+        move_to_mru(slot);
+        const uint8_t * raw_row = cached.data.data() + (row % rows_per_page) * row_bytes;
+        traits->to_float(raw_row, out.data() + i*n_cols, n_cols);
+    }
+
+    // A long decode has one gather per token.  Write optional detailed samples
+    // to a file rather than stderr so llama-cli's TUI and timings stay usable.
+    // A page is the LRU unit, so these are page (not individual-row) hits.
+    if (const char * stats_path = getenv("LLAMA_PLE_CACHE_STATS_FILE")) {
+        const uint64_t hits = page_hits - hits_before;
+        const uint64_t misses = page_misses - misses_before;
+        const double rate = hits + misses == 0 ? 1.0 : (double) hits/(hits + misses);
+        FILE * stats = fopen(stats_path, "ab");
+        if (stats != nullptr) {
+            fseek(stats, 0, SEEK_END);
+            if (ftell(stats) == 0) {
+                fprintf(stats, "rows,resident_pages,capacity_pages,hits,misses,hit_rate,total_hits,total_misses,total_prefetch_pages\n");
+            }
+            fprintf(stats, "%zu,%zu,%zu,%" PRIu64 ",%" PRIu64 ",%.6f,%" PRIu64 ",%" PRIu64 ",%" PRIu64 "\n",
+                    rows.size(), pages.size(), max_pages, hits, misses, rate, page_hits, page_misses, prefetch_pages);
+            fclose(stats);
+        }
+    }
+}
+
+void llama_model_qwen4exp::ple_row_cache::copy_pages(
+        const std::vector<int64_t> & page_indices, std::vector<uint8_t> & out) const {
+    std::lock_guard<std::mutex> lock(mutex);
+    GGML_ASSERT(table != nullptr && traits != nullptr && max_pages != 0);
+    GGML_ASSERT(table->buffer != nullptr && ggml_backend_buffer_is_host(table->buffer));
+
+    out.assign(page_indices.size()*page_bytes, 0);
+    auto move_to_mru = [&](size_t slot) {
+        page & current = pages[slot];
+        if (lru_head == slot) return;
+        if (current.prev != no_slot) pages[current.prev].next = current.next;
+        if (current.next != no_slot) pages[current.next].prev = current.prev;
+        if (lru_tail == slot) lru_tail = current.prev;
+        current.prev = no_slot;
+        current.next = lru_head;
+        if (lru_head != no_slot) pages[lru_head].prev = slot;
+        else lru_tail = slot;
+        lru_head = slot;
+    };
+
+    for (size_t i = 0; i < page_indices.size(); ++i) {
+        const int64_t page_index = page_indices[i];
+        GGML_ASSERT(page_index >= 0 && page_index * rows_per_page < table->ne[1]);
+        size_t slot = 0;
+        const auto found = page_to_slot.find(page_index);
+        if (found != page_to_slot.end()) {
+            slot = found->second;
+            ++page_hits;
+        } else {
+            ++page_misses;
+            if (pages.size() < max_pages) {
+                slot = pages.size();
+                pages.emplace_back();
+                pages.back().data.resize(page_bytes);
+            } else {
+                slot = lru_tail;
+                GGML_ASSERT(slot != no_slot);
+                page_to_slot.erase(pages[slot].index);
+                std::fill(pages[slot].data.begin(), pages[slot].data.end(), 0);
+            }
+            page & dst_page = pages[slot];
+            const int64_t first_row = page_index * rows_per_page;
+            const int64_t rows_here = std::min(rows_per_page, table->ne[1] - first_row);
+            memcpy(dst_page.data.data(),
+                    (const uint8_t *) table->data + first_row * table->nb[1],
+                    (size_t) rows_here * row_bytes);
+            dst_page.index = page_index;
+            page_to_slot.emplace(page_index, slot);
+        }
+        pages[slot].last_use = ++clock;
+        move_to_mru(slot);
+        memcpy(out.data() + i*page_bytes, pages[slot].data.data(), page_bytes);
+    }
+}
+
+void llama_model_qwen4exp::ple_row_cache::prefetch(
+        const std::vector<int32_t> & rows, size_t rows_per_token) const {
+    std::lock_guard<std::mutex> lock(mutex);
+    if (table == nullptr || traits == nullptr || max_pages == 0 || table->data == nullptr) {
+        return;
+    }
+
+    if (rows.empty() || rows_per_token == 0 || rows.size() % rows_per_token != 0) {
+        return;
+    }
+
+    std::unordered_set<int64_t> needed;
+    needed.reserve(rows.size());
+
+    std::vector<int64_t> page_order;
+    page_order.reserve(std::min(rows.size(), max_pages));
+
+    // Grow a prefix token-by-token. A page budget remains useful even when
+    // the LRU is full because its cold tail is reclaimable for this exact
+    // future window. Keep every PLE head of an admitted token together.
+    for (size_t token = 0; token < rows.size()/rows_per_token; ++token) {
+        std::vector<int64_t> new_pages;
+        new_pages.reserve(rows_per_token);
+        for (size_t h = 0; h < rows_per_token; ++h) {
+            const int32_t row = rows[token*rows_per_token + h];
+            if (row < 0 || row >= table->ne[1]) {
+                continue;
+            }
+            const int64_t page_index = row / rows_per_page;
+            if (needed.find(page_index) == needed.end() &&
+                    std::find(new_pages.begin(), new_pages.end(), page_index) == new_pages.end()) {
+                new_pages.push_back(page_index);
+            }
+        }
+        if (needed.size() + new_pages.size() > max_pages) {
+            break;
+        }
+        for (const int64_t page_index : new_pages) {
+            needed.insert(page_index);
+            page_order.push_back(page_index);
+        }
+    }
+
+    if (page_order.empty()) {
+        return;
+    }
+
+    auto move_to_mru = [&](size_t slot) {
+        page & current = pages[slot];
+        if (lru_head == slot) {
+            return;
+        }
+        if (current.prev != no_slot) {
+            pages[current.prev].next = current.next;
+        }
+        if (current.next != no_slot) {
+            pages[current.next].prev = current.prev;
+        }
+        if (lru_tail == slot) {
+            lru_tail = current.prev;
+        }
+        current.prev = no_slot;
+        current.next = lru_head;
+        if (lru_head != no_slot) {
+            pages[lru_head].prev = slot;
+        } else {
+            lru_tail = slot;
+        }
+        lru_head = slot;
+    };
+
+    // Preserve first-token order: the beginning of the prompt range is the
+    // next consumer and must be on the most-recent side of the LRU.
+    for (const int64_t page_index : page_order) {
+        size_t slot = 0;
+        const auto found = page_to_slot.find(page_index);
+        if (found != page_to_slot.end()) {
+            slot = found->second;
+        } else {
+            if (pages.size() < max_pages) {
+                slot = pages.size();
+                pages.emplace_back();
+                pages.back().data.resize(page_bytes);
+            } else {
+                slot = lru_tail;
+                GGML_ASSERT(slot != no_slot);
+                page_to_slot.erase(pages[slot].index);
+            }
+
+            page & dst_page = pages[slot];
+            const int64_t first_row = page_index * rows_per_page;
+            const int64_t rows_here = std::min(rows_per_page, table->ne[1] - first_row);
+            memcpy(dst_page.data.data(),
+                   (const uint8_t *) table->data + first_row * table->nb[1],
+                   (size_t) rows_here * row_bytes);
+            dst_page.index = page_index;
+            page_to_slot.emplace(page_index, slot);
+            ++prefetch_pages;
+        }
+        pages[slot].last_use = ++clock;
+        move_to_mru(slot);
+    }
+}
+
+void llama_model_qwen4exp::ple_row_cache::prefetch_async(
+        std::vector<int32_t> rows, size_t rows_per_token) const {
+    std::lock_guard<std::mutex> task_lock(prefetch_mutex);
+
+    // Preserve prompt order: concurrent prefetches would simply evict each
+    // other from this bounded cache.
+    if (prefetch_task.valid()) {
+        prefetch_task.get();
+    }
+
+    prefetch_task = std::async(std::launch::async,
+            [this, rows = std::move(rows), rows_per_token] { prefetch(rows, rows_per_token); });
+}
+
+llama_model_qwen4exp::ple_gpu_row_cache::~ple_gpu_row_cache() {
+    reset();
+}
+
+void llama_model_qwen4exp::ple_gpu_row_cache::wait_prefetch() const {
+    std::lock_guard<std::mutex> task_lock(prefetch_mutex);
+    if (prefetch_task.valid()) {
+        prefetch_task.get();
+    }
+}
+
+void llama_model_qwen4exp::ple_gpu_row_cache::reset() {
+    // The worker writes to cache_table, so it must finish before the backing
+    // buffer or its copy stream is destroyed.
+    wait_prefetch();
+    if (buffer != nullptr) {
+        ggml_backend_buffer_free(buffer);
+        buffer = nullptr;
+    }
+    if (ctx != nullptr) {
+        ggml_free(ctx);
+        ctx = nullptr;
+    }
+    if (backend != nullptr && owns_backend) {
+        ggml_backend_free(backend);
+    }
+    if (copy_backend != nullptr) {
+        ggml_backend_free(copy_backend);
+    }
+    backend = nullptr;
+    copy_backend = nullptr;
+    owns_backend = false;
+    source_table = nullptr;
+    cache_table = nullptr;
+    n_cols = 0;
+    row_bytes = 0;
+    rows_per_page = 0;
+    page_bytes = 0;
+    max_pages = 0;
+    pages.clear();
+    page_to_slot.clear();
+    active_pages.clear();
+    lru_head = no_slot;
+    lru_tail = no_slot;
+    hits = 0;
+    misses = 0;
+    prefetch_pages = 0;
+}
+
+void llama_model_qwen4exp::ple_gpu_row_cache::configure(
+        const ggml_tensor * table, ggml_backend_t target_backend) {
+    std::lock_guard<std::mutex> lock(mutex);
+    if (source_table == table && cache_table != nullptr && backend == target_backend) {
+        return;
+    }
+
+    reset();
+
+    const char * env = getenv("LLAMA_PLE_GPU_CACHE_MIB");
+    if (table == nullptr || target_backend == nullptr || env == nullptr || env[0] == '\0' ||
+            ggml_backend_dev_type(ggml_backend_get_device(target_backend)) == GGML_BACKEND_DEVICE_TYPE_CPU) {
+        return;
+    }
+
+    char * end = nullptr;
+    const unsigned long long mib = strtoull(env, &end, 10);
+    if (end == env || *end != '\0' || mib == 0 || table->ne[0] <= 0) {
+        LLAMA_LOG_WARN("%s: LLAMA_PLE_GPU_CACHE_MIB must be a positive integer; GPU PLE cache disabled\n", __func__);
+        return;
+    }
+
+    n_cols = table->ne[0];
+    row_bytes = ggml_row_size(table->type, n_cols);
+    constexpr size_t target_page_bytes = 64ull * 1024ull;
+    rows_per_page = std::max<int64_t>(1, target_page_bytes / row_bytes);
+    page_bytes = (size_t) rows_per_page * row_bytes;
+    max_pages = ((size_t) mib * 1024ull * 1024ull) / page_bytes;
+    if (max_pages == 0) {
+        LLAMA_LOG_WARN("%s: GPU PLE cache is smaller than one raw PLE page; disabled\n", __func__);
+        return;
+    }
+
+    // Allocate with the graph scheduler's own backend.  A separate CUDA
+    // backend shares the physical device but not scheduler ownership, and can
+    // cause the scheduler to copy this entire cache into a CPU split.
+    backend = target_backend;
+    owns_backend = false;
+    // The scheduler's CUDA stream owns graph execution. A second backend on
+    // the same device gives lookahead H2D copies their own stream so they can
+    // run while the current micro-batch computes.
+    copy_backend = ggml_backend_dev_init(ggml_backend_get_device(target_backend), nullptr);
+    if (copy_backend == nullptr) {
+        LLAMA_LOG_WARN("%s: unable to create GPU PLE copy stream; lookahead disabled\n", __func__);
+    }
+
+    ggml_init_params params = {
+        /*.mem_size   =*/ ggml_tensor_overhead(),
+        /*.mem_buffer =*/ nullptr,
+        /*.no_alloc   =*/ true,
+    };
+    ctx = ggml_init(params);
+    if (ctx == nullptr) {
+        LLAMA_LOG_WARN("%s: unable to create tensor context; GPU PLE cache disabled\n", __func__);
+        reset();
+        return;
+    }
+
+    // Same raw type as the GGUF (IQ4_NL here), so get_rows remains a native
+    // CUDA gather/dequant instead of a CPU F32 staging operation.
+    cache_table = ggml_new_tensor_2d(ctx, table->type, n_cols, rows_per_page * max_pages);
+    buffer = ggml_backend_alloc_ctx_tensors(ctx, backend);
+    if (buffer == nullptr) {
+        LLAMA_LOG_WARN("%s: unable to allocate %llu MiB on GPU; GPU PLE cache disabled\n", __func__, mib);
+        reset();
+        return;
+    }
+
+    source_table = table;
+    pages.resize(max_pages);
+    page_to_slot.reserve(max_pages*2);
+    fprintf(stderr, "[PLE-GPU-L1] enabled %llu MiB: %zu raw %s pages x %zu KiB, %" PRId64
+            " rows/page, device=%s\n", mib, max_pages, ggml_type_name(table->type), page_bytes/1024,
+            rows_per_page, ggml_backend_name(target_backend));
+}
+
+bool llama_model_qwen4exp::ple_gpu_row_cache::enabled() const {
+    std::lock_guard<std::mutex> lock(mutex);
+    return cache_table != nullptr;
+}
+
+ggml_tensor * llama_model_qwen4exp::ple_gpu_row_cache::tensor() const {
+    std::lock_guard<std::mutex> lock(mutex);
+    return cache_table;
+}
+
+void llama_model_qwen4exp::ple_gpu_row_cache::gather(
+        const std::vector<int32_t> & rows, const ple_row_cache & source,
+        std::vector<int32_t> & slots) const {
+    // A previous prompt micro-batch may have staged these exact pages on the
+    // independent copy stream. Fence only at the consumer boundary.
+    const auto wait_start = std::chrono::steady_clock::now();
+    wait_prefetch();
+    const auto wait_done = std::chrono::steady_clock::now();
+    std::lock_guard<std::mutex> lock(mutex);
+    const auto gather_start = std::chrono::steady_clock::now();
+    GGML_ASSERT(cache_table != nullptr && n_cols > 0 && max_pages > 0 && rows_per_page > 0);
+
+    auto move_to_mru = [&](size_t slot_i) {
+        page & cur = pages[slot_i];
+        if (lru_head == slot_i) return;
+        if (cur.prev != no_slot) pages[cur.prev].next = cur.next;
+        if (cur.next != no_slot) pages[cur.next].prev = cur.prev;
+        if (lru_tail == slot_i) lru_tail = cur.prev;
+        cur.prev = no_slot;
+        cur.next = lru_head;
+        if (lru_head != no_slot) pages[lru_head].prev = slot_i;
+        else lru_tail = slot_i;
+        lru_head = slot_i;
+    };
+
+    slots.resize(rows.size());
+    std::vector<int64_t> miss_pages;
+    std::vector<size_t> miss_slots;
+    miss_pages.reserve(rows.size());
+    miss_slots.reserve(rows.size());
+    active_pages.clear();
+
+    for (size_t i = 0; i < rows.size(); ++i) {
+        const int32_t row = rows[i];
+        GGML_ASSERT(row >= 0 && row < source_table->ne[1]);
+        const int64_t page_id = row / rows_per_page;
+        active_pages.insert(page_id);
+        const auto found = page_to_slot.find(page_id);
+        size_t slot_i = 0;
+        if (found != page_to_slot.end()) {
+            slot_i = found->second;
+            ++hits;
+        } else {
+            ++misses;
+            if (page_to_slot.size() < max_pages) {
+                slot_i = page_to_slot.size();
+            } else {
+                slot_i = lru_tail;
+                GGML_ASSERT(slot_i != no_slot);
+                page_to_slot.erase(pages[slot_i].key);
+            }
+            pages[slot_i].key = page_id;
+            page_to_slot.emplace(page_id, slot_i);
+            miss_pages.push_back(page_id);
+            miss_slots.push_back(slot_i);
+        }
+        move_to_mru(slot_i);
+        slots[i] = (int32_t) (slot_i*rows_per_page + row % rows_per_page);
+    }
+
+    double host_ms = 0.0;
+    double h2d_ms = 0.0;
+    if (!miss_pages.empty()) {
+        std::vector<uint8_t> data;
+        const auto host_start = std::chrono::steady_clock::now();
+        source.copy_pages(miss_pages, data);
+        const auto host_done = std::chrono::steady_clock::now();
+        for (size_t i = 0; i < miss_pages.size(); ++i) {
+            // tensor_set() synchronizes every call.  Decode commonly misses
+            // 10+ pages at once, so submit the whole batch to this cache's CUDA
+            // stream and fence once before the graph is allowed to consume it.
+            ggml_backend_tensor_set_async(backend, cache_table, data.data() + i*page_bytes,
+                    miss_slots[i]*page_bytes, page_bytes);
+        }
+        ggml_backend_synchronize(backend);
+        const auto done = std::chrono::steady_clock::now();
+        host_ms = std::chrono::duration<double, std::milli>(host_done - host_start).count();
+        h2d_ms  = std::chrono::duration<double, std::milli>(done - host_done).count();
+    }
+
+    if (const char * path = getenv("LLAMA_PLE_GPU_CACHE_TIMING_FILE")) {
+        if (FILE * timing = fopen(path, "ab")) {
+            fseek(timing, 0, SEEK_END);
+            if (ftell(timing) == 0) {
+                fprintf(timing, "rows,miss_pages,prefetch_wait_ms,host_l2_ms,h2d_fence_ms,total_gather_ms\n");
+            }
+            const auto done = std::chrono::steady_clock::now();
+            const auto wait_ms = std::chrono::duration<double, std::milli>(wait_done - wait_start).count();
+            const auto all_ms  = std::chrono::duration<double, std::milli>(done - gather_start).count();
+            fprintf(timing, "%zu,%zu,%.3f,%.3f,%.3f,%.3f\n",
+                    rows.size(), miss_pages.size(), wait_ms, host_ms, h2d_ms, all_ms);
+            fclose(timing);
+        }
+    }
+
+    if (const char * path = getenv("LLAMA_PLE_GPU_CACHE_STATS_FILE")) {
+        if (FILE * stats = fopen(path, "ab")) {
+            fseek(stats, 0, SEEK_END);
+            if (ftell(stats) == 0) {
+                fprintf(stats, "rows,resident_pages,capacity_pages,hits,misses,hit_rate,total_hits,total_misses\n");
+            }
+            const uint64_t total = hits + misses;
+            const double rate = total ? (double) hits / total : 0.0;
+            fprintf(stats, "%zu,%zu,%zu,%zu,%zu,%.6f,%llu,%llu\n",
+                    rows.size(), page_to_slot.size(), max_pages,
+                    (size_t) (rows.size() - miss_pages.size()), miss_pages.size(), rate,
+                    (unsigned long long) hits, (unsigned long long) misses);
+            fclose(stats);
+        }
+    }
+}
+
+void llama_model_qwen4exp::ple_gpu_row_cache::prefetch_async(
+        std::vector<int32_t> rows, const ple_row_cache & source) const {
+    if (rows.empty()) {
+        return;
+    }
+
+    // There is at most one sequential next micro-batch. Finish an obsolete
+    // task before reserving slots for the new one; this also keeps LRU state
+    // deterministic across prompt batches.
+    wait_prefetch();
+
+    std::vector<int64_t> stage_pages;
+    std::vector<size_t> stage_slots;
+    size_t already_resident = 0;
+    {
+        std::lock_guard<std::mutex> lock(mutex);
+        if (cache_table == nullptr || copy_backend == nullptr || rows_per_page == 0) {
+            return;
+        }
+
+        auto move_to_mru = [&](size_t slot_i) {
+            page & cur = pages[slot_i];
+            if (lru_head == slot_i) return;
+            if (cur.prev != no_slot) pages[cur.prev].next = cur.next;
+            if (cur.next != no_slot) pages[cur.next].prev = cur.prev;
+            if (lru_tail == slot_i) lru_tail = cur.prev;
+            cur.prev = no_slot;
+            cur.next = lru_head;
+            if (lru_head != no_slot) pages[lru_head].prev = slot_i;
+            else lru_tail = slot_i;
+            lru_head = slot_i;
+        };
+
+        std::unordered_set<int64_t> seen;
+        seen.reserve(rows.size());
+        for (const int32_t row : rows) {
+            if (row < 0 || row >= source_table->ne[1]) {
+                continue;
+            }
+            const int64_t page_id = row/rows_per_page;
+            if (!seen.insert(page_id).second) {
+                continue;
+            }
+
+            const auto found = page_to_slot.find(page_id);
+            if (found != page_to_slot.end()) {
+                ++already_resident;
+                move_to_mru(found->second);
+                continue;
+            }
+
+            size_t slot_i = no_slot;
+            if (page_to_slot.size() < max_pages) {
+                slot_i = page_to_slot.size();
+            } else {
+                // Never recycle a page referenced by the current graph: this
+                // worker runs concurrently with that graph on another stream.
+                for (size_t candidate = lru_tail; candidate != no_slot;
+                        candidate = pages[candidate].prev) {
+                    if (active_pages.find(pages[candidate].key) == active_pages.end()) {
+                        slot_i = candidate;
+                        break;
+                    }
+                }
+                // Cache capacity cannot cover current + this lookahead. Keep
+                // the admitted prefix rather than corrupting current inputs.
+                if (slot_i == no_slot) {
+                    break;
+                }
+                page_to_slot.erase(pages[slot_i].key);
+            }
+
+            pages[slot_i].key = page_id;
+            page_to_slot.emplace(page_id, slot_i);
+            move_to_mru(slot_i);
+            stage_pages.push_back(page_id);
+            stage_slots.push_back(slot_i);
+            ++prefetch_pages;
+        }
+    }
+
+    if (stage_pages.empty()) {
+        return;
+    }
+
+    std::lock_guard<std::mutex> task_lock(prefetch_mutex);
+    prefetch_task = std::async(std::launch::async,
+            [this, &source, stage_pages = std::move(stage_pages), stage_slots = std::move(stage_slots), already_resident] {
+        const auto start = std::chrono::steady_clock::now();
+        std::vector<uint8_t> data;
+        source.copy_pages(stage_pages, data);
+        const auto host_done = std::chrono::steady_clock::now();
+        for (size_t i = 0; i < stage_pages.size(); ++i) {
+            ggml_backend_tensor_set_async(copy_backend, cache_table,
+                    data.data() + i*page_bytes, stage_slots[i]*page_bytes, page_bytes);
+        }
+        ggml_backend_synchronize(copy_backend);
+
+        if (const char * path = getenv("LLAMA_PLE_GPU_PREFETCH_FILE")) {
+            if (FILE * stats = fopen(path, "ab")) {
+                fseek(stats, 0, SEEK_END);
+                if (ftell(stats) == 0) {
+                    fprintf(stats, "requested_pages,staged_pages,already_resident_pages,host_l2_ms,h2d_fence_ms,total_ms\n");
+                }
+                const auto done = std::chrono::steady_clock::now();
+                const double host_ms = std::chrono::duration<double, std::milli>(host_done - start).count();
+                const double h2d_ms  = std::chrono::duration<double, std::milli>(done - host_done).count();
+                const double all_ms  = std::chrono::duration<double, std::milli>(done - start).count();
+                fprintf(stats, "%zu,%zu,%zu,%.3f,%.3f,%.3f\n", stage_pages.size() + already_resident,
+                        stage_pages.size(), already_resident, host_ms, h2d_ms, all_ms);
+                fclose(stats);
+            }
+        }
+    });
+}
+
+void llama_model_qwen4exp::prefetch_ple(
+        const std::vector<llama_token> & tokens, size_t begin, size_t end) const {
+    if (getenv("LLAMA_PLE_PREFETCH") == nullptr || !ple_cache.enabled() || begin >= tokens.size()) {
+        return;
+    }
+
+    // The cache below shrinks this candidate to its largest page-fitting token
+    // prefix. 512 is intentionally a candidate cap, not a fixed window.
+    size_t horizon = 512;
+    const char * horizon_env = getenv("LLAMA_PLE_PREFETCH_MAX_TOKENS");
+    if (horizon_env == nullptr) {
+        // Compatibility with the first prototype's fixed-window variable.
+        horizon_env = getenv("LLAMA_PLE_PREFETCH_TOKENS");
+    }
+    if (horizon_env != nullptr) {
+        char * endptr = nullptr;
+        const unsigned long long parsed = strtoull(horizon_env, &endptr, 10);
+        if (endptr != horizon_env && *endptr == '\0' && parsed > 0) {
+            horizon = (size_t) parsed;
+        }
+    }
+    end = std::min({ end, tokens.size(), begin + horizon });
+    if (end <= begin) {
+        return;
+    }
+
+    const auto & hp = hparams;
+    const int64_t n_gram = hp.ple_ngram_size;
+    const int64_t n_heads = hp.ple_n_heads;
+    const int64_t per_gram = hp.ple_heads_per_ngram;
+    const int64_t eos = hp.ple_eos_token_id;
+    if (n_gram < 2 || n_heads <= 0 || per_gram <= 0) {
+        return;
+    }
+
+    std::vector<int32_t> rows((end - begin) * n_heads);
+    for (size_t i = begin; i < end; ++i) {
+        std::vector<int64_t> ctx(n_gram);
+        ctx[0] = tokens[i];
+        bool cut = false;
+        for (int64_t s = 1; s < n_gram; ++s) {
+            const llama_token tok = i >= (size_t) s ? tokens[i - s] : LLAMA_TOKEN_NULL;
+            cut = cut || tok < 0 || tok == eos;
+            ctx[s] = cut ? eos : tok;
+        }
+        for (int64_t n = 2; n <= n_gram; ++n) {
+            uint64_t mixed = (uint64_t) ctx[0] * hp.ple_layer_multipliers[0];
+            for (int64_t j = 1; j < n; ++j) {
+                mixed ^= (uint64_t) ctx[j] * hp.ple_layer_multipliers[j];
+            }
+            const int64_t base = (n - 2) * per_gram;
+            for (int64_t g = 0; g < per_gram; ++g) {
+                const int64_t h_i = base + g;
+                rows[(i - begin)*n_heads + h_i] =
+                    (int32_t) (mixed % hp.ple_head_vocab_sizes[h_i] + hp.ple_head_offsets[h_i]);
+            }
+        }
+    }
+
+    // llama-cli/server slices the prompt into independent llama_decode calls,
+    // so graph-local get_next_ubatch() has no next batch there. This server
+    // hook is the authoritative place where the complete future token range
+    // still exists. Feed both cache levels from the same exact rows.
+    if (ple_gpu_cache.enabled()) {
+        ple_gpu_cache.prefetch_async(rows, ple_cache);
+    }
+    ple_cache.prefetch_async(std::move(rows), n_heads);
+}
 
 void llama_model_qwen4exp::load_arch_hparams(llama_model_loader & ml) {
     // must precede the per-layer arrays: n_layer() == n_layer_all - n_layer_nextn.
@@ -146,6 +942,7 @@ void llama_model_qwen4exp::load_arch_tensors(llama_model_loader & ml) {
         }
         per_layer_tok_embd = create_tensor(tn(LLM_TENSOR_PER_LAYER_TOKEN_EMBD, "weight"),
                                            { hparams.ple_head_dim, ple_rows }, TENSOR_READ_LAZY);
+        ple_cache.configure(per_layer_tok_embd);
     }
 
     const int mtp_flags = !ml.load_mtp ? TENSOR_SKIP : 0;
@@ -1129,6 +1926,12 @@ ggml_tensor * llama_model_qwen4exp::graph::build_layer_attn_linear(
 ggml_tensor * llama_model_qwen4exp::graph::build_layer_ffn(ggml_tensor * cur, const int il) {
     GGML_ASSERT(model.layers[il].ffn_gate_inp != nullptr);
 
+    // SMoE prediction uses the same current-layer activation as the real MoE,
+    // but only the GPU/cache resident routed contribution plus the always
+    // resident shared expert.  It is a side graph: the real route and the
+    // exact CPU miss path remain unchanged.
+    ggml_tensor * ffn_input = cur;
+    ggml_tensor * smoe_gpu_out = nullptr;
     ggml_tensor * moe_out =
         build_moe_ffn(cur,
             model.layers[il].ffn_gate_inp,
@@ -1143,10 +1946,12 @@ ggml_tensor * llama_model_qwen4exp::graph::build_layer_ffn(ggml_tensor * cur, co
             nullptr, model.layers[il].ffn_gate_up_exps,
             model.layers[il].ffn_up_exps_s,
             model.layers[il].ffn_gate_exps_s,
-            model.layers[il].ffn_down_exps_s);
+            model.layers[il].ffn_down_exps_s,
+            nullptr, &smoe_gpu_out);
     cb(moe_out, "ffn_moe_out", il);
 
     // shared experts, as in the Qwen3Next reference
+    ggml_tensor * ffn_shexp_gated = nullptr;
     if (model.layers[il].ffn_up_shexp != nullptr) {
         ggml_tensor * ffn_shexp =
             build_ffn(cur,
@@ -1166,11 +1971,41 @@ ggml_tensor * llama_model_qwen4exp::graph::build_layer_ffn(ggml_tensor * cur, co
 
         ffn_shexp = ggml_mul(ctx0, ffn_shexp, shared_gate);
         cb(ffn_shexp, "ffn_shexp_gated", il);
+        ffn_shexp_gated = ffn_shexp;
 
         cur = ggml_add(ctx0, moe_out, ffn_shexp);
         cb(cur, "ffn_out", il);
     } else {
         cur = moe_out;
+    }
+
+    static const bool smoe_predict = []() {
+        const char * env = getenv("LLAMA_MOE_PREDICT_SMOE");
+        return env != nullptr && atoi(env) != 0;
+    }();
+    if (smoe_predict && smoe_gpu_out != nullptr && ffn_shexp_gated != nullptr &&
+            n_tokens == 1 && il + 1 < (int) hparams.n_layer() &&
+            model.layers[il + 1].ffn_gate_inp != nullptr) {
+        ggml_tensor * smoe_hidden = ggml_add(ctx0, ffn_input, smoe_gpu_out);
+        smoe_hidden = ggml_add(ctx0, smoe_hidden, ffn_shexp_gated);
+        cb(smoe_hidden, "ffn_smoe_hidden", il);
+
+        ggml_tensor * smoe_logits = build_lora_mm(model.layers[il + 1].ffn_gate_inp, smoe_hidden);
+        cb(smoe_logits, "ffn_smoe_predict_logits", il);
+        // Keep ranking on the device.  Reading the full 512-way logits back to
+        // the host once per layer turns the predictor into a synchronization
+        // point; the cache only needs the ordered expert IDs.
+        static const int smoe_predict_k = []() {
+            const char * env = getenv("LLAMA_MOE_PREDICT_TOPK");
+            return env != nullptr ? std::max(1, atoi(env)) : 32;
+        }();
+        const int smoe_k = std::min<int64_t>(n_expert, smoe_predict_k);
+        ggml_tensor * smoe_topk = ggml_argsort_top_k(ctx0, smoe_logits, smoe_k);
+        cb(smoe_topk, "ffn_smoe_predict_topk", il);
+        // This branch is not consumed by the model output.  Explicitly add it
+        // so the current-layer compute graph evaluates it before the cache
+        // submits the next-layer prefetch.
+        ggml_build_forward_expand(gf, smoe_topk);
     }
 
     return cur;
@@ -1183,28 +2018,43 @@ ggml_tensor * llama_model_qwen4exp::graph::build_layer_ffn(ggml_tensor * cur, co
 class llm_graph_input_ple : public llm_graph_input_i {
 public:
     llm_graph_input_ple(const llama_model_qwen4exp & pmodel,
-                        const llama_kv_cache_context * mctx) : pmodel(pmodel), mctx(mctx) {}
+                        const llama_memory_hybrid_idx_context * mctx_hyb) :
+        pmodel(pmodel), mctx_hyb(mctx_hyb), mctx(mctx_hyb->get_attn()) {}
     virtual ~llm_graph_input_ple() = default;
 
     void set_input(const llama_ubatch * ubatch) override;
 
     bool can_reuse(const llm_graph_params & params) override {
-        mctx = static_cast<const llama_memory_hybrid_idx_context *>(params.mctx)->get_attn();
-        return rows->ne[0] == (int64_t) pmodel.hparams.ple_n_heads * params.ubatch.n_tokens;
+        mctx_hyb = static_cast<const llama_memory_hybrid_idx_context *>(params.mctx);
+        mctx = mctx_hyb->get_attn();
+        const int64_t expected = (int64_t) pmodel.hparams.ple_n_heads * params.ubatch.n_tokens;
+        if (gpu_rows != nullptr) {
+            return gpu_rows->ne[0] == expected;
+        }
+        return embd ? embd->ne[1] == expected : rows->ne[0] == expected;
     }
 
-    ggml_tensor * rows = nullptr;   // I32 [ple_n_heads * n_tokens]
+    ggml_tensor * rows = nullptr;   // I32 [ple_n_heads * n_tokens], direct lazy-table path
+    ggml_tensor * gpu_rows = nullptr; // I32 GPU-L1 slots [ple_n_heads * n_tokens]
+    ggml_tensor * embd = nullptr;   // F32 [ple_head_dim, ple_n_heads * n_tokens], LRU path
 
     const llama_model_qwen4exp & pmodel;
 
+    const llama_memory_hybrid_idx_context * mctx_hyb;
     // the predecessor tokens live in the attention KV cells (ext.tok)
     const llama_kv_cache_context * mctx;
 
+    void make_rows(const llama_ubatch & ubatch, const std::vector<llama_token> & predecessors,
+                   std::vector<int32_t> & idx) const;
+    bool make_next_rows(const llama_ubatch & ubatch, std::vector<int32_t> & idx) const;
+
     // scratch, reused across set_input() calls
     std::vector<llama_token> prev;
+    std::vector<float>       embd_data;
 };
 
-void llm_graph_input_ple::set_input(const llama_ubatch * ubatch) {
+void llm_graph_input_ple::make_rows(const llama_ubatch & ubatch, const std::vector<llama_token> & predecessors,
+                                    std::vector<int32_t> & idx) const {
     const auto & hp = pmodel.hparams;
 
     // an image arrives as an embd batch, so ubatch->token is null, but every position still needs a row for ggml_get_rows
@@ -1214,27 +2064,23 @@ void llm_graph_input_ple::set_input(const llama_ubatch * ubatch) {
         ? (llama_token) hp.ple_image_token_id
         : (llama_token) hp.ple_eos_token_id;
     auto tok_of = [&](int64_t k) -> llama_token {
-        return ubatch->token ? ubatch->token[k] : img_tok;
+        return ubatch.token ? ubatch.token[k] : img_tok;
     };
 
-    const int64_t n_tokens = ubatch->n_tokens;
+    const int64_t n_tokens = ubatch.n_tokens;
     const int64_t n_gram   = hp.ple_ngram_size;
     const int64_t n_heads  = hp.ple_n_heads;
     const int64_t per_gram = hp.ple_heads_per_ngram;
     const int64_t eos      = hp.ple_eos_token_id;
     const int64_t n_prev   = n_gram - 1;
 
-    std::vector<int32_t> idx(n_heads * n_tokens);
-
-    GGML_ASSERT(mctx != nullptr);
+    idx.resize(n_heads * n_tokens);
 
     for (int64_t i = 0; i < n_tokens; ++i) {
         // the preceding tokens would be ambiguous, see get_prev_tokens()
-        GGML_ASSERT(ubatch->n_seq_id[i] == 1 && "PLE n-gram embeddings do not support tokens shared by multiple sequences");
+        GGML_ASSERT(ubatch.n_seq_id[i] == 1 && "PLE n-gram embeddings do not support tokens shared by multiple sequences");
     }
-
-    // predecessors come from the KV cells (ext.tok); apply_ubatch() already stored this ubatch, so its own tokens count too
-    mctx->get_prev_tokens(*ubatch, n_prev, prev);
+    GGML_ASSERT(predecessors.size() == (size_t) n_tokens * n_prev);
 
     for (int64_t i = 0; i < n_tokens; ++i) {
         // an EOS in the window resets everything at or before it
@@ -1245,7 +2091,7 @@ void llm_graph_input_ple::set_input(const llama_ubatch * ubatch) {
         bool cut = false;
         for (int64_t s = 1; s < n_gram; ++s) {
             // predecessor s positions back; prev[] is oldest-first, missing entries are LLAMA_TOKEN_NULL
-            const llama_token t = cut ? LLAMA_TOKEN_NULL : prev[i*n_prev + (n_prev - s)];
+            const llama_token t = cut ? LLAMA_TOKEN_NULL : predecessors[i*n_prev + (n_prev - s)];
             cut = cut || t < 0 || t == eos;
             ctx[s] = cut ? eos : t;
         }
@@ -1263,8 +2109,94 @@ void llm_graph_input_ple::set_input(const llama_ubatch * ubatch) {
             }
         }
     }
+}
 
-    ggml_backend_tensor_set(rows, idx.data(), 0, idx.size()*ggml_element_size(rows));
+bool llm_graph_input_ple::make_next_rows(const llama_ubatch & ubatch, std::vector<int32_t> & idx) const {
+    const auto * next = mctx_hyb ? mctx_hyb->get_next_ubatch() : nullptr;
+    const int64_t n_prev = pmodel.hparams.ple_ngram_size - 1;
+    auto debug = [&](const char * reason) {
+        if (const char * path = getenv("LLAMA_PLE_PREFETCH_DEBUG_FILE")) {
+            if (FILE * f = fopen(path, "ab")) {
+                fprintf(f, "reason=%s current_tokens=%u next_tokens=%u current_seqs=%u next_seqs=%u\n",
+                        reason, ubatch.n_tokens, next ? next->n_tokens : 0,
+                        ubatch.n_seqs, next ? next->n_seqs : 0);
+                fclose(f);
+            }
+        }
+    };
+    if (next == nullptr) {
+        debug("no-next-ubatch");
+        return false;
+    }
+    if (ubatch.token == nullptr || next->token == nullptr ||
+        ubatch.n_tokens < n_prev || ubatch.n_seqs != 1 || next->n_seqs != 1 ||
+        ubatch.n_seq_id[0] != 1 || next->n_seq_id[0] != 1 ||
+        ubatch.seq_id[0][0] != next->seq_id[0][0] ||
+        next->pos[0] != ubatch.pos[(ubatch.n_tokens - 1)*ubatch.n_pos] + 1) {
+        debug("non-sequential-or-unsupported");
+        return false;
+    }
+    for (uint32_t i = 0; i < ubatch.n_tokens; ++i) {
+        if (ubatch.n_seq_id[i] != 1 || ubatch.seq_id[i][0] != ubatch.seq_id[0][0]) {
+            debug("current-is-not-one-sequential-sequence");
+            return false;
+        }
+    }
+    for (uint32_t i = 0; i < next->n_tokens; ++i) {
+        if (next->n_seq_id[i] != 1 || next->seq_id[i][0] != next->seq_id[0][0]) {
+            debug("next-is-not-one-sequential-sequence");
+            return false;
+        }
+    }
+
+    std::vector<llama_token> next_prev(next->n_tokens * n_prev);
+    for (uint32_t i = 0; i < next->n_tokens; ++i) {
+        for (int64_t s = 1; s <= n_prev; ++s) {
+            const llama_token predecessor = i >= s
+                ? next->token[i - s]
+                : ubatch.token[ubatch.n_tokens - (s - i)];
+            next_prev[i*n_prev + (n_prev - s)] = predecessor;
+        }
+    }
+    make_rows(*next, next_prev, idx);
+    debug("scheduled");
+    return true;
+}
+
+void llm_graph_input_ple::set_input(const llama_ubatch * ubatch) {
+    const int64_t n_prev = pmodel.hparams.ple_ngram_size - 1;
+    GGML_ASSERT(mctx != nullptr);
+    // apply_ubatch() already stored this ubatch, so its own tokens count too.
+    mctx->get_prev_tokens(*ubatch, n_prev, prev);
+
+    std::vector<int32_t> idx;
+    make_rows(*ubatch, prev, idx);
+
+    if (gpu_rows != nullptr) {
+        std::vector<int32_t> slots;
+        pmodel.ple_gpu_cache.gather(idx, pmodel.ple_cache, slots);
+        ggml_backend_tensor_set(gpu_rows, slots.data(), 0, slots.size()*sizeof(int32_t));
+    } else if (embd != nullptr) {
+        pmodel.ple_cache.gather(idx, embd_data);
+        ggml_backend_tensor_set(embd, embd_data.data(), 0, embd_data.size()*sizeof(float));
+    } else {
+        ggml_backend_tensor_set(rows, idx.data(), 0, idx.size()*ggml_element_size(rows));
+    }
+
+    // Prompt tokens of the following sequential micro-batch are already known.
+    // Prefetch only in that exact case; generated decode tokens deliberately do
+    // not enter this path because predicting them would be speculative.
+    if ((embd != nullptr || gpu_rows != nullptr) && getenv("LLAMA_PLE_PREFETCH") != nullptr) {
+        std::vector<int32_t> next_idx;
+        if (make_next_rows(*ubatch, next_idx)) {
+            if (gpu_rows != nullptr) {
+                // The next prompt micro-batch is fully known, so stage its
+                // exact raw quant pages into GPU L1 while this graph runs.
+                pmodel.ple_gpu_cache.prefetch_async(next_idx, pmodel.ple_cache);
+            }
+            pmodel.ple_cache.prefetch_async(std::move(next_idx), pmodel.hparams.ple_n_heads);
+        }
+    }
 }
 
 // Read a conv history out of its own recurrent row and write the new tail back.
@@ -1321,15 +2253,57 @@ ggml_tensor * llama_model_qwen4exp::graph::build_inp_ple(
 
     // the attention cells see every ubatch regardless of the layer types
     auto ple_inp = std::make_unique<llm_graph_input_ple>(
-            static_cast<const llama_model_qwen4exp &>(model), mctx_hyb->get_attn());
+            static_cast<const llama_model_qwen4exp &>(model), mctx_hyb);
 
-    ple_inp->rows = ggml_new_tensor_1d(ctx0, GGML_TYPE_I32, n_heads * n_tokens);
-    ggml_set_input(ple_inp->rows);
-    ggml_tensor * rows = ple_inp->rows;
+    auto & pmodel = static_cast<const llama_model_qwen4exp &>(model);
+    ggml_tensor * emb = nullptr;
+    ggml_backend_t ple_backend = nullptr;
+    if (pmodel.ple_cache.enabled()) {
+        const auto device = model.dev_layer(0);
+        for (int i = 0; i < ggml_backend_sched_get_n_backends(sched); ++i) {
+            ggml_backend_t candidate = ggml_backend_sched_get_backend(sched, i);
+            if (ggml_backend_get_device(candidate) == device) {
+                ple_backend = candidate;
+                break;
+            }
+        }
+        pmodel.ple_gpu_cache.configure(pmodel.per_layer_tok_embd, ple_backend);
+    }
+    if (pmodel.ple_gpu_cache.enabled()) {
+        ple_inp->gpu_rows = ggml_new_tensor_1d(ctx0, GGML_TYPE_I32, n_heads * n_tokens);
+        ggml_set_input(ple_inp->gpu_rows);
+        emb = ggml_get_rows(ctx0, pmodel.ple_gpu_cache.tensor(), ple_inp->gpu_rows);
+
+        // All three tensors must belong to the scheduler's CUDA backend.
+        // Otherwise the page table is treated as a foreign GPU input and can
+        // be copied wholesale into the initial CPU split.
+        if (ple_backend != nullptr && ggml_backend_supports_op(ple_backend, emb)) {
+                // Pin both leaf inputs as well as the op result.  Pinning the
+                // result alone leaves the scheduler free to classify the
+                // preallocated page table as a CPU input and create a giant
+                // device-to-host copy before this node.
+            ggml_backend_sched_set_tensor_backend(sched, pmodel.ple_gpu_cache.tensor(), ple_backend);
+            ggml_backend_sched_set_tensor_backend(sched, ple_inp->gpu_rows, ple_backend);
+            ggml_backend_sched_set_tensor_backend(sched, emb, ple_backend);
+            if (getenv("LLAMA_TRACE_EVAL") != nullptr) {
+                fprintf(stderr, "[PLE-GPU-L1] scheduler-owned raw table/get_rows on %s\n", ggml_backend_name(ple_backend));
+            }
+        }
+    } else if (pmodel.ple_cache.enabled()) {
+        // Hashes are known before graph execution.  Gather/dequantize them into a
+        // compact F32 input so the graph never touches cold PLE mmap pages.
+        ple_inp->embd = ggml_new_tensor_2d(ctx0, GGML_TYPE_F32,
+                hparams.ple_head_dim, n_heads * n_tokens);
+        ggml_set_input(ple_inp->embd);
+        emb = ple_inp->embd;
+    } else {
+        ple_inp->rows = ggml_new_tensor_1d(ctx0, GGML_TYPE_I32, n_heads * n_tokens);
+        ggml_set_input(ple_inp->rows);
+        // gather then flatten the heads: get_rows lays the head dimension out slowest, as the reference does
+        emb = ggml_get_rows(ctx0, model.per_layer_tok_embd, ple_inp->rows);
+    }
     res->add_input(std::move(ple_inp));
 
-    // gather then flatten the heads: get_rows lays the head dimension out slowest, as the reference does
-    ggml_tensor * emb = ggml_get_rows(ctx0, model.per_layer_tok_embd, rows);
     emb = ggml_reshape_2d(ctx0, emb, hparams.ple_head_dim * n_heads, n_tokens);
     cb(emb, "ple_embd", -1);
 

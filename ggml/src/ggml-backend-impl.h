@@ -148,6 +148,20 @@ extern "C" {
 
         // (optional) sort/optimize the nodes in the graph
         void                      (*graph_optimize)    (ggml_backend_t backend, struct ggml_cgraph * cgraph, struct ggml_backend_graph_optimize_params * params);
+
+        // (optional) host-to-device prefetch on a side stream that overlaps with compute
+        // order the prefetch stream after the current position of the compute stream
+        void (*prefetch_begin)     (ggml_backend_t backend);
+        // queue a host-to-device copy on the prefetch stream (requires prefetch_begin first)
+        void (*prefetch_set_async) (ggml_backend_t backend, struct ggml_tensor * tensor, const void * data, size_t offset, size_t size);
+        // order the compute stream after all queued prefetch copies
+        void (*prefetch_wait)      (ggml_backend_t backend);
+        // per-insert completion tracking for the MoE cache insert worker (optional)
+        void * (*prefetch_event_record)(ggml_backend_t backend);
+        bool   (*prefetch_event_query) (ggml_backend_t backend, void * event); // consumes the event when true
+        // (optional) pin a host memory range so later H2D copies from it skip staging;
+        // returns the number of bytes actually pinned (0 = registration unsupported)
+        size_t (*pin_host_memory)      (ggml_backend_t backend, void * data, size_t size);
     };
 
     struct ggml_backend {
