@@ -864,6 +864,121 @@ devpart 只是把它换段记账（§6.24）⇒ **"预测前一拍"的收益上�
 用量会计回放，见 §6.23），但**驻留集依赖主机侧入驻决策**、性能为负（16.8 vs 20.3 t/s）⇒ **保持默认关闭**，
 不再推进（用户决定）。
 
+
+### 6.26 2026-09-13：MTP 兼容性调查（MTP 能跑；缓存 × 投机前端仍崩，已二分到位）
+
+**① MTP 本身可用（关键前提）**
+- `llama-cli` **不支持投机解码**（`tools/cli` 无 `common_speculative` 调用）；端到端闭环只在
+  `examples/speculative-simple`（与 `tools/server`）。用 `llama-cli -md ...` 时 draft 加载失败后会**静默退化**
+  为普通生成（实测 13.3 t/s，无投机），这就是之前"加载 draft 报错"的原因。
+- 正确跑法（已实测 ✓）：
+  `llama-speculative-simple.exe -m <IQ3_XXS 00001> -md F:/models/qwen38/MTP/mtp-...-Q4_K_M.gguf
+   --spec-type draft-mtp -ngl 49 --cpu-moe --no-mmap -c 8192 -n 64 --temp 0 --spec-draft-n-max 8`
+  实测：`n_drafted=27 n_accept=27 accept=100.000%`、文本正确；**无缓存时 8.55 t/s**（draft 头是 MoE 层且
+  也走 CPU，所以不投机反而更慢——这正是要让 draft 吃缓存的原因）。
+- 参数：`--spec-draft-n-max`（`--draft-max` 已废弃）；draft 头自身是 `blk.48`（`n_layer_all=49`，
+  `hparams.n_layer_nextn=1`，断言单块）；`-md` 的 draft 借用 target 的 `token_embd/output`（KV
+  `nextn_shared_target_tensors` + `borrow_shared_tensor`，需要 `ml.model_shared`）。
+  ⚠️ 已知 bug（fork 内）：`common/speculative.cpp:2547` 把 draft 路径取到 `model_path` 后，
+  实际加载用的是 `params.model.path`（target）——待修。
+
+**② 让 draft 层吃到缓存：机制已实现**
+- 缓存布局在"第一张单 token 图"处**冻结**（`moe_cache_ensure` finalize 后一律 null），故 `blk.48` 永不入缓存。
+- 已实现**后加层**路径（`ggml/src/ggml-backend.cpp`）：
+  `ensure` 对 finalize 之后的**新层**登记权重种类 → 图开头（`moe_cache_finalize_new_layers`，紧跟
+  `moe_cache_init`）在种类集稳定后建 bundle（`moe_cache_build_late_layer` → `alloc_persistent_layer`，
+  槽位上限 32）→ 登记完成后才把 entry 交给调用方（未建好一律返回 nullptr，避免空 slot view）。
+  开关：`LLAMA_MOE_LATE_LAYERS=0` 可关闭该路径（诊断用）。
+- **但被 ③ 挡住，尚未见效**（日志里从未出现 `layer 48 joined the cache`）。
+
+**③ 缓存 × 投机前端：CUDA illegal memory access（已二分）**
+- 现象：`llama-speculative-simple` + 缓存，在**首个 decode**（约 17s，prefill 之后）必崩
+  `CUDA error: an illegal memory access`（`ggml_cuda_kernel_launch`）。
+- 二分结论（都有日志）：
+  - `LLAMA_MOE_LATE_LAYERS=0/1` **都崩** ⇒ 与后加层无关；
+  - 关掉 SMOE / prefetch / MRS（只留 `CACHE_MIB+SPLIT+DIRECT_READ`）**仍然崩** ⇒ 是**基础路径**问题。
+- 判断（待验证）：缓存的 MUL_MAT_ID **slot-view 补丁是持久化**在节点上的（源码注释明说 decode 图复用、
+  迭代间节点被补丁过），而投机前端会 (a) 用 `n_draft+1` 的**变长 batch** 做验证、(b) 跑**第二个 context/图**
+  (draft) ⇒ 补丁与形状/图错配 → 越界。
+- 下一步候选（择一）：
+  (i) 让补丁按 **(graph, shape)** 失效（改动小，可能直接通）；
+  (ii) 投机时对 **draft 图**走完全不缓存的干净路径（只让 target 吃缓存）；
+  (iii) 维持现状（缓存只用于 `llama-cli` 非投机路径；MTP 单独跑）。
+
+
+### 6.27 2026-09-13：MTP×缓存 —— 决策与二分结论（当前状态）
+
+**用户决策**：MTP 层**直接进缓存**（与其它层同等待遇：自己的 bundle、路由进策略），不做"只读"变体。
+
+**已实现（`ggml/src/ggml-backend.cpp`，可编译）**
+- 缓存布局在首图冻结后，`moe_cache_ensure` 对**新层**（blk.<n_layer>，实测 = 48）放行登记；
+  `moe_cache_finalize_new_layers`（挂在 `moe_cache_init` 之后、图开头，避开 CUDA graph 捕获窗口）
+  在该层权重种类集合稳定后建 bundle（`moe_cache_build_late_layer` → `alloc_persistent_layer`，槽位上限 32）；
+  建好之前 `ensure` 一律返回 nullptr（lookup 也校验 `layer_cache != nullptr`），避免交出空 slot view。
+- `mtp_mode`/`draft_layer_base` 仅用于日志与诊断开关 `LLAMA_MOE_LATE_LAYERS=0`（关掉后加层）。
+- draft 层规模实测：512 专家、top-10、n_embd 2560、n_ff 640 ⇒ 专家权重合计 **≈1750 MiB**
+  ⇒ **每专家 ≈3.4 MiB**，64 槽位仅 ≈220 MiB（预算充足）。
+
+**阻塞点：缓存 × 投机前端 = CUDA illegal memory access（已二分到位，未修）**
+现象：`llama-speculative-simple`（MTP 唯一可用前端；`llama-cli` 不支持投机）开缓存后，
+在**目标自己的图**里（约 17–19s，draft 尚未跑到）必崩 `CUDA error: an illegal memory access`。
+
+| 二分项 | 结果 |
+|---|---|
+| `CACHE_MIB` only（**不开 SPLIT**） | **✅ 跑通**（`decoded 19 tokens in 2.154 s`） |
+| SPLIT + direct | ❌ CRASH |
+| SPLIT + 无 direct（gather） | ❌ CRASH |
+| SPLIT + `CPU_ASYNC=0` | ❌ CRASH |
+| SPLIT + 关 MRS/prefetch/SMOE | ❌ CRASH |
+| `LLAMA_MOE_LATE_LAYERS=0/1` | ❌ 都 CRASH（与后加层无关） |
+
+⇒ 破点收敛到 **GPU/CPU 拆分路径本身**（`moe_split_partition` + CPU 半边 leaf/激活拷贝/ids 回读），
+与 direct 补丁、异步 CPU 半边、可选特性、MTP 层均无关。也就是说：**缓存此前只在 `llama-cli` 的固定
+单 token decode 图上验证过，从未与投机前端共存过**（这是既有限制，不是本轮引入）。
+
+**下一步（按优先级）**
+1. `compute-sanitizer --tool memcheck` 定位出错 kernel（脚本已备 `san-run.bat`，需用 `cmd /c` 调用）；
+   重点看拆分分支里的三处形状假设：`cur_cpu` 激活 D2H 的字节数、`ids_cpu/wgt_cpu` 主机 leaf 的尺寸、
+   `node->src[0] = input_cpy` 补丁在变长 batch 下的有效性。
+2. 修好后再看 MTP 是否吃到缓存（日志应出现 `MTP/draft layer 48 detected` 与 `joined the cache`）。
+3. 验收：MTP 输出与无缓存版逐字一致、accept 100%、t/s > 13.3（无缓存 MTP = 8.55 t/s）、
+   host 路径（`llama-cli` 400 token）仍 ≈20.2 t/s。
+
+
+**§6.27 补充（本轮追加的排除项）**
+- `compute-sanitizer --tool memcheck`（真 exe：`CUDA/v13.0/compute-sanitizer/compute-sanitizer.exe`）跑到底后
+  **没有内存报告**，只给 `CUDA error: unknown error`（42s 处，`cudaStreamSynchronize`）；配合
+  `CUDA_LAUNCH_BLOCKING=1` 时错误停在 `ggml_cuda_kernel_launch`（`common.cuh:1700`）⇒ 更像**内核参数/指针非法**。
+- 已加诊断 `LLAMA_MOE_DUMP_CH=1`：检查发给 GPU 半边的 **slot 索引是否越界** ⇒ 实测 **0 次越界**（排除）。
+- `SPLIT=0` + 缓存 + MTP：**能跑，但只有 8.8 t/s**（无缓存 8.55）⇒ 不拆分的缓存对 MTP 几乎没收益
+  （缓存的价值正来自"把专家搬到 GPU 半边"）⇒ **修 `SPLIT` 路径是 MTP 吃到缓存的前提**。
+- 封板产物最终回归：`llama-cli` 400 token = **20.2 t/s** ✓（与封板 20.4 一致，无回归）。
+
+
+### 6.28 2026-09-13：**决定：放弃 MTP×缓存方案**（WIP 已全部回退）
+
+**决定**：不再推进 MTP 与 MoE 缓存的整合。`ggml/src/ggml-backend.cpp` 已回退到封板提交 `c08171aa8`
+（后加层注册、`mtp_mode`、slot 越界诊断、若干临时脚本全部移除）；本文件保留调查结论备查。
+
+**放弃原因**：`llama-speculative-simple` + 缓存**在目标自己的图里**就崩（~19s，draft 尚未跑到）：
+`CUDA error: an illegal memory access`，**唯一触发条件是 `LLAMA_MOE_SPLIT=1`**。二分排除：
+direct 补丁、`CPU_ASYNC`、MRS/prefetch/SMOE、后加层/MTP 层、slot 索引越界（0 次）；
+`compute-sanitizer memcheck` 无内存报告（只 `unknown error`），`CUDA_LAUNCH_BLOCKING=1` 停在
+`ggml_cuda_kernel_launch` ⇒ 指向"内核参数/指针非法"，落在 GPU/CPU 拆分路径内部。
+即：**该缓存从未与投机前端共存过**（只在 `llama-cli` 固定单 token decode 图上验证过），
+修它属于独立的结构性工作，性价比不足以下注（且不拆分时缓存对 MTP 几乎无收益：8.8 vs 8.55 t/s）。
+
+**本轮留下的可用知识（若将来重启）**
+- MTP 唯一可用前端 = `llama-speculative-simple`（`llama-cli` 不支持投机，用 `-md` 会静默退化为普通生成）；
+  实测 `accept=100%`、无缓存 8.55 t/s（目标单独 13.3 t/s ⇒ draft 是串行瓶颈）。
+- MTP 层 = `blk.48`（`n_layer_all=49`、`n_layer_nextn=1`），自带 512 专家 MoE，权重 ≈1750 MiB
+  （每专家 ≈3.4 MiB）；其张量名与 trunk 同构（`ffn_moe_*-48`），缓存按名匹配本身兼容。
+- 恢复路径：先修"拆分路径 × 投机前端"的崩溃（重点怀疑：`cur_cpu` 激活 D2H 的字节数、
+  `ids_cpu/wgt_cpu` 主机 leaf 尺寸、`node->src[0]=input_cpy` 补丁在变长 batch 下的有效性），
+  再让 MTP 层按普通层进缓存（本轮已验证的机制在 `history://` 与本节记录中）。
+
+**封板产物复核**：`llama-cli` 400 token = **20.2 t/s** ✓（封板 20.4，无回归）。
+
 ---
 
 ## 7. 复现命令
