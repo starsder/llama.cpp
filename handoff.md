@@ -979,6 +979,81 @@ direct 补丁、`CPU_ASYNC`、MRS/prefetch/SMOE、后加层/MTP 层、slot 索�
 
 **封板产物复核**：`llama-cli` 400 token = **20.2 t/s** ✓（封板 20.4，无回归）。
 
+
+### 6.29 2026-09-13：视觉编码器 + 256k + TBQ4 KV 下的缓存参数（结论：用 auto，不要手工调）
+
+**推荐配置（host 模式，devpart 不开）**
+```
+LLAMA_MOE_VRAM_LIMIT_MIB=15872   # 总占用上限 15.5 GB（本机 16 GB 卡）
+LLAMA_MOE_VRAM_GUARD_MIB=512     # 安全余量（256 也可，512 更稳）
+LLAMA_MOE_CACHE_MIB=auto         # 自适应：拿 limit − 模型 − KV − guard 剩下的全部
+LLAMA_MOE_PLE_GPU_CACHE_MIB=0    # PLE 只用 CPU 版；GPU L1 那 1 GB 直接让给 MoE 缓存
+# 其余沿用：SPLIT=1 DIRECT_READ=1 MRS=1 PREFETCH=1 PREDICT_SMOE=1 SMOE_NONBLOCK=1 SMOE_AHEAD=2
+```
+`moe_cache_apply_vram_limit` 本就有 auto 分支（`requested_budget_bytes < 0` 时 `budget = limit − used − guard`
+并打印 `auto cache budget` ✓）；**手工传正数只会被下调、永远不会自适应长大**——这是之前"PLE 省下 1 GB 却没进缓存"的原因。
+
+**实测（256 token、贪心、`-ctg 256k`、TBQ4、host 模式、一次只跑一个实例）**
+
+| 基线 | auto 自算 slots | effective | 命中 | gen t/s |
+|---|---|---|---|---|
+| 8k、无视觉 | **80** | 7667 MiB | **76.3%** | 17.4 |
+| 256k、无视觉 | 37 | 3625 MiB | 65.4% | 15.8 |
+| 256k、+视觉编码器 | 40 | 3881 MiB | 64.6% | 13.2–15.5 |
+| 256k+视觉、手工 cap 2700 | 28 | 2700 MiB | 56.5–58.4 | 14.7–15.3 |
+
+⇒ auto 比手工 cap 多 9 槽、命中 +4~6 点、速度略好（配对两次 ✓）。
+
+**显存账（256k+视觉实测 14442/16384 MiB）**：MoE 缓存 3.9 GB + PLE-GPU 1 GB（建议关）
++ 视觉编码器 0.85 GB + 非 MoE 权重/KV(256k,TBQ4)/compute ≈ 9 GB ⇒ 基座 ≈11 GB。
+**TQ4 256k 本身没有超预期**（≈9 GB 里的大头是权重与 compute buffer）。
+
+**注意事项**
+- PLE：GPU L1 只值 +0.3 t/s（用户结论）且抢带宽 ⇒ 实测关掉后 17.0 → **17.9 t/s**（同缓存大小）⇒ 关。
+  PLE 的用途是 lazy mode 下用 1–4 GB 内存换 ~90% PLE 命中，全内存（`--no-mmap`）时无用。
+- **256k 下 t/s 的 run-to-run 方差很大**（同配置 13.2–17.9，≈35%）：单次测量不足以定"最优点"，
+  要下结论需多次重复 + 控温（怀疑 Laptop GPU 降频）。上表的方向性结论（auto ≥ cap、PLE-GPU 关更好）是稳的。
+- 工具留在仓库：`sweep-vision-cache.py` + `cases-*.txt`（串行、自带 lock 语义靠人工串行；一次只跑一个实例）。
+
+
+### 6.30 2026-09-13：⛔ 重大发现 —— `LLAMA_MOE_SPLIT=1` 会**静默算错**（一致性/竞态 bug）
+
+**现象（可复现，单一 prompt 即暴露）**：同一 prompt、贪心、`-n 160`、8k/q8_0、host 模式
+```
+缓存 OFF                      -> 751 字符，完整正确  ✓   9.2 t/s
+缓存 ON + SPLIT=0             -> 751 字符，完整正确  ✓  15.9 t/s   ← 安全且仍然 +73%
+缓存 ON + SPLIT=1 (direct)    ->  27 字符，退化      ✗  22.0 t/s   ← 假速度
+缓存 ON + SPLIT=1 (gather)    ->  27 字符，退化      ✗
+```
+复现命令要点：`-p 'Write a short factual paragraph about the Eiffel Tower.' -n 160 --temp 0`
+（注意：**必须不要** `--ignore-eos`，否则退化尾部会把这个 bug 掩盖掉——此前所有"逐字一致"验证都因此失效）。
+
+**二分结论**
+| 变量 | 结果 |
+|---|---|
+| `DIRECT_READ=0`（走 gather） | ❌ 仍错 ⇒ 与 direct slot-view 无关 |
+| `PREDICT_SMOE=0`（关 SMoE 侧图） | ❌ 仍错 ⇒ 与侧图无关 |
+| `HOT_BACKFILL=0` | ❌ 仍错 |
+| `SPLIT=0` | ✅ **正确** ⇒ 破点在 GPU/CPU 拆分主干 |
+| `CPU_ASYNC=0` | ✗ 不生成且缓存空转（hits=0）⇒ 不是可用退路 |
+
+**性质判断**（与用户一致）：**经典竞态** —— CPU 半边消费的 host leaf（`ids_cpu`/`wgt_cpu`/`cur_cpu`）
+与"当层/当 token 的划分结果"之间存在发布/消费时序问题；或者 direct 模式下 ids（槽位号）在
+slot-view 补丁**未生效**的路径上索引了原始权重张量的专家维 ⇒ 读到错误专家、地址合法 ⇒ **不崩、静默算错**。
+这类 bug 与"哪张图何时被捕获/哪个 split 何时执行"相关 ⇒ **间歇性、prompt 相关**。
+
+**当前推荐配置（安全）**：`SPLIT=0` + `CACHE_MIB=auto` + `PLE 两项=0` + `VRAM_LIMIT≈15.5G` + `GUARD=512`
+（实测 8k：99 slots、15.9 t/s、输出正确）。**在 bug 修复前不要开 `SPLIT=1`。**
+
+**修复方向（不需要自旋/等待）**
+1. CPU 半边 leaf 改**按层（或按 token/graph）多份缓冲**，派发时把该层那份的指针交给 worker
+   ⇒ 生产者写 B、消费者读 A，零共享、零等待（leaf 仅 ~10 KB/层）；
+2. direct 模式下加**一致性断言**（`node->src[0]` 必须等于该层的 slot view，否则回退 gather）；
+3. 回归测试就用这个 prompt：**SPLIT=0 与任何修复版都必须给出 751 字符的同一答案**。
+
+**连带影响**：§6.25/§6.29 里所有以 `SPLIT=1` 跑出的速度（20.1–22.0 t/s）都是**带 bug 的假速度** ✗；
+真实可用数字是 **SPLIT=0 的 15.9 t/s**（相对缓存关闭 9.2 t/s = **+73%**）。
+
 ---
 
 ## 7. 复现命令
