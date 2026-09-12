@@ -1,6 +1,7 @@
 #include "models.h"
 #include "llama-impl.h"
 #include "llama-memory-hybrid-idx.h"
+#include "ggml-backend.h"   // ggml_moe_smoe_ahead() (runtime-tunable lookahead)
 #include "llama-memory-recurrent.h"
 
 #include <algorithm>
@@ -1986,10 +1987,8 @@ ggml_tensor * llama_model_qwen4exp::graph::build_layer_ffn(ggml_tensor * cur, co
     // how many layers ahead the predictor aims (LLAMA_MOE_SMOE_AHEAD, default 1):
     // a longer horizon gives the prefetch a real slack window instead of the
     // physically impossible one-layer deadline; the gate below must match it
-    static const int smoe_ahead = []() {
-        const char * env = getenv("LLAMA_MOE_SMOE_AHEAD");
-        return env != nullptr ? std::max(1, atoi(env)) : 1;
-    }();
+    // read per graph build so the runtime tuner (LLAMA_MOE_AHEAD_AUTO) can steer it
+    const int smoe_ahead = ggml_moe_smoe_ahead();
     const int smoe_target = il + smoe_ahead;
     if (smoe_predict && smoe_gpu_out != nullptr && ffn_shexp_gated != nullptr &&
             n_tokens == 1 && smoe_target < (int) hparams.n_layer() &&

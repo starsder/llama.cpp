@@ -1109,6 +1109,56 @@ slot-view 补丁**未生效**的路径上索引了原始权重张量的专家维
 3. 自适应搜索（用户提的"老办法"）：接回项目既有自适应机制，在线按命中率调 `SMOE_AHEAD`/准入/预算 ——
    **前提是 1 修好**，否则调的是错误路径。
 
+
+### 6.32 2026-09-13 深夜（自主）：**修复 split 静默算错 + 恢复速度 + 前瞻自适应**（全部已验证）
+
+**① 根因与修复（一行级）**：`LLAMA_MOE_SPLIT` 的 host 路径里，GPU 半边的 `ids_gpu`/`wgt_gpu` 是
+**本 split 的输入**（`ggml_set_input` 的 host leaf），而它们的值由分区钩子在**输入循环中途**写入 ——
+调度器可能**已经先排了这两个 leaf 的拷贝** ⇒ MoE GEMM 拿到**上一层的路由** ⇒ 静默算错（部分性、与图序相关）。
+修复：钩子写完这两个 leaf 后**立刻重发一次拷贝**（`ggml_moe_backend` 内的 `tensor_copy(...)`，几百字节）：
+```cpp
+ggml_tensor * dst_ids = tensor_copy(ids_gpu_t, backend_id, sched->cur_copy);
+if (dst_ids && dst_ids != ids_gpu_t) ggml_backend_tensor_copy(ids_gpu_t, dst_ids);   // 同理 wgt
+```
+**验证（Eiffel 用例，修复前 3/3 必现 27 字符）**：修复后 **4/4 通过**（答案段 443–455 字符、开头与参考一致，
+与 SPLIT=0 的参考给出**同一段正确答案**）；`§6.31` 的安全锁**已解除**，`tools-run.py`/`run-cur-ref.ps1` 恢复 `SPLIT=1`。
+
+**② 速度（修复后、`auto` 预算 = 97 槽、8k/q8_0）**
+
+| 配置 | 命中 | gen | 正确性 |
+|---|---|---|---|
+| 缓存关 | — | 9.2 | ✓ |
+| **SPLIT=1 + auto + AHEAD=3（默认）** | **90.9%** | **20.8** | ✓ **已验证** |
+| SPLIT=1 + auto + AHEAD=2 | 83.5% | 18.4 | ✓ |
+| SPLIT=1 + auto + AHEAD=4 | 87.8% | 20.2 | ✓ |
+
+⇒ 相对关缓存 **+126%**，且这次是**正确**的速度（此前的 20.3 是带 bug 的假速度）。
+
+**③ `SMOE_AHEAD` 默认从 1 改为 3**（实测最优：命中 89.7–90.9%、20.4–20.8 t/s；模型侧改为每图读取
+`ggml_moe_smoe_ahead()`，默认值只在缓存侧定义一处）。
+
+**④ 自适应搜索（用户要的"老办法"）**：给 `SMOE_AHEAD` 加了与 yield 控制器同族的**极值搜索**
+（`LLAMA_MOE_AHEAD_AUTO=1`，`LLAMA_MOE_AHEAD_AUTO_PERIOD` 默认 32 图/窗口）：
+- 目标函数必须是**窗口增量命中率** —— 用累计命中数/累计命中率都会被缓存预热带偏（实测：控制器会一路爬到
+  钳位值 6，再反向走到 1）；
+- 修正后实测在 **3↔4 之间来回探测**（访问分布 4×19、3×18、5×6、6×4、2×1）= **正确找到最优区**；
+- 但**固定默认 3 仍略优**（20.8 vs 19.1 t/s，来回探测有代价）⇒ 控制器**默认关闭、留作选开**。
+
+**⑤ 最终推荐配置（host 模式）**
+```
+LLAMA_MOE_SPLIT=1  LLAMA_MOE_DIRECT_READ=1  LLAMA_MOE_MRS=1  LLAMA_MOE_PREFETCH=1
+LLAMA_MOE_PREDICT_SMOE=1  LLAMA_MOE_SMOE_NONBLOCK=1
+LLAMA_MOE_CACHE_MIB=auto  LLAMA_MOE_VRAM_LIMIT_MIB=15667  LLAMA_MOE_VRAM_GUARD_MIB=512
+LLAMA_MOE_PLE_CACHE_MIB=0  LLAMA_MOE_PLE_GPU_CACHE_MIB=0
+# SMOE_AHEAD 默认 3；想让它自己找可加 LLAMA_MOE_AHEAD_AUTO=1（实测略逊于固定 3）
+```
+
+**⑥ 仍未做/仍存在**
+- `SMOE_AHEAD=1` 时 r1 异常低（58.5% vs 2 层 84.7%），怀疑侧图在 1 层间隔的代理输入 off-by-one（待查）；
+- 0 槽（如 `CACHE_MIB=64`）时 split 不产出（本该退化成全 CPU）；
+- 256k + 视觉下 auto 只给到 37–40 槽（基座 ~11 GB），此时命中/速度都低于 8k —— 属显存约束，非 bug；
+- 退出期偶发 `0xC0000005`（只影响统计输出）。
+
 ---
 
 ## 7. 复现命令

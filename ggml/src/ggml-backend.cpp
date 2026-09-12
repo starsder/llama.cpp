@@ -2079,6 +2079,18 @@ struct moe_cache_state {
     float    yield_auto_min  = 4.0f;    // starting guess / clamp lo
     float    yield_auto_max  = 32.0f;
     int      yield_auto_dir  = +1;
+    // ---- SMoE lookahead tuner (LLAMA_MOE_AHEAD_AUTO) -------------------------
+    // Same extremum-seeking shape as the yield tuner: the hit rate depends on the lookahead
+    // through two opposing effects - prediction accuracy decays with distance, the prefetch
+    // deadline improves with it.  Measured at 8k the optimum sits at 3 layers.
+    bool     ahead_auto        = false; // LLAMA_MOE_AHEAD_AUTO
+    int      ahead_auto_period = 32;    // graphs per probe window
+    int      ahead_auto_dir    = +1;
+    int      ahead_win_graphs  = 0;
+    uint64_t ahead_last_hits   = 0;
+    uint64_t ahead_last_misses = 0;
+    double   ahead_best_hits   = -1.0;
+    int      ahead_warmup      = 2;     // windows ignored while the cache fills up
     float    yield_auto_cur  = 0.0f;    // current probe value
     std::vector<double> yield_auto_prev_ms;
     std::vector<double> yield_auto_cur_ms;
@@ -2146,7 +2158,7 @@ struct moe_cache_state {
     uint64_t tm_smoe_us = 0; // SMoE readback/process time
     uint64_t tm_smoe_evt_us  = 0; // of which: waiting for the staged readback event
     bool     smoe_nonblock   = false; // LLAMA_MOE_SMOE_NONBLOCK: poll instead of wait
-    int      smoe_ahead      = 1;     // LLAMA_MOE_SMOE_AHEAD: predict this many layers ahead
+    int      smoe_ahead      = 3;     // LLAMA_MOE_SMOE_AHEAD: predict this many layers ahead (measured optimum)
     int      evict_score     = 0;     // LLAMA_MOE_EVICT_SCORE: 0 = true routing frequency,
                                       // 1 = gate-softmax history (mrs_score)
     int      smoe_take_max   = -1;    // LLAMA_MOE_TAKE_MAX: admission cutoff by prediction rank
@@ -2231,6 +2243,7 @@ moe_cache_state & moe_cache() {
     static moe_cache_state state;
     return state;
 }
+
 
 void moe_cache_hot_backfill(moe_cache_state & s, int budget_override = 0);
 void moe_cache_phase_fill(moe_cache_state & s);
@@ -2747,6 +2760,12 @@ void moe_cache_init() {
     if (const char * env = getenv("LLAMA_MOE_SMOE_AHEAD")) {
         s.smoe_ahead = std::max(1, atoi(env));
     }
+    if (const char * env = getenv("LLAMA_MOE_AHEAD_AUTO")) {
+        s.ahead_auto = atoi(env) != 0;
+    }
+    if (const char * env = getenv("LLAMA_MOE_AHEAD_AUTO_PERIOD")) {
+        s.ahead_auto_period = std::max(4, atoi(env));
+    }
     if (const char * env = getenv("LLAMA_MOE_TREND_AUTO")) {
         s.trend_auto = atoi(env) != 0;
     }
@@ -3117,7 +3136,49 @@ void moe_insert_worker(moe_cache_state & s);
 void moe_insert_spawn_extra_workers(moe_cache_state & s);
 
 void moe_cache_finalize(moe_cache_state & s) {
-    if (!s.enabled || s.disabled || s.finalized || s.entries.empty()) {
+    if (!s.enabled || s.disabled || s.entries.empty()) {
+        return;
+    }
+    if (s.ahead_auto && s.finalized) {
+        // Extremum seek on the *hit rate* per window.  The hit *count* is unusable: the cache
+        // warms up over the first graphs, so it rises monotonically and the controller walks in
+        // one direction until it clamps (observed).  Skip the first two windows, then compare
+        // rates, each measured over the same number of graphs.
+        if (++s.ahead_win_graphs >= s.ahead_auto_period) {
+            uint64_t h = 0, m = 0;
+            for (const auto & kv : s.by_layer) {
+                for (const moe_cache_entry * e : kv.second) {
+                    h += e->hits;
+                    m += e->misses;
+                }
+            }
+            // window deltas, not cumulative totals: the cumulative rate rises for the whole
+            // run (the cache keeps warming) and would steer the probe in one direction forever
+            const uint64_t wh = h - s.ahead_last_hits;
+            const uint64_t wm = m - s.ahead_last_misses;
+            s.ahead_last_hits = h;
+            s.ahead_last_misses = m;
+            const double rate = (double) wh / (double) std::max<uint64_t>(1, wh + wm);
+            s.ahead_win_graphs = 0;
+            if (s.ahead_warmup > 0) {
+                s.ahead_warmup--;
+                s.ahead_best_hits = rate;
+            } else {
+                if (s.ahead_best_hits < 0.0 || rate >= s.ahead_best_hits) {
+                    s.ahead_best_hits = rate;
+                } else {
+                    s.ahead_auto_dir = -s.ahead_auto_dir;
+                }
+                s.smoe_ahead = std::min(6, std::max(1, s.smoe_ahead + s.ahead_auto_dir));
+                fprintf(stderr, "[MOE-CACHE] ahead auto: hit=%.1f%% (best=%.1f%%) -> smoe_ahead=%d\n",
+                        rate * 100.0, s.ahead_best_hits * 100.0, s.smoe_ahead);
+            }
+        }
+    }
+    if (s.finalized) {
+        return;
+    }
+    if (s.finalized) {
         return;
     }
     size_t total_bundle_size = 0;
@@ -5853,6 +5914,27 @@ moe_cache_state::split_part & moe_split_partition(moe_cache_state & s, ggml_back
     memcpy(ids_gpu_t->data, ids_gpu.data(), k * sizeof(int32_t));
     memcpy(wgt_gpu_t->data, wgt_gpu.data(), k * sizeof(float));
 
+    // The GPU half reads its ids/weights through the scheduler's per-split copies, and these
+    // two tensors are also inputs of this split - the copy may already have been queued before
+    // this hook ran, which would feed the MoE GEMMs the *previous* layer's routing.  Re-issue
+    // the copies now that the values are fresh (a few hundred bytes).
+    {
+        int backend_id = -1;
+        for (int i = 0; i < sched->n_backends; ++i) {
+            if (sched->backends[i] == split_backend) { backend_id = i; break; }
+        }
+        if (backend_id >= 0) {
+            ggml_tensor * dst_ids = tensor_copy(ids_gpu_t, backend_id, sched->cur_copy);
+            if (dst_ids != nullptr && dst_ids != ids_gpu_t) {
+                ggml_backend_tensor_copy(ids_gpu_t, dst_ids);
+            }
+            ggml_tensor * dst_wgt = tensor_copy(wgt_gpu_t, backend_id, sched->cur_copy);
+            if (dst_wgt != nullptr && dst_wgt != wgt_gpu_t) {
+                ggml_backend_tensor_copy(wgt_gpu_t, dst_wgt);
+            }
+        }
+    }
+
     // queue the activation D2H before this layer's MoE GEMMs so the CPU half can start
     // as soon as the activation is ready instead of after the whole GPU split
     const auto tm_spd0 = std::chrono::steady_clock::now();
@@ -6219,6 +6301,10 @@ void moe_cache_copy_split(moe_cache_state & s, moe_cache_entry & entry, ggml_bac
 // the table tensor is graph-allocated on the partition kernel's backend (a leaf
 // consumed only by GPU ops, so the scheduler places it on the GPU); the host
 // re-pushes every layer's image once per graph because graph memory may move
+extern "C" int ggml_moe_smoe_ahead(void) {
+    return moe_cache().smoe_ahead;
+}
+
 extern "C" ggml_tensor * ggml_moe_partition_table_tensor(ggml_context * ctx, int layer, int n_expert, int n_layers) {
     if (!moe_devpart_env() || layer < 0 || layer >= n_layers) {
         return nullptr;
