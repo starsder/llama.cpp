@@ -2353,9 +2353,18 @@ ggml_tensor * llm_graph_context::build_moe_ffn(
             ggml_format_name(pwgt, "ffn_moe_part_wgt-%d", il);
 
             ids_gpu = ggml_reshape_2d(ctx0, ggml_view_1d(ctx0, pids, n_expert_used, 0),             n_expert_used, 1);
-            ids_cpu = ggml_reshape_2d(ctx0, ggml_view_1d(ctx0, pids, n_expert_used, n_expert_used), n_expert_used, 1);
             wgt_gpu = ggml_reshape_3d(ctx0, ggml_view_1d(ctx0, pwgt, n_expert_used, 0),             1, n_expert_used, 1);
-            wgt_cpu = ggml_reshape_3d(ctx0, ggml_view_1d(ctx0, pwgt, n_expert_used, n_expert_used), 1, n_expert_used, 1);
+            // The CPU half must not consume device views: the scheduler's cross-backend copy
+            // reads them without waiting for the partition kernel, i.e. it copies zeros.  It
+            // gets host leaves instead, filled by the MoE cache from the back half of the
+            // partition output (pinned staging + event, ~160 bytes per layer).
+            ids_cpu = ggml_new_tensor_2d(ctx0, GGML_TYPE_I32, n_expert_used, n_tokens);
+            wgt_cpu = ggml_new_tensor_3d(ctx0, GGML_TYPE_F32, 1, n_expert_used, n_tokens);
+            cur_cpu = ggml_new_tensor_3d(ctx0, GGML_TYPE_F32, n_embd, 1, n_tokens);
+            ggml_format_name(cur_cpu, "ffn_moe_cur_cpu-%d", il);
+            ggml_set_input(ids_cpu);
+            ggml_set_input(wgt_cpu);
+            ggml_set_input(cur_cpu);
             ggml_format_name(ids_gpu, "ffn_moe_ids_gpu-%d", il);
             ggml_format_name(wgt_gpu, "ffn_moe_wgt_gpu-%d", il);
             ggml_format_name(ids_cpu, "ffn_moe_ids_cpu-%d", il);

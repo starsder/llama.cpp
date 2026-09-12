@@ -1640,6 +1640,18 @@ static void ggml_compute_forward_moe_cpu(
             a_w[m]   = ((const float *) wgt->data)[i];
             ++m;
         }
+        // TEMPORARY ceiling experiment (LLAMA_MOE_CEILING_DIV=N): compute only 1/N of the
+        // CPU half's experts to measure how much of the critical path the CPU half actually
+        // costs.  The output is intentionally incorrect - timing only, never a test path.
+        {
+            const char * ceil_div = getenv("LLAMA_MOE_CEILING_DIV");
+            if (ceil_div != NULL) {
+                const int d = atoi(ceil_div);
+                if (d > 1 && m > 0) {
+                    m = (m + d - 1) / d;
+                }
+            }
+        }
         *a_m = m;
         if (m > 0) {
             from_float_g((const float *) cur->data, xq_g, n_embd);

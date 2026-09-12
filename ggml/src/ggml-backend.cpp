@@ -1323,6 +1323,13 @@ void ggml_backend_sched_split_graph(ggml_backend_sched_t sched, struct ggml_cgra
         }
         split->i_start = 0;
         split->n_inputs = 0;
+        // MoE device-side partition: close the split right after the partition ops so the CPU
+        // half can wait on a *small* graph's completion event instead of the whole GPU split
+        static const bool part_boundary = []() {
+            const char * e = getenv("LLAMA_MOE_PART_SPLIT");
+            return e == nullptr || atoi(e) != 0;
+        }();
+        bool after_partition = false;
         int cur_backend_id = split->backend_id;
         for (; i < graph->n_nodes; i++) {
             struct ggml_tensor * node = graph->nodes[i];
@@ -1332,6 +1339,30 @@ void ggml_backend_sched_split_graph(ggml_backend_sched_t sched, struct ggml_cgra
             }
 
             const int node_backend_id = tensor_backend_id(node);
+            if (part_boundary && after_partition && node_backend_id == cur_backend_id) {
+                after_partition = false;
+                // fall through to the split-close below
+                if (node_backend_id == cur_backend_id) {
+                    split->i_end = i;
+                    i_split++;
+                    if (i_split >= sched->splits_capacity) {
+                        int old_cap = sched->splits_capacity;
+                        sched->splits_capacity *= 2;
+                        sched->splits = (ggml_backend_sched_split *)
+                            realloc(sched->splits, sched->splits_capacity * sizeof(struct ggml_backend_sched_split));
+                        GGML_ASSERT(sched->splits != NULL);
+                        for (int k = old_cap; k < sched->splits_capacity; k++) {
+                            memset(&sched->splits[k], 0, sizeof(struct ggml_backend_sched_split));
+                        }
+                    }
+                    split = &sched->splits[i_split];
+                    split->backend_id = node_backend_id;
+                    split->i_start = i;
+                    split->n_inputs = 0;
+                    cur_backend_id = node_backend_id;
+                }
+            }
+            after_partition = node->op == GGML_OP_MOE_PARTITION_IDS || node->op == GGML_OP_MOE_PARTITION_WGT;
 
             GGML_ASSERT(node_backend_id != -1); // all nodes should be assigned by now, this can happen if there is no CPU fallback
 
@@ -1989,6 +2020,23 @@ struct moe_cache_state {
     int      phase_pending    = 0;      // 1 = first decode graph after a prefill
     bool     last_graph_prefill = false;
     uint64_t phase_fills      = 0, phase_fill_experts = 0;
+    uint64_t devpart_leaf_fills = 0;
+    // early partition readback: the partition ops get their own split, so their D2H lands long
+    // before the CPU half needs it and the wait is bounded by a tiny copy
+    struct part_rb_slot {
+        ggml_backend_event_t ev   = nullptr;
+        int32_t *            ids  = nullptr;
+        int32_t *            topk = nullptr;
+        float *              wgt  = nullptr;
+        float *              act  = nullptr;
+        int                  ready = 0;
+        int64_t              graph = -1; // staging is only valid for the graph that produced it
+        int                  cpu_submitted = 0; // CPU half already handed to the async worker
+    };
+    std::vector<part_rb_slot>   part_rb;
+    ggml_backend_buffer_t       part_rb_buf  = nullptr;
+    size_t                      part_rb_stride = 0;
+    ggml_backend_dev_t          part_rb_dev  = nullptr;
     uint64_t use_graph_id   = ~0ull;  // graph whose routing is already counted
     uint64_t hot_tokens     = 0;      // tokens inside the current scoring window
     int      hot_halflife   = 512;    // LLAMA_MOE_HOT_HALFLIFE: counts halve every N tokens
@@ -2123,6 +2171,9 @@ struct moe_cache_state {
     std::map<int, std::vector<float>>                         mrs_pending_scores;
     bool devpart = false; // LLAMA_MOE_DEVPART: partition runs on device, no per-layer host ids roundtrip
     std::vector<uint8_t> part_table_dirty; // per-layer: residency table image needs a device flush
+    bool                  part_table_ok  = false; // the all -1 table image was published once
+    int                   devpart_cpu_async = 0;  // async CPU half dispatched from the staged readback
+    std::vector<int32_t>  part_table_negative;    // reusable all -1 image for that publish
     // persistent per-layer host image of the residency table; CUDA graph capture bakes
     // the flush memcpy's source pointer into the graph, so the buffer must outlive it
     // (replays read the current contents, which is exactly the update channel we want)
@@ -2347,6 +2398,9 @@ void moe_cache_print_summary() {
         total_hits += entry->hits;
         total_misses += entry->misses;
     }
+    fprintf(stderr, "[MOE-CACHE] cpu half: dispatched=%llu devpart_cpu_async=%d cpu_half_async=%d leaf_fills=%llu\n",
+            (unsigned long long) s.n_cpu_async, s.devpart_cpu_async, s.cpu_half_async,
+            (unsigned long long) s.devpart_leaf_fills);
     fprintf(stderr, "[MOE-CACHE] policy=%s requested=%lld MiB effective=%lld MiB hits=%llu misses=%llu mrs_reads=%llu mrs_fallbacks=%llu mrs_updates=%llu mrs_victims=%llu protected_evictions=%llu prefetch_requests=%llu prefetch_experts=%llu prefetch_bytes=%llu prefetch_dropped=%llu window_layers=%d window_recycles=%llu prefetch_required=%llu prefetch_predicted=%llu prefetch_ready=%llu fallback_prefetch=%llu fate=%d fate_predictions=%llu fate_gate_inputs=%llu fate_gate_ms=%.2f smoe=%d smoe_predictions=%llu smoe_logits=%llu dup_resident=%llu dup_pending=%llu dup_list=%llu dup_admit=%llu readmit=%llu no_victim=%llu halvings=%llu hot_fill=%llu hot_idle=%llu seeded=%llu clipped=%llu phase_fills=%llu phase_experts=%llu\n",
             s.fifo ? "FIFO" : (s.mrs ? "MRS" : "LRU"), (long long) (s.requested_budget_bytes / 1048576),
             (long long) (s.budget_bytes / 1048576),
@@ -2801,6 +2855,11 @@ void moe_cache_init() {
 
     // device-side partition only works with the direct-read per-layer cache
     s.devpart = s.devpart && s.direct_read && s.split && !s.global_pool && s.window_layers == 0;
+    if (s.devpart && s.cpu_half_async == 1) {
+        // keep the async CPU half: it is dispatched from the staged readback instead of the
+        // host partition hook
+        s.devpart_cpu_async = 1;
+    }
     if (moe_devpart_env() && !s.devpart) {
         fprintf(stderr, "[MOE-CACHE] LLAMA_MOE_DEVPART=1 ignored: requires LLAMA_MOE_SPLIT=1 + LLAMA_MOE_DIRECT_READ=1, no global pool, no window mode\n");
     }
@@ -3630,6 +3689,7 @@ void moe_part_table_flush(moe_cache_state & s, ggml_backend_sched_t sched) {
     if (!s.devpart || sched == nullptr || s.part_table_dirty.empty()) {
         return;
     }
+
     for (int layer = 0; layer < (int) s.part_table_dirty.size(); ++layer) {
         if (!s.part_table_dirty[layer]) {
             continue;
@@ -4480,6 +4540,144 @@ bool moe_cache_predict_fate(moe_cache_state & s, ggml_backend_sched_t sched,
 // pinned host slice for one layer's topk readback; pageable D2H on the compute
 // stream acts as a stream barrier, so the staging must be pinned.  Returns
 // nullptr when unavailable (caller falls back to the pageable vector).
+// Early partition readback (devpart): the partition ops sit in their own split, so this runs
+// right after that small graph is enqueued - the copies land while the GPU is still busy with
+// the MoE half, and the CPU half later waits on a tiny event instead of the whole split.
+// The activation the CPU half must consume is the FFN input the *GPU* half's MoE GEMMs read.
+// Its own `cur_cpu` is a host leaf in the device-partition path, so take it from the expert
+// MUL_MAT_ID that consumes the named ids_gpu view (pointer identity: the names of the
+// partition/weight/topk tensors follow different index conventions).
+static ggml_tensor * moe_cpu_activation(ggml_backend_sched_t sched, ggml_tensor * ids_gpu, int64_t n_embd) {
+    if (sched == nullptr || ids_gpu == nullptr) {
+        return nullptr;
+    }
+    for (int gi = 0; gi < sched->graph.n_nodes; ++gi) {
+        ggml_tensor * gn = sched->graph.nodes[gi];
+        if (gn->op == GGML_OP_MUL_MAT_ID && gn->src[2] == ids_gpu && gn->src[1] != nullptr &&
+            gn->src[1]->ne[0] == n_embd) {
+            return gn->src[1];
+        }
+    }
+    return nullptr;
+}
+
+static void moe_cpu_half_submit_layer_staged(moe_cache_state & s, ggml_backend_sched_t sched, int layer,
+                                             moe_cache_state::part_rb_slot & rb, ggml_tensor * topk_tensor);
+static void moe_cache_devpart_account(moe_cache_state & s, ggml_backend_t backend, int layer,
+                                      const int32_t * ids, int64_t k);
+
+void moe_cache_devpart_readback(moe_cache_state & s, ggml_backend_sched_t sched, ggml_backend_t backend, const ggml_cgraph * graph) {
+    if (!s.devpart || graph == nullptr || backend == nullptr) {
+        return;
+    }
+    for (int i = 0; i < graph->n_nodes; ++i) {
+        // Hook on the *weight* twin, not on the ids twin: the scheduler may split the two
+        // partition ops into different splits, and staging the ids split's siblings reads the
+        // weights before their kernel has run.  src[2] of the weight op is the ids output.
+        ggml_tensor * node = graph->nodes[i];
+        if (node->op != GGML_OP_MOE_PARTITION_WGT || node->data == nullptr) {
+            continue;
+        }
+        const char * dash = strrchr(node->name, '-');
+        const int layer = dash != nullptr ? atoi(dash + 1) : -1;
+        if (layer < 0 || s.layers.find(layer) == s.layers.end()) { continue; }
+        if (node->src[2] == nullptr || node->src[2]->data == nullptr) { continue; }
+        const int64_t k = node->src[2]->ne[0] / 2;
+        ggml_tensor * part_wgt = node;
+        ggml_tensor * cur_leaf = moe_graph_find(s, sched, "ffn_moe_cur_cpu", layer);
+        if (k <= 0) { continue; }
+        if (cur_leaf == nullptr) { continue; }
+        const int64_t n_embd = cur_leaf->ne[0];
+        const size_t want = (size_t) k * 4 + (size_t) k * 4 + (size_t) k * 4 + (size_t) n_embd * 4;
+        const size_t stride = moe_cache_align_up(want, 256);
+        if (s.part_rb_buf == nullptr || s.part_rb_stride < stride) {
+            if (s.part_rb_buf != nullptr) {
+                ggml_backend_buffer_free(s.part_rb_buf);
+                s.part_rb_buf = nullptr;
+            }
+            ggml_backend_dev_t dev = ggml_backend_get_device(backend);
+            ggml_backend_buffer_type_t buft = dev != nullptr ? ggml_backend_dev_host_buffer_type(dev) : nullptr;
+            if (buft == nullptr) { continue; }
+            const size_t rows = std::max<size_t>(48, (size_t) s.manifest.n_layers);
+            s.part_rb_buf = ggml_backend_buft_alloc_buffer(buft, rows * stride);
+            if (s.part_rb_buf == nullptr) { continue; }
+            s.part_rb_stride = stride;
+            s.part_rb_dev = dev;
+            s.part_rb.assign(s.part_rb.size(), {});   // stale pointers: rebuilt below
+            s.part_rb.clear();
+        }
+        if ((int) s.part_rb.size() <= layer) {
+            s.part_rb.resize(layer + 1);
+        }
+        moe_cache_state::part_rb_slot & rb = s.part_rb[layer];
+        char * base = (char *) ggml_backend_buffer_get_base(s.part_rb_buf) + (size_t) layer * s.part_rb_stride;
+        rb.ids  = (int32_t *) base;
+        rb.topk = (int32_t *) (base + (size_t) k * 4);
+        rb.wgt  = (float *) (base + 2 * (size_t) k * 4);
+        rb.act  = (float *) (base + 3 * (size_t) k * 4);
+        if (rb.ev == nullptr) {
+            rb.ev = ggml_backend_event_new(s.part_rb_dev);
+        }
+        if (rb.ev == nullptr) { continue; }
+        ggml_backend_tensor_get_async(backend, node->src[2], rb.ids, (size_t) k * 4, (size_t) k * 4);
+        // the router topk itself: the cache policy / predictor needs the *actual* routing, and
+        // without it nothing is ever prefetched, so the resident set stays empty and the whole
+        // MoE keeps running on the CPU
+        ggml_tensor * topk_t = node->src[0];
+        if (topk_t != nullptr && topk_t->data != nullptr && topk_t->ne[1] == 1) {
+            ggml_backend_tensor_get_async(backend, topk_t, rb.topk, 0, (size_t) k * 4);
+        }
+        ggml_backend_tensor_get_async(backend, part_wgt, rb.wgt, (size_t) k * 4, (size_t) k * 4);
+        // the activation the CPU half consumes lives on the device: take it from the layer's
+        // MUL_MAT_ID src[1] (the tensor the GPU half reads), not from the CPU op's own input
+        {
+            ggml_tensor * act = moe_cpu_activation(sched, moe_graph_find(s, sched, "ffn_moe_ids_gpu", layer),
+                                                   n_embd);
+            if (act != nullptr && act->buffer != nullptr) {
+                ggml_backend_tensor_get_async(backend, act, rb.act, 0, (size_t) n_embd * 4);
+            }
+        }
+        rb.ready = 1;
+        rb.graph = s.graph_id;
+        rb.cpu_submitted = 0;
+        ggml_backend_event_record(rb.ev, backend);
+        s.devpart_leaf_fills++;
+        if (s.devpart_cpu_async) {
+            moe_cpu_half_submit_layer_staged(s, sched, layer, rb, topk_t);
+        }
+    }
+}
+
+// temporary diagnostic: dump the CPU half's three inputs identically for both paths
+void moe_dbg_dump_cpu_half(moe_cache_state & s, const char * path, int64_t graph_id,
+                           ggml_tensor * ids_leaf, ggml_tensor * wgt_leaf, ggml_tensor * cur_leaf) {
+    if (getenv("LLAMA_MOE_DUMP_CH") == nullptr || graph_id > 8) {
+        return;
+    }
+    static int done = 0;
+    if (done >= 6 || ids_leaf == nullptr || ids_leaf->data == nullptr) {
+        return;
+    }
+    const int64_t k = ids_leaf->ne[0];
+    if (k < 2 || k > 64) {
+        return;
+    }
+    done++;
+    fprintf(stderr, "[CH-DUMP] %s g=%lld ids:", path, (long long) graph_id);
+    for (int64_t i = 0; i < k; ++i) fprintf(stderr, " %d", ((const int32_t *) ids_leaf->data)[i]);
+    fprintf(stderr, " wgt:");
+    if (wgt_leaf != nullptr && wgt_leaf->data != nullptr) {
+        for (int64_t i = 0; i < k; ++i) fprintf(stderr, " %.3f", ((const float *) wgt_leaf->data)[i]);
+    }
+    fprintf(stderr, " cur:");
+    if (cur_leaf != nullptr && cur_leaf->data != nullptr) {
+        const float * c = (const float *) cur_leaf->data;
+        for (int i = 0; i < 6; ++i) fprintf(stderr, " %.4f", c[i]);
+    }
+    fprintf(stderr, "\n");
+    GGML_UNUSED(s);
+}
+
 // Pinned staging for the small host readbacks (router ids, MRS scores).  A cudaMemcpyAsync
 // into a pageable vector blocks the caller inside the driver, which showed up as ~3.7 ms per
 // token of *enqueue* time across the per-layer readbacks; into pinned memory it is a real
@@ -5272,6 +5470,70 @@ void moe_cpu_half_join(moe_cache_state & s) {
     s.cpu_half_cv.wait(lock, [&]() { return !s.cpu_half_ready && !s.cpu_half_running; });
 }
 
+// devpart twin of moe_cpu_half_submit_layer: the leaves are filled from the staged readback
+// (nothing is published on the host side), then the CPU split is handed to the worker while
+// the rest of the GPU half is still being submitted.  Without this the CPU half runs inline
+// at its own split and the whole partition win is lost again.
+static void moe_cpu_half_submit_layer_staged(moe_cache_state & s, ggml_backend_sched_t sched, int layer,
+                                             moe_cache_state::part_rb_slot & rb, ggml_tensor * topk_tensor) {
+    if (sched == nullptr || s.cpu_half_async != 1 || rb.ready == 0 || rb.cpu_submitted) {
+        return;
+    }
+    for (int si = 0; si < sched->n_splits; ++si) {
+        struct ggml_backend_sched_split * sp = &sched->splits[si];
+        for (int n = 0; n < sp->graph.n_nodes; ++n) {
+            ggml_tensor * cand = sp->graph.nodes[n];
+            ggml_tensor * ids_leaf = nullptr;
+            if (cand->op == GGML_OP_MOE_CPU && cand->src[4] != nullptr &&
+                strstr(cand->src[4]->name, "_ids_cpu") != nullptr) {
+                ids_leaf = cand->src[4];
+            } else if (cand->op == GGML_OP_MUL_MAT_ID && cand->src[2] != nullptr &&
+                       strstr(cand->src[2]->name, "_ids_cpu") != nullptr) {
+                ids_leaf = cand->src[2];
+            }
+            if (ids_leaf == nullptr) {
+                continue;
+            }
+            const char * dash = strrchr(ids_leaf->name, '-');
+            if (dash == nullptr || atoi(dash + 1) != layer) {
+                continue;
+            }
+            // the staged copies are on the device still: wait for this layer's tiny event,
+            // then publish ids/weights, then compute the activation row the CPU half needs
+            ggml_backend_event_synchronize(rb.ev);
+            if (ids_leaf->data != nullptr) {
+                memcpy(ids_leaf->data, rb.ids, (size_t) ids_leaf->ne[0] * sizeof(int32_t));
+            }
+            ggml_tensor * wgt_cpu_t = moe_graph_find(s, sched, "ffn_moe_wgt_cpu", layer);
+            if (wgt_cpu_t != nullptr && wgt_cpu_t->data != nullptr) {
+                memcpy(wgt_cpu_t->data, rb.wgt, (size_t) wgt_cpu_t->ne[1] * sizeof(float));
+            }
+            ggml_tensor * cur_cpu_t = moe_graph_find(s, sched, "ffn_moe_cur_cpu", layer);
+            if (cur_cpu_t != nullptr && cur_cpu_t->data != nullptr && rb.act != nullptr) {
+                memcpy(cur_cpu_t->data, rb.act, ggml_nbytes(cur_cpu_t));
+            }
+            // the host hook activates the layer's hot set before its drain; devpart has to do
+            // the same or the per-layer admission/eviction policy never runs
+            if (s.finalized) {
+                moe_cache_activate_layer(s, layer);
+            }
+            // feed the actual routing into the predictor: this is what drives the prefetch that
+            // keeps the cache warm; the host path does it in its partition hook
+            if (topk_tensor != nullptr && rb.topk != nullptr) {
+                moe_cache_on_ids(s, topk_tensor, rb.topk);
+            }
+            // replay the host path's usage accounting: without it the resident set never
+            // grows (hits=0, no miss warming) and the GPU/CPU split stays frozen
+            moe_cache_devpart_account(s, sched->backends[sp->backend_id], layer, rb.ids,
+                                      (int64_t) ids_leaf->ne[0]);
+            rb.cpu_submitted = 1;
+            s.n_cpu_async++;
+            moe_cpu_half_submit(s, sched->backends[sp->backend_id], &sp->graph, nullptr);
+            return;
+        }
+    }
+}
+
 // find the CPU-half split of this layer and hand it to the worker; called from the
 // partition hook, i.e. while the GPU half is still being prepared.  The CPU-half host
 // leaves are filled here too (the scheduler used to do it when the CPU split came up).
@@ -5307,6 +5569,8 @@ static void moe_cpu_half_submit_layer(moe_cache_state & s, ggml_backend_sched_t 
             if (wgt_cpu_t != nullptr && wgt_cpu_t->data != nullptr) {
                 memcpy(wgt_cpu_t->data, pit->second.wgt_cpu.data(),
                        pit->second.wgt_cpu.size() * sizeof(float));
+                moe_dbg_dump_cpu_half(s, "host", (int64_t) s.graph_id, ids_leaf, wgt_cpu_t,
+                                      moe_graph_find(s, sched, "ffn_moe_cur_cpu", layer));
             }
             s.n_cpu_async++;
             moe_cpu_half_submit(s, sched->backends[sp->backend_id], &sp->graph, s.cur_event);
@@ -5798,7 +6062,53 @@ void moe_insert_drain(moe_cache_state & s) {
 // excluded from gpu assignment until their copy event drains, and decode graphs do not
 // overlap - so a slot overwrite can never race an in-flight direct view read.
 void moe_cache_warm_miss(moe_cache_state & s, moe_cache_entry & entry, ggml_backend_t split_backend,
-                          const moe_cache_state::split_part & part, const int32_t e) {
+                         const int32_t e);
+
+// Device-partition path: the host never sees the partition result, so replay the usage
+// accounting it would have done - hit/miss counters, MRS rank stats and (crucially) the
+// miss warming that grows the resident set across tokens.  `ids` is the CPU half of the
+// partition output, i.e. exactly the experts the CPU half handles (host `part.ids_cpu`).
+static void moe_cache_devpart_account(moe_cache_state & s, ggml_backend_t backend, int layer,
+                                      const int32_t * ids, int64_t k) {
+    if (ids == nullptr || k <= 0 || !s.enabled || s.disabled) {
+        return;
+    }
+    auto it = s.by_layer.find(layer);
+    if (it == s.by_layer.end() || it->second.empty()) {
+        return;
+    }
+    for (moe_cache_entry * ce : it->second) {
+        if (ce == nullptr || ce->buf == nullptr || ce->layer_cache == nullptr) {
+            continue;
+        }
+        moe_layer_cache & lc = *ce->layer_cache;
+        for (int64_t i = 0; i < k; ++i) {
+            const int32_t e = ids[i];
+            if (e < 0 || e >= ce->n_expert || e >= lc.n_expert) {
+                continue;
+            }
+            const int32_t sl = lc.expert_slot[e];
+            if (sl >= 0 && sl < lc.n_slots && !lc.slot_pending[sl]) {
+                ce->hits++;
+                s.hits_seen++;
+                if (sl < (int) lc.slot_rank.size()) {
+                    const uint8_t r = lc.slot_rank[sl];
+                    if (r < moe_cache_state::kRankMax) {
+                        s.rank_hits[r]++;
+                    } else {
+                        s.rank_hits_other++;
+                    }
+                }
+            } else {
+                ce->misses++;
+                moe_cache_warm_miss(s, *ce, backend, e);
+            }
+        }
+    }
+}
+
+void moe_cache_warm_miss(moe_cache_state & s, moe_cache_entry & entry, ggml_backend_t split_backend,
+                         const int32_t e) {
     moe_layer_cache & lc = moe_cache_layer_state(entry);
     if (s.prefetch && s.fallback_prefetch_max <= 0) {
         return;
@@ -5891,7 +6201,7 @@ void moe_cache_copy_split(moe_cache_state & s, moe_cache_entry & entry, ggml_bac
         }
         entry.misses++;
         s.graph_stats[entry.layer][1]++;
-        moe_cache_warm_miss(s, entry, split_backend, part, e);
+        moe_cache_warm_miss(s, entry, split_backend, e);
     }
 
     if (part.dup_id >= 0 && !part.gpu[part.dup_id]) {
@@ -5992,6 +6302,38 @@ static enum ggml_status ggml_backend_sched_compute_splits(ggml_backend_sched_t s
             mcs.part_table_dirty.resize(want, (uint8_t) 1);
         }
         std::fill(mcs.part_table_dirty.begin(), mcs.part_table_dirty.end(), (uint8_t) 1);
+        // The graph memory holding the residency table is NOT initialised to -1.  An
+        // uninitialised table reads as "every expert lives in slot 0", so the partition kernel
+        // would route every expert to the GPU half and the CPU half would receive nothing but
+        // padding.  Publish the real (empty) table before this graph runs; the per-layer flush
+        // takes over as soon as a layer has a cache entry.
+        if (!mcs.part_table_ok) {
+            int wrote = 0;
+            for (int pass = 0; pass < 2; ++pass) {
+                ggml_tensor * const * list = pass == 0 ? sched->graph.nodes : sched->graph.leafs;
+                const int             n   = pass == 0 ? sched->graph.n_nodes : sched->graph.n_leafs;
+                for (int i = 0; i < n; ++i) {
+                    ggml_tensor * t = list[i];
+                    if (t == nullptr || t->name == nullptr ||
+                        strncmp(t->name, "ffn_moe_part_table", 18) != 0 ||
+                        t->data == nullptr || t->type != GGML_TYPE_I32 ||
+                        t->ne[0] <= 0 || t->ne[0] > (1 << 20)) {
+                        continue;
+                    }
+                    ggml_backend_t tb = ggml_backend_sched_get_tensor_backend(sched, t);
+                    if (tb == nullptr) {
+                        continue;
+                    }
+                    mcs.part_table_negative.assign((size_t) t->ne[0], -1);
+                    ggml_backend_tensor_set_async(tb, t, mcs.part_table_negative.data(), 0,
+                                                  mcs.part_table_negative.size() * sizeof(int32_t));
+                    wrote++;
+                }
+            }
+            if (wrote > 0) {
+                mcs.part_table_ok = true;
+            }
+        }
     }
     const auto tm_graph0 = std::chrono::steady_clock::now();
     const uint64_t tm_g0_wait = mcs.tm_ids_wait_us, tm_g0_parse = mcs.tm_ids_parse_us, tm_g0_copy = mcs.tm_copy_us;
@@ -6228,7 +6570,7 @@ static enum ggml_status ggml_backend_sched_compute_splits(ggml_backend_sched_t s
                                         cache_entry->misses++;
                                         // direct views keep hit reads zero-copy; misses are still
                                         // computed on CPU this token but get warmed for the next one
-                                        moe_cache_warm_miss(mcs, *cache_entry, split_backend, part, e);
+                                        moe_cache_warm_miss(mcs, *cache_entry, split_backend, e);
                                     }
                                 }
                             }
@@ -6429,6 +6771,78 @@ static enum ggml_status ggml_backend_sched_compute_splits(ggml_backend_sched_t s
         // MoE GPU/CPU split, CPU half: fill the runtime leaves with the partition
         // computed by the GPU-half hook earlier in this pass
         // (devpart: the CPU half consumes device-produced views, there are no host leaves)
+        if (moe_cpu_half && mcs.devpart) {
+            // devpart: publish the device-computed partition's CPU half into the host leaves.
+            // The readback was enqueued right after the partition split was submitted, so this
+            // event wait is bounded by a ~160 byte copy (plus the activation row), not by the
+            // layer's GPU work.
+            for (int i = 0; i < split->graph.n_nodes; ++i) {
+                ggml_tensor * cand = split->graph.nodes[i];
+                if (cand->op != GGML_OP_MOE_CPU || cand->src[4] == nullptr || cand->src[5] == nullptr) {
+                    continue;
+                }
+                ggml_tensor * ids_leaf = cand->src[4];
+                ggml_tensor * wgt_leaf = cand->src[5];
+                if (ids_leaf->data == nullptr || wgt_leaf->data == nullptr) {
+                    continue;
+                }
+                const char * dash = strrchr(ids_leaf->name, '-');
+                const int layer = dash != nullptr ? atoi(dash + 1) : -1;
+                if (layer < 0) {
+                    continue;
+                }
+                // no staged slot yet is just another form of "not ready" - fall through to the
+                // direct readback below instead of skipping the layer
+                const bool have_slot = layer < (int) mcs.part_rb.size();
+                moe_cache_state::part_rb_slot dummy;
+                moe_cache_state::part_rb_slot & rb = have_slot ? mcs.part_rb[layer] : dummy;
+                // the scheduler may place this split before the partition split (the leaves are
+                // host tensors, so no dependency edge orders them): then the staged copy is not
+                // ready yet and we read the partition output back directly
+                if (rb.cpu_submitted) {
+                    // already handed to the worker from the staged readback: it waits on the
+                    // staging event itself, nothing left to publish here
+                    continue;
+                }
+                if (!rb.ready || rb.graph != mcs.graph_id || rb.ev == nullptr || rb.ids == nullptr ||
+                    rb.wgt == nullptr) {
+                    ggml_tensor * part_ids = moe_graph_find(mcs, sched, "ffn_moe_part_ids", layer);
+                    ggml_tensor * part_wgt = moe_graph_find(mcs, sched, "ffn_moe_part_wgt", layer);
+                    if (part_ids == nullptr || part_wgt == nullptr) {
+                        continue;
+                    }
+                    ggml_backend_t pb = ggml_backend_sched_get_tensor_backend(sched, part_ids);
+                    if (pb == nullptr) {
+                        continue;
+                    }
+                    const int64_t kk = ids_leaf->ne[0];
+                    ggml_backend_tensor_get(part_ids, ids_leaf->data, (size_t) kk * 4, (size_t) kk * 4);
+                    ggml_backend_tensor_get(part_wgt, wgt_leaf->data, (size_t) kk * 4, (size_t) kk * 4);
+                    ggml_tensor * cur_lf = moe_graph_find(mcs, sched, "ffn_moe_cur_cpu", layer);
+                    if (cur_lf != nullptr && cur_lf->data != nullptr) {
+                        ggml_tensor * act = moe_cpu_activation(
+                            sched, moe_graph_find(mcs, sched, "ffn_moe_ids_gpu", layer), cur_lf->ne[0]);
+                        if (act != nullptr && act->buffer != nullptr) {
+                            ggml_backend_tensor_get(act, cur_lf->data, 0, ggml_nbytes(cur_lf));
+                        }
+                    }
+                    mcs.devpart_leaf_fills++;
+                    moe_dbg_dump_cpu_half(mcs, "devpart-fallback", (int64_t) mcs.graph_id, ids_leaf, wgt_leaf,
+                                          moe_graph_find(mcs, sched, "ffn_moe_cur_cpu", layer));
+                    continue;
+                }
+                ggml_backend_event_synchronize(rb.ev);
+                const int64_t k = ids_leaf->ne[0];
+                memcpy(ids_leaf->data, rb.ids, (size_t) k * sizeof(int32_t));
+                memcpy(wgt_leaf->data, rb.wgt, (size_t) k * sizeof(float));
+                ggml_tensor * cur_leaf = moe_graph_find(mcs, sched, "ffn_moe_cur_cpu", layer);
+                if (cur_leaf != nullptr && cur_leaf->data != nullptr && rb.act != nullptr) {
+                    memcpy(cur_leaf->data, rb.act, ggml_nbytes(cur_leaf));
+                }
+                rb.ready = 0;
+                moe_dbg_dump_cpu_half(mcs, "devpart", (int64_t) mcs.graph_id, ids_leaf, wgt_leaf, cur_leaf);
+            }
+        }
         if (moe_cpu_half && !mcs.devpart && !mcs.cpu_half_async) {
             const auto tm_ch0 = std::chrono::steady_clock::now();
             for (int i = 0; i < split->graph.n_nodes; ++i) {
@@ -6533,6 +6947,9 @@ static enum ggml_status ggml_backend_sched_compute_splits(ggml_backend_sched_t s
             if (ec != GGML_STATUS_SUCCESS) {
                 return ec;
             }
+            if (mcs.devpart) {
+                moe_cache_devpart_readback(mcs, sched, split_backend, &split->graph);
+            }
             MOE_TL_MARK(tm_seg_compute_us);
             if (mcs.smoe_predict && !moe_cpu_half) {
                 const auto tm_smoe0 = std::chrono::steady_clock::now();
@@ -6628,6 +7045,12 @@ static enum ggml_status ggml_backend_sched_compute_splits(ggml_backend_sched_t s
     }
     moe_cache_finalize(mcs);
     if (mcs.devpart) {
+        // The host partition hook is what normally retires finished insert copies and makes
+        // their slots resident; devpart skips that hook, so without these two calls every
+        // prefetched slot stays pending forever, the residency table stays all -1, the whole
+        // MoE runs on the CPU and the GPU/CPU split freezes (flat GPU utilisation).
+        moe_insert_drain(mcs);
+        moe_insert_flush(mcs);
         moe_cache_slot_events_drain(mcs);
         moe_part_table_flush(mcs, sched);
     }

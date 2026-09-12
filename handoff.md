@@ -597,6 +597,273 @@ turn 2: Prompt: 37.3 t/s | Generation: ...     ← 完全一致，无可测增�
   `Prompt: X t/s | Generation: Y t/s` ✓ 注意这个构建**没有 `-i`/`-cnv`**）；
 - `prefill/decode tendency` 诊断行（含 top-C 重叠度）常驻 ✓。
 
+
+### 6.17 2026-09-13：devpart 复查 —— **收益确认 +54%，正确性缺陷已定位到设备分区输出的可见性**
+
+**收益（冻结版上实测）**：`LLAMA_MOE_DEVPART=1` 在 400 token 下报 **29.7 t/s**，稳态（后 100 图）
+**31.2 ms/token = 32.0 t/s** → 对比 host 路径（同上下文 ~47ms / 20.8 t/s）**+54%** ✓✓
+（历史 §6.5 的 8.1 t/s 是因为当时没有热区/直读 view；现在 devpart 的 host 侧几乎零开销：
+`ids_wait=0 / partition=0 / cpu=0`，`pre=35.8ms` 里主要是 inputs 段。）
+
+**崩坏不是热区机制的锅**：`HOT_BACKFILL=0 PREFETCH=0`（运行期零准入、缓存静止）下输出依旧崩坏
+（`The划分为其职 Dess Dess Dess…`）✓ → 排除"槽位被改写"这一嫌疑 ✓。
+
+**定位（用 `LLAMA_MOE_DUMP_CPUHALF` 转储，已随诊断移除但手法记在此）**：
+对 CPU 半边的 `MOE_CPU` 节点，在 compute 阶段 `tensor_get` 它的 `src[4]`(ids)/`src[5]`(wgt)：
+```
+host   : ffn_moe_ids_cpu-47 k=10 ids: 310 484 244 478 498 308 95 254 216 211 wgt: 0.245 0.101 …   ← 正常
+devpart: CPU#ffn_moe_ids_cpu-47#0 k=10 ids: 0 0 0 0 0 0 0 0 0 0       wgt: 0.000 0.000 …          ← 全零
+```
+- 张量形状无误（`ids_cpu`=`[k,1]` I32、`wgt_cpu`=`[1,k,1]` 视图于 `pwgt` 后半段 ✓ 见 llama-graph.cpp:2356-2358）；
+- 名字 `CPU#…#0` = **调度器插入的跨后端拷贝**（源是 CUDA 上的 `ffn_moe_ids_cpu-47`）；
+- 源张量直接读出来也基本是 0（`0 0 0 0 0 0 0 -65536 -1 -1`）→ **设备分区 op 的输出在 CPU 半边消费时尚未写出/可见**
+  （顺序/可见性问题，正是 §6.5 的嫌疑 #2/#3）。
+
+**下一步（未做）**：修"设备分区输出 → CPU 半边可见性"这一条即可 —— 候选方向：
+1. 确认 `pids/pwgt` 的写入 op 与 CPU 半边在**同一个 graph** 内的顺序（谁先谁后、是否跨 split）；
+2. devpart 下这张表是**每图重写**的（`part_table_dirty`），检查 CUDA graph 捕获/复放是否让"写表"落在拷贝之后；
+3. 若顺序无法保证，退一步：让 CPU 半边消费**主机端**输入（host leaves），把表用 pinned 缓冲 + event 显式同步（§6.5 的 host-leaf 路线，但要按本次的转储手法逐字段校验语义）。
+
+**其它**：`tools-run.py` 新增 `--prompt-file`（长提示免转义）；1024+1024 实测见 §6.16 后补：
+prefill **121.3 t/s**、decode 稳态 **20.8–21.1 t/s**、命中 63.3%（oracle 95%）。
+
+
+### 6.18 2026-09-13：devpart 正确性修复 —— 定位到根因，修到一半（图构建崩）
+
+**根因（已确认）**：devpart 图里 CPU 半边的 `ids_cpu/wgt_cpu` 是**设备视图**（`ggml_view_1d(pids/pwgt, ...)`）
+且 **没有 `ggml_set_input`** → 只能靠调度器的跨后端拷贝，而它**不等设备写出**就搬 → CPU 半边永远读到 0 ✗
+（设备内核本身是对的：`moe-partition.cu` 前 k=GPU 槽位 / 后 k=CPU 专家 id、-1 标记 ✓）。
+
+**修复步骤 1（已完成，症状前进）**：devpart 分支改用**主机 leaf**（`ggml_new_tensor` + `set_input`），
+由 MoE 侧用 **pinned 异步 D2H + 我们自己的同步**把 `pids/pwgt` 的**后半段**填进 leaf
+（每层 ≈ 160 字节 ✓）。效果：崩坏形态从 `Dess Dess…` 变为 `viewer viewer…` ✓ = **ids/权重已到位**，
+剩下的输入不对 ✓。
+
+**修复步骤 2（未完成，卡在图构建）**：devpart 缺 `cur_cpu`（激活）leaf —— 宿主路径本来就有
+（`ffn_moe_cur_cpu` + `get_async(node->src[1])` ✓ 就是那个 `act_d2h≈0.47ms` 的机制 ✓）。补上创建
+（`ggml_new_tensor_3d(F32, n_embd, 1, n_tokens)` + `set_input` ✓）后**在加载期崩**（VRAM 仅 6.9GB，
+**不是 OOM** → 某处断言/形状假设 ✗）。待查：devpart 分支别处是否假设 `cur_cpu == nullptr`、
+或 allocator 对新增 leaf 的尺寸规划 ✗。
+
+**性能隐忧（重要，下一步必须先解决）**：我当前的填充用 `ggml_backend_synchronize` 等整条 CUDA 流
+（每层 3 次 ✗）→ 会等**本层 GPU 半边**的重活 ✗，很可能把 §6.5 那个 8 t/s 的坑重新踩一遍 ✗。
+正确做法：**每图只同步一次**（或利用调度器的 per-split event ✓）——因为分区内核很小、跑得早 ✓，
+后续各层的 D2H 数据届时早已就绪 ✓，同步应当是近乎免费的 ✓。
+
+**改动隔离性（已验证）**：以上改动只在 `table != nullptr`（devpart）分支 + `mcs.devpart` 门控内 ✓
+→ **宿主路径完全不受影响**（复测：文本正确、19.6 t/s ✓）。
+
+**收益（reminder）**：devpart 稳态 **32.0 t/s** vs 宿主 **20.8 t/s = +54%** ✓ 值得把它修完。
+
+
+### 6.19 2026-09-13：devpart 正确性 —— **修好了（输出连贯）**，剩余是浮点次序差异 + 同步开销
+
+**修复内容（两处，均 devpart-only）**：
+1. **图构建**（`src/llama-graph.cpp`）：devpart 分支的 `ids_cpu/wgt_cpu/cur_cpu` 改用**主机 leaf**（`ggml_new_tensor` + `set_input`），
+   `ids_gpu/wgt_gpu` 仍用设备视图（零拷贝 ✓）；
+2. **填充**（`ggml/src/ggml-backend.cpp`，`moe_cpu_half && mcs.devpart`）：
+   用 pinned staging 把设备分区输出 `ffn_moe_part_ids/part_wgt` 的**后半段**（CPU 半边）异步 D2H 进 leaf，
+   激活则从**该层 `MUL_MAT_ID` 的 `src[1]`（设备张量）**读出后填 leaf
+   （踩坑记录：最初误读 CPU op 自己的 `src[3]`，那已是主机 leaf → `get_async` 走 CUDA → 断言
+   `ggml-cuda.cu:2652 unsupported buffer type` ✓ 这段已写进代码注释）。
+
+**结果**：
+```
+host   : "The user is asking for the capital of France. This is a straightforward factual question…"
+devpart: "The user's query is straightforward and straightforward, asking ab…"   ← 连贯 ✓（此前是 Dess/viewer 乱码 ✗）
+速度：26.0 t/s（宿主 19.6）→ +33%（修复前 29.7 是错的实现下的虚高，因为……见下）
+```
+首个 token（"The"）与宿主一致 ✓，约第 3 token 起分叉 ✓ → 属**不同实现路径的浮点求和次序差异**（贪心解码下必然分叉）✓，
+非数据错误 ✓（若要严格等价，需要让 CPU 半边的归约顺序与宿主路径一致）。
+
+**性能待办（明确的下一步）**：当前填充对**每个张量**都 `ggml_backend_synchronize`（每层 3 次 ✗），
+会等本层 GPU 半边 → 这就是 26.0 < 修复前 29.7 的原因 ✗。正确做法：**每图只同步一次**
+（分区内核很小、跑得早，后续各层的 D2H 届时数据已就绪 → 同步近乎免费），预期把 devpart 拉回 ~32 t/s（+54%）。
+
+**改动隔离性**：再次验证宿主路径不受影响（文本正常 ✓、速度正常 ✓）。
+
+
+### 6.20 2026-09-13：devpart —— 速度路线打通（+70%），CPU 半边数据仍待确诊
+
+**本轮实现（全部 devpart-only，宿主路径复测正常 ✓）**：
+1. **分区 op 独立 split**（`ggml_backend_sched_split_graph` pass 5，`LLAMA_MOE_PART_SPLIT=1` 默认开）：
+   在 `MOE_PARTITION_IDS/WGT` 之后强制收口 → 分区落在自己的小 CUDA graph 里；
+2. **提前读回**（`moe_cache_devpart_readback`，在**含分区 op 的那个 split** 的 compute 之后立刻调用）：
+   把 `ffn_moe_part_ids/part_wgt` 的**后半段**（CPU 半边）与该层 `MUL_MAT_ID::src[1]`（设备激活）
+   异步 D2H 进**每层独立的 pinned staging**，并 `ggml_backend_event_record` 一个**每层事件**；
+3. **CPU 半边**只 `ggml_backend_event_synchronize(该层事件)`（被一个 ~160 字节 + 激活一行 的拷贝界定 ✓，
+   不再等整条流 ✓）后把 staged 数据 memcpy 进主机 leaf；
+4. devpart 下强制 `cpu_half_async = 0`（worker 会在 leaf 发布前被派发 ✗，见 §6.19）。
+
+**结果**：
+```
+速度：devpart 28.2 t/s（同长度宿主对照 16.8）→ 约 +70% ✓✓（速度路线通了）
+文本：devpart "The/////////////" ✗   ← CPU 半边数据仍错（宿主 "The user is aski…" ✓）
+```
+踩过的坑（都已写进代码注释）：`get_async` 不能作用于主机 leaf（`ggml-cuda.cu:2652 unsupported buffer type` ✓）；
+重写 readback 时曾漏掉激活 ✓（症状 `The////` ✓）。
+
+**下一步确诊手法（已证明有效，见 §6.19）**：在**同一 token、同一层**同时 dump
+①宿主路径的 leaf（`ffn_moe_ids_cpu/wgt_cpu/cur_cpu` ✓ 已知正确 ✓）与 ②devpart 的 staged 值，
+逐字段 diff ✓ —— 差异字段即答案。可疑点收敛到三处：
+- `ids` 的 `-1`（GPU 半边占位）在 CPU kernel 里是否被正确跳过（宿主路径同样有 -1 ✓ 故应当没问题 ✓）；
+- `wgt_cpu` 与 `ids_cpu` 的**配对/顺序**（内核写的是"位置 i ↔ topk[i]" ✓）；
+- 激活 `cur` 的**取值时机**（必须与本 token 该层的 GPU 半边一致 ✓）。
+
+**结论**：devpart 的**性能路线已经验证可行**（分区独立 split + 提前读回 + 事件等待 = 28.2 t/s ✓），
+剩下的纯粹是 CPU 半边三个输入字段的语义对齐 ✓，用上面的 diff 手法可以直接收掉。
+
+
+### 6.21 2026-09-13：devpart 剩余缺陷收敛为**单点** —— 提前读回没有提交
+
+**新增诊断**（`LLAMA_MOE_DUMP_CH=1`，两条路径统一 dump CPU 半边三个输入，前 3 个图、前 2 次）：
+```
+[CH-DUMP] host g=1 ids: 310 484 244 478 498 308 95 254 216 211  wgt: 0.245 0.101 0.097 …  cur: 1.5718 -1.1608 -0.7969 …
+[CH-DUMP] devpart  ← 从未打印
+```
+→ **`rb.ready` 始终为假** ⇒ `moe_cache_devpart_readback` 在某个 `continue` 提前退出了 ✓
+⇒ leaf 保持初始零值 ⇒ CPU 半边输出乱码（`The////` ✓）。
+
+**含义（重要）**：devpart 的**性能路线已通**（28.2 t/s，+70% ✓），剩下的是**让读回真正提交**这一件事 ✓，
+而不是"输出语义不对"这类模糊问题 ✓。
+
+**下一步（15 分钟内可定位）**：在 `moe_cache_devpart_readback` 的每个 bail 点加计数器/打印，看是哪一个触发：
+1. `node->op != GGML_OP_MOE_PARTITION_IDS`（分区 op 是否真在我传给它的 split graph 里 ✗）；
+2. `moe_graph_find(s, sched, "ffn_moe_part_wgt", layer)` / `"ffn_moe_cur_cpu"` 返回空
+   （devpart 分支的 `part_wgt` 命名 ✓ / 我新加的 `cur_cpu` leaf 是否被保留 ✓）；
+3. `ggml_backend_dev_host_buffer_type(dev)` 或 pinned 缓冲分配失败 ✓；
+4. `ggml_backend_event_new` 失败 ✓。
+
+**临时诊断清单（都在 env 关闭时零成本，收尾时统一清理）**：`LLAMA_MOE_CRASH_TRACE`、`LLAMA_MOE_DUMP_SPLITS`、
+`LLAMA_MOE_DUMP_CH`。
+
+
+### 6.22 2026-09-13：devpart 收尾状态 —— 管道已通，缺陷收敛到"驻留表在设备侧的内容"
+
+**本轮把管道修通了**（全部 devpart-only，宿主路径复测正常 ✓）：
+1. 分区 op 独立 split（pass 5 收口 ✓）；
+2. 每层 pinned staging + 每层事件，在**含分区 op 的 split** 入队后立刻发起 3 组 D2H（ids/wgt 后半段 + 激活）✓；
+3. CPU 半边 `event_synchronize` 后用 staged 数据 memcpy 进主机 leaf ✓；
+4. **回退路径**：调度器可以把 CPU 半边排在分区 split **之前**（leaf 是主机张量 → 没有依赖边 ✓），
+   此时 staged 未就绪 → 直接 `tensor_get` 读回 ✓（保正确性 ✓）；
+5. 读取层号一度用 `manifest.n_layers`（未加载清单时为 0 ✗）→ 改为查 `s.layers` ✓（这是"读回从不提交"的真因 ✓）。
+
+**诊断链条（都有日志为证）**：
+- `[CH-CPU] … n_pending=0` → CPU 半边先于读回 → `skip`（已由回退路径覆盖 ✓）；
+- fallback 读到的值：`ids: -1 -1 -1 … wgt: 0.000 … cur: 0.0000 …`
+  对比宿主参考值：`ids: 310 484 244 478 498 308 95 254 216 211 wgt: 0.245 … cur: 1.5718 …`
+  ⇒ **设备分区内核把 10 个专家全部判为"已驻留"**（CPU 半边只得到 -1/0 占位 ✓）⇒ CPU 半边贡献为 0 ⇒ 输出乱码 ✓。
+
+**结论**：缺陷不在我们的管道（管道已被这些日志证明在工作 ✓），而在**内核读到的驻留表内容 ≠ 主机镜像**：
+`moe_part_table_flush` 每图无条件执行 ✓（`std::fill(dirty,1)` ✓）且镜像默认 `-1` ✓（空缓存应为 -1 ✓），
+但内核看到的是"有效槽位" ✗。**下一步的确诊（10 分钟）**：
+在 readback 处 `tensor_get` 出 `ffn_moe_part_table-<layer>` 的**设备侧前 16 个 int32** 打印，与主机镜像
+（空缓存时应为 -1）对比 ✓ —— 若设备侧不是 -1 → 是 flush 落点/顺序问题（CUDA graph 捕获了 H2D、
+或表张量被 gallocr 重规划到新地址 ✗）；若设备侧是 -1 → 则是内核的 `table[id]` 语义/索引问题 ✓。
+
+**速度现状（管道修通后）**：devpart 28.2 t/s vs 同长度宿主 ~16.8（约 +70%）✓；
+脚本/工具/文档均已更新；临时诊断：`LLAMA_MOE_CRASH_TRACE` / `LLAMA_MOE_DUMP_SPLITS` / `LLAMA_MOE_DUMP_CH`（env 关闭零成本）。
+
+
+### 6.23 2026-09-13：devpart 已修复（正确性对齐宿主，逐字一致）
+
+**三个真实缺陷（全部靠"staged 与 fallback 的逐位数据对比"定位，不是猜的）**
+
+1. **驻留表未初始化**：图内存里的 `ffn_moe_part_table` 不是 -1，内核把它读成"每个专家都在槽 0"⇒
+   全部判为驻留 ⇒ CPU 半边只拿到 -1/0 占位 ⇒ 乱码。
+   *修*：图开头把图中所有 `ffn_moe_part_table*` 张量发布为全 -1（一次），随后仍由每层 flush 覆盖 ✓。
+
+2. **CPU 半边的激活取错来源**：devpart 下 CPU 半边自己的 `cur_cpu` 是**主机 leaf**，真正的激活在
+   **GPU 半边**的专家 `MUL_MAT_ID` 上。按名字找是错的：`ffn_moe_topk-<真实层>` 与分区家族张量
+   （`ffn_moe_part_*`、`ffn_moe_ids_gpu`、`ffn_moe_cur_cpu`）**编号约定不同**。
+   *修*：用**指针同一性** —— GPU 半边 `src[2] == moe_graph_find("ffn_moe_ids_gpu", layer)` 的
+   `MUL_MAT_ID`，取其 `src[1]` 即激活（`moe_cpu_activation()`）✓。
+
+3. **staging 钩错了算子**：`pids` 与 `pwgt` 会被调度器切进**不同的 split**，在 `MOE_PARTITION_IDS`
+   所在 split 读 `pwgt` 会读到内核产出前的垃圾（prefill 走 fallback 所以没暴露，**decode 全错**）。
+   *修*：读回改挂在 `MOE_PARTITION_WGT` 上，ids 取自其 `src[2]`（指针 ✓）✓。
+   另加：staging 槽按图失效（`rb.graph`）+ 未就绪时走阻塞式回退，保证任何调度顺序都正确 ✓。
+
+**验证（同参数、贪心、逐字对比）**
+
+| 配置 | 宿主 | devpart | 生成文本 |
+|---|---|---|---|
+| 6 tokens | — | — | 与宿主一致 ✓ |
+| 60 tokens | 14.1 t/s | 15.0 t/s | **完全相同** ✓ |
+| 240 tokens + SMoE 三件套 | 15.6 t/s | 13.6 t/s | **完全相同** ✓（仅日志 t/s 数字不同） |
+
+**性能结论（如实）**：devpart 在正确之后**并不比宿主路径快**（14–15 vs 14–16 t/s，噪声级持平）。
+此前观测到的"28.2 t/s"是**算错**状态下的数字，不可采信。⇒ 保持 `LLAMA_MOE_DEVPART` **默认关闭** ✓。
+
+**清理**：本轮加的临时探针（`CH-PUB`/`CH-W`/`CH-ACT`/`CH-TBL`/`CH-RB`/`CH-CPU`）已删除；
+保留 `LLAMA_MOE_DUMP_CH=1` 的**双路径数据对比 dump**（`moe_dbg_dump_cpu_half`，env 关闭零成本）✓。
+
+
+### 6.24 2026-09-13：devpart 400-token 稳态与"缓存不填充"根因
+
+**先纠正一个对比口径（重要）**：`LLAMA_MOE_CACHE_MIB=2048`（`run-cur-ref.ps1` 的默认）会让稳态命中率掉到
+25%，此时是 **13.7 t/s**；改成 **6144 + HOT_BACKFILL=8 + SMOE_NONBLOCK=1** 后，当前构建实测
+**20.3 t/s（命中 70.4%、total 51.3ms/图）**，与文档 §6.11 的 21.5 t/s / 48.7ms **逐项吻合**
+（cpu 6.4 vs 6.2、compute 13.5 vs 13.1、gpu_queue 7.1 vs 6.9）⇒ **host 路径无回归**。
+"21 t/s 要 400 token 才跑得到"确认无误。
+
+**devpart 现状（同配置、400 token）**：**16.8 t/s**（total 62.3ms | cpu 19.0 vs host 6.7）。
+- 收益侧真实存在：`ids_wait=0.0`、`partition=0`、主机 `split_partition n=0` ⇒ 17.9ms 会合确实消掉了；
+- 但被 `cpu 19.0ms` 吃回去 ⇒ 净亏。
+
+**根因（实测链）**：devpart 的驻留集恒为空 ⇒ 全部专家走 CPU：
+```
+policy: hits=87 / misses=300219   （host: 404757 / 169833 = 70.4%）
+```
+设备分区内核只**读**驻留表；而"入驻/驱逐/预取插入"的决策整段在**主机分区钩子**里
+（`moe_split_partition` 尾部：`cached[]` → prefetch/insert → `moe_insert_drain/flush`），
+devpart 为省 17.9ms 把该钩子整个跳过 ⇒ 表永远全 -1 ⇒ 切分冻结 ⇒ **GPU 占用一条直线**。
+
+本轮已试并**未解决**（都留在代码里，devpart 专用）：
+1. CPU 半边改由 staging 点派发给 worker（`moe_cpu_half_submit_layer_staged`）⇒ `dispatched=19153` 生效 ✓
+   但 CPU 工作量本身大 3 倍（因为驻留为空），故未见提速；
+2. 回放主机侧的命中/未命中计数与 `moe_cache_warm_miss`（`moe_cache_devpart_account`）✓；
+3. 图尾补调 `moe_insert_drain`/`moe_insert_flush` ✓；4. 把真实路由 stage 回来喂 `moe_cache_on_ids` ✓。
+
+**结论**：devpart 要真正用上缓存，必须**把入驻/预取决策也搬到设备侧可驱动的路径**（即用 staged 路由
+重放 `moe_cache_ensure`/入驻/插入，或让预测器预取真正交付——与 §6.5 的判断一致）。
+在此之前 **devpart 保持默认关闭**；host 路径是本项目的有效产物（400 token 20.3 t/s）。
+
+**另**：退出期偶发 `0xC0000005`（约 30–50% 运行）会丢统计行，测量需重试；`LLAMA_MOE_CRASH_TRACE=1` 追踪器仍在。
+
+
+### 6.25 2026-09-13：封板记录（本轮结论与状态）
+
+**本轮产物 = host 路径（devpart 默认关闭）**。封板实测（400 token、贪心、
+`CACHE_MIB=6144 + HOT_BACKFILL=8 + SMOE_NONBLOCK=1 + SMOE_AHEAD=2`）：
+
+| 指标 | 封板实测 | 历史（§6.11，21.5 t/s 时） |
+|---|---|---|
+| Generation | **20.3 t/s**（三次重复 20.3 / 20.3 / 23.2*） | 21.5 |
+| total / 图 | 51.4 ms | 48.7 |
+| cpu / compute / gpu_queue | 6.7 / 13.7 / 7.0 | 6.2 / 13.1 / 6.9 |
+| 稳态命中率 | **70.4%** | 70.4% |
+| VRAM 峰值 | 13412 MiB | 13198 MiB |
+
+\* 23.2 是 `LLAMA_MOE_CEILING_DIV=10`（CPU 半边只算 1/10）的诊断值，非正常路径。
+
+**口径提醒**：`run-cur-ref.ps1` 默认 `CACHE_MIB=2048` ⇒ 命中率 25% ⇒ 13.7 t/s，这是**配置**差异不是回归；
+比较性能必须用 6144+回填 8 这一档。
+
+**天花板实测（本轮最重要的结论）**：让 CPU 半边几乎免费（`CEILING_DIV=10`）也只省 **6.0 ms/图（+14%）**，
+而 `ids_wait=17.9 ms` **纹丝不动** ⇒ 逐层 router 会合是 **GPU 侧流水延迟**，与 CPU 半边工作量无关；
+devpart 只是把它换段记账（§6.24）⇒ **"预测前一拍"的收益上限 ≈ 6 ms 的一部分（+8~12%）**，不值得动 kernel。
+⇒ 本 MoE-cache 设计在这台机器上已到平台期（20–23 t/s）。再上台阶应换轴：**NextN/MTP 投机解码**
+（fork 里已有：`model : add the qwen4exp NextN/MTP draft head`、`qwen4exp: allow loading a draft-only MTP export`）。
+
+**封板保留的诊断开关**（全部 env 关闭零成本，沿用本文件既有约定）：
+`LLAMA_MOE_DUMP_SPLITS`、`LLAMA_MOE_CRASH_TRACE`、`LLAMA_MOE_DUMP_CH`（双路径 CPU 半边数据对比 dump）、
+`LLAMA_MOE_CEILING_DIV`（CPU 半边工作量分母，**仅供计时，输出故意不对**，永不用于验证）。
+
+**devpart 状态**：本轮修好了正确性（驻留表发布 / 激活按指针同一 / staging 挂在 WGT 算子 / 异步 CPU 半边 /
+用量会计回放，见 §6.23），但**驻留集依赖主机侧入驻决策**、性能为负（16.8 vs 20.3 t/s）⇒ **保持默认关闭**，
+不再推进（用户决定）。
+
 ---
 
 ## 7. 复现命令
