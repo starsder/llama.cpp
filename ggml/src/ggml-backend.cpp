@@ -26,6 +26,7 @@
 #include <condition_variable>
 #include <deque>
 #include <mutex>
+#include <atomic>
 #include <thread>
 #include <cstdint>
 #include <map>
@@ -1674,6 +1675,8 @@ static bool ggml_backend_sched_alloc_splits(ggml_backend_sched_t sched) {
 //   LLAMA_MOE_PREDICT_SMOE   1 = cache-resident routed output + shared expert predictor
 //   LLAMA_MOE_PREDICT_TOPK   transition candidates scored per prediction (default 32)
 //   LLAMA_MOE_PREDICT_STATIC static hot experts merged into every prediction (default 32)
+//   LLAMA_MOE_TAKE_MAX       admission cutoff by prediction rank; the volume throttle
+//                            (default 2 - wider admits experts whose rank is mostly noise)
 //   LLAMA_MOE_PREDICT_MRS_WEIGHT blend target-layer MRS score into prediction ranking (default 0)
 //   LLAMA_MOE_PREFETCH       1 = prefetch predicted experts on a side stream (default 0)
 //   LLAMA_MOE_FALLBACK_PREFETCH maximum actual misses admitted per layer/graph (default 2)
@@ -1723,6 +1726,7 @@ struct moe_layer_cache {
 
     std::vector<int32_t> expert_slot;  // expert -> slot, -1 = not cached
     std::vector<int32_t> slot_expert;  // slot -> expert, -1 = empty
+    std::vector<uint8_t> slot_rank;    // slot -> prediction rank it was admitted at (255 = none)
     std::vector<uint64_t> slot_tick;   // LRU clock per layer slot
     std::vector<uint64_t> slot_insert_tick; // FIFO insertion clock; never changed on hits
     std::vector<float> mrs_score;      // smoothed top-P route score per expert
@@ -1815,6 +1819,25 @@ struct moe_cache_state {
     // updating the slot maps; the worker performs the pageable H2D copy on the prefetch
     // side stream so the call thread is never blocked by staging
     std::thread                 insert_thread;
+    std::vector<std::thread>    insert_threads;  // LLAMA_MOE_INSERT_WORKERS > 1
+    // async CPU-half executor (LLAMA_MOE_CPU_ASYNC): the MoE CPU half is dispatched
+    // to this worker as soon as the partition is known, so it overlaps with the GPU
+    // half's execution instead of blocking the scheduler thread; the scheduler skips
+    // its own compute for that split and joins the worker instead.
+    std::thread                 cpu_half_thread;
+    std::mutex                  cpu_half_mtx;
+    std::condition_variable     cpu_half_cv;
+    ggml_backend_t              cpu_half_backend = nullptr;
+    ggml_cgraph *               cpu_half_graph   = nullptr;
+    ggml_backend_event_t        cpu_half_event   = nullptr;
+    bool                        cpu_half_ready   = false;
+    bool                        cpu_half_running = false;
+    bool                        cpu_half_started = false;
+    int                         cpu_half_async   = 1;   // 0 off, 1 worker (default: the CPU half
+                                                       // overlaps the GPU half instead of blocking
+                                                       // the scheduler thread), 2 fill-only
+    uint64_t                    tm_cpu_join_us   = 0;
+    uint64_t                    n_cpu_async      = 0;
     std::mutex                  insert_mtx;
     std::condition_variable     insert_cv;
     std::deque<moe_insert_job>  insert_queue;
@@ -1850,7 +1873,9 @@ struct moe_cache_state {
     float predict_mrs_weight = 0.0f;
     int  fallback_prefetch_max = 2;
     bool predict_xt     = false; // manifest is a same-layer cross-token table (predict this layer next token)
-    int  pin_static     = 0;  // static hot experts pinned per layer at finalize
+    int  pin_static     = 0;  // LLAMA_MOE_PIN_STATIC: manifest hot experts seeded per layer
+                              // at finalize (no eviction protection: the measured hot set and
+                              // the prefetch replace them as history accumulates)
     bool direct_read    = false; // GPU MoE GEMMs read the slot-addressed cache buffer directly
     bool mrs            = false;
     bool fifo           = false;
@@ -1877,6 +1902,54 @@ struct moe_cache_state {
     uint64_t tm_pre_us       = 0; // per-split loop overhead before compute (input copies, events)
     uint64_t tm_mrs_us       = 0; // route-score history update CPU time
     uint64_t tm_prefetch_us  = 0; // side-stream submission time
+    // breakdown of the "inputs" segment, which has no other instrumentation
+    uint64_t tm_in_wait_us    = 0; // split event wait/sync before touching the input
+    uint64_t tm_in_evt_us     = 0; // of which: cudaStreamWaitEvent path
+    uint64_t tm_in_sync_us    = 0; // of which: full backend synchronize path
+    uint64_t n_in_evt         = 0;
+    uint64_t n_in_sync        = 0;
+    uint64_t n_in_loop        = 0; // split input iterations per graph
+    uint64_t n_in_hostw       = 0; // host-weight branch entries per graph
+    uint64_t tm_in_flag_us    = 0; // GGML_TENSOR_FLAG_INPUT branch (event sync + copy)
+    uint64_t n_in_flag        = 0;
+    uint64_t tm_in_gen_us     = 0; // generic cross-backend copy branch
+    uint64_t n_in_gen         = 0;
+    uint64_t tm_cpuhalf_us    = 0; // cpu-half leaf fill (after the input loop)
+    uint64_t tm_cpuhalf_evt_us = 0; // of which: wait for the activation D2H event
+    uint64_t n_cpuhalf        = 0;
+    uint64_t tm_splitpart_us  = 0; // moe_split_partition (host-side partition fallback)
+    uint64_t n_splitpart      = 0;
+    uint64_t tm_sp_flush_us   = 0; // of which: moe_insert_drain + insert_flush + slot/pf drain (per layer)
+    uint64_t n_sp_flush       = 0;
+    uint64_t tm_sp_act_us     = 0; // of which: moe_cache_activate_layer
+    uint64_t tm_sp_mrs_us     = 0; // of which: MRS score update
+    uint64_t tm_sp_onids_us   = 0; // of which: moe_cache_on_ids
+    uint64_t tm_sp_warm_us    = 0; // of which: warm_miss / per-expert accounting
+    uint64_t tm_sp_scan_us    = 0; // of which: graph tensor lookup + misc prologue
+    uint64_t tm_sp_early_us   = 0; // early-exit path (part already computed this graph)
+    uint64_t n_sp_early       = 0;
+    uint64_t tm_sp_pro_us     = 0; // prologue: function entry -> ids readback enqueue
+    uint64_t tm_sp_assign_us  = 0; // of which: part = split_part()
+    uint64_t tm_sp_find_us    = 0; // of which: moe_graph_find (router tensors)
+    uint64_t tm_sp_mrsq_us    = 0; // of which: moe_cache_queue_mrs_scores
+    uint64_t tm_sp_tail_us    = 0; // tail: after the body -> function return
+    uint64_t tm_sp_d2h_us     = 0; // of which: the per-layer activation D2H
+    uint64_t n_sp_d2h         = 0;
+    uint64_t tm_in_scan_us    = 0; // MUL_MAT_ID node scan + cache entry lookup
+    uint64_t tm_in_d2h_ids_us = 0; // ids get_async + synchronize(ids_backend)
+    uint64_t tm_in_d2h_enq_us = 0; // of which: the get_async enqueue itself
+    uint64_t tm_in_d2h_sync_us = 0; // of which: synchronize (host waits for the GPU)
+    uint64_t n_in_d2h_ids_dec = 0; // readbacks in single-token (decode) graphs
+    uint64_t n_in_d2h_ids_pre = 0; // readbacks in prefill graphs
+    uint64_t tm_in_d2h_dec_us = 0;
+    uint64_t tm_in_d2h_dec_enq_us = 0;
+    uint64_t tm_in_d2h_dec_sync_us = 0;
+    uint64_t tm_in_d2h_pre_us = 0;
+    uint64_t bytes_in_d2h      = 0; // total bytes moved by ids readbacks
+    uint64_t n_dec_graphs      = 0;
+    uint64_t tm_in_parse_us   = 0; // used_ids bitset build
+    uint64_t tm_in_expert_us  = 0; // expert copy queueing
+    uint64_t n_in_d2h_ids     = 0; // ids readbacks per graph
     uint64_t tm_layers       = 0;
     uint64_t tm_graphs       = 0;
     uint64_t mrs_score_reads = 0;
@@ -1885,6 +1958,109 @@ struct moe_cache_state {
     uint64_t mrs_victim_picks = 0;
     uint64_t mrs_protected_evictions = 0;
     uint64_t prefetch_requests = 0;
+    uint64_t prefetch_dup_resident = 0;  // candidate dropped: expert already resident or in flight
+    uint64_t prefetch_dup_pending  = 0;  // ... of which the slot transfer was still in flight
+    uint64_t prefetch_dup_list     = 0;  // duplicate entry inside one candidate list
+    uint64_t prefetch_dup_admit    = 0;  // admitted into a slot already holding that expert (must be 0)
+    uint64_t prefetch_readmit      = 0;  // re-admitted after an eviction (churn)
+    uint64_t prefetch_no_victim    = 0;  // admission aborted: no evictable slot (hot set frozen)
+    std::vector<std::vector<ggml_bitset_t>> ever_admitted;  // per layer: experts admitted at least once
+    // ground-truth routing histogram (expert selected by the router), used to price the
+    // difference between "what the predictor likes" and "what is actually hot"
+    std::vector<std::vector<uint32_t>> use_count;
+    std::vector<uint64_t>              use_total;
+    // prefill vs decode routing tendencies: same counters, kept apart so we can measure how
+    // well a prompt's expert usage predicts the generation's hot set
+    std::vector<std::vector<uint32_t>> use_count_pre;
+    std::vector<uint64_t>              use_total_pre;
+    uint64_t use_graphs_pre = 0, use_graphs_dec = 0;
+    uint64_t use_graph_id_pre = ~0ull;
+    // prefill and decode have different routing tendencies (a parallel batch touches ~80% of
+    // the experts, a serial generation concentrates on a few).  The prompt is still a useful
+    // prior (its top-C covers ~52% of the decode routing vs 72% for decode's own ranking),
+    // but its raw mass would swamp the sliding window - so it is counted at a discount.
+    float    prefill_weight = 1.0f;   // LLAMA_MOE_PREFILL_WEIGHT
+    // phase-boundary reorganization: decode has to start hot, and its hot set (the persisted
+    // decode histogram) is known before the first decode graph.  Prefill's own expert union is
+    // far too large to fit, so the boundary burst only serves the decode side - the wait at a
+    // phase boundary is acceptable (once per turn, not per token).
+    bool     phase_fill       = false;  // LLAMA_MOE_PHASE_FILL
+    size_t   phase_fill_bytes = 256ull * 1048576ull;  // LLAMA_MOE_PHASE_FILL_MIB
+    int      phase_pending    = 0;      // 1 = first decode graph after a prefill
+    bool     last_graph_prefill = false;
+    uint64_t phase_fills      = 0, phase_fill_experts = 0;
+    uint64_t use_graph_id   = ~0ull;  // graph whose routing is already counted
+    uint64_t hot_tokens     = 0;      // tokens inside the current scoring window
+    int      hot_halflife   = 512;    // LLAMA_MOE_HOT_HALFLIFE: counts halve every N tokens
+    uint64_t hot_halvings   = 0;
+    int      hot_backfill   = 0;      // LLAMA_MOE_HOT_BACKFILL: hot experts offered per graph
+    int      hot_cursor     = 0;      // round-robin layer cursor for the backfill
+    uint64_t hot_backfill_experts = 0;
+    uint64_t hot_backfill_idle    = 0; // graphs where nothing was hotter than the coldest resident
+    uint64_t hot_seed_experts     = 0; // experts placed from the manifest at cold start
+    // idle ("user is typing") filling: nothing ever waits on it - the thread only bookkeeps
+    // under the mutex (microseconds) and the copies themselves go to the side stream
+    bool                     hot_fill_idle     = false;
+    int                      hot_idle_batch    = 32;   // experts per idle round
+    // per-rank prediction accuracy (rank r offered for a layer -> was that expert routed there?)
+    static constexpr int kRankMax = 16;
+    uint64_t rank_pred_total[kRankMax] = {0};
+    uint64_t rank_pred_hit[kRankMax]   = {0};
+    int      rank_adaptive    = 0;      // LLAMA_MOE_RANK_ADAPTIVE: cutoff from measured accuracy
+    float    rank_threshold   = 0.25f;  // LLAMA_MOE_RANK_THRESHOLD
+    int      rank_min_samples = 200;    // LLAMA_MOE_RANK_MIN_SAMPLES
+    // transfer budget per token: ranks are admitted in accuracy order until the budget is
+    // spent, so the effective prediction depth follows the available bytes instead of a
+    // table of hand-tuned cutoffs
+    size_t   admit_budget_bytes = 0;    // LLAMA_MOE_ADMIT_BUDGET_MIB
+    size_t   graph_admit_bytes  = 0;
+    uint64_t admit_budget_clipped = 0;
+    // per-rank transfer yield (expert-slot hits delivered per MiB spent) - the admission
+    // gate is this measured number, not a guessed accuracy threshold
+    uint64_t rank_hits[kRankMax]   = {0};
+    uint64_t rank_bytes[kRankMax]  = {0};
+    uint64_t rank_admits[kRankMax] = {0};
+    uint64_t rank_hits_other      = 0;  // hits from backfill/seed admissions (no rank)
+    uint64_t rank_bytes_other     = 0;
+    float    rank_yield_min  = 0.0f;    // LLAMA_MOE_YIELD_MIN (hits/MiB); 0 = disabled
+    // extremum-seeking on the admission threshold: the right hits/MiB depends on the prompt
+    // distribution, the cache state and the phase, so it is measured, never hardcoded.
+    // Decision variable: the yield a rank must clear.  Objective: median ms/token.
+    bool     yield_auto      = false;   // LLAMA_MOE_YIELD_AUTO
+    int      yield_auto_period = 16;    // LLAMA_MOE_YIELD_AUTO_PERIOD (graphs per probe)
+    float    yield_auto_min  = 4.0f;    // starting guess / clamp lo
+    float    yield_auto_max  = 32.0f;
+    int      yield_auto_dir  = +1;
+    float    yield_auto_cur  = 0.0f;    // current probe value
+    std::vector<double> yield_auto_prev_ms;
+    std::vector<double> yield_auto_cur_ms;
+    uint64_t yield_auto_steps = 0;
+    float    yield_auto_best  = 0.0f;
+    // Model-driven auto-tuning (B): per graph we see (ms, hits, bytes) and fit
+    //     ms ~= a - V*hits + P*bytes_MB
+    // V = ms saved per hit, P = ms lost per MB of side-stream traffic.  From those two:
+    //     required yield = P/V (hits per MB)      -> the admission threshold
+    //     byte budget    = frac * ms_hat / P      -> the transfer cap (frac = DMA share)
+    bool     trend_auto      = false;  // LLAMA_MOE_TREND_AUTO
+    float    budget_frac     = 0.0f;   // LLAMA_MOE_BUDGET_FRAC (0 = no auto budget)
+    int      trend_window    = 32;     // LLAMA_MOE_TREND_WINDOW (graphs)
+    struct trend_pt { double ms; double hits; double mb; };
+    std::vector<trend_pt> trend_pts;
+    double   trend_V = 0.0, trend_P = 0.0;   // smoothed estimates (ms/hit, ms/MB)
+    double   trend_ms_hat = 0.0;
+    uint64_t trend_fits = 0, trend_rejects = 0;
+    uint64_t hits_seen = 0;
+    uint64_t trend_hits_prev = 0;
+    double   trend_budget_mb = 0.0;
+    uint64_t rank_min_bytes  = 16ull * 1048576ull;  // LLAMA_MOE_YIELD_MIN_MIB
+    int      hot_fill_boot      = 0;    // LLAMA_MOE_HOT_FILL_BOOT: bigger budget while filling
+    int      hot_fill_boot_graphs = 120; // LLAMA_MOE_HOT_FILL_GRAPHS: graphs using it
+    int                      hot_idle_gap_ms   = 150;  // idle only if no graph touched us for this long
+    std::thread              hot_fill_thread;
+    std::atomic<bool>        hot_fill_stop{false};
+    std::atomic<bool>        graph_active{false};
+    std::atomic<uint64_t>    last_activity_us{0};
+    std::mutex               hot_fill_mtx;
     uint64_t prefetch_experts = 0;
     uint64_t prefetch_bytes = 0;
     uint64_t prefetch_predicted = 0;
@@ -1908,6 +2084,11 @@ struct moe_cache_state {
         int             k      = 0;       // staged element count
         ggml_backend_event_t ev = nullptr; // recorded after the D2H copy on the compute stream
     };
+    ggml_backend_buffer_t d2h_pin_buf    = nullptr; // pinned staging for the small host readbacks
+    size_t                d2h_pin_size   = 0;       // (router ids, MRS scores)
+    bool                  d2h_pin_failed = false;
+    void *                d2h_stage      = nullptr; // pending staging destination
+    size_t                d2h_stage_bytes = 0;
     ggml_backend_buffer_t smoe_pin_buf   = nullptr; // pinned host staging for the topk D2H
     size_t                smoe_pin_stride = 0;      // per-layer stride (elements)
     bool                  smoe_pin_failed = false;  // allocation failed: use pageable fallback
@@ -1915,6 +2096,15 @@ struct moe_cache_state {
     std::map<int, std::vector<int32_t>>   smoe_stage;     // per-layer topk staging
     std::map<int, std::vector<uint8_t>>   smoe_stage_raw; // per-layer logits staging
     uint64_t tm_smoe_us = 0; // SMoE readback/process time
+    uint64_t tm_smoe_evt_us  = 0; // of which: waiting for the staged readback event
+    bool     smoe_nonblock   = false; // LLAMA_MOE_SMOE_NONBLOCK: poll instead of wait
+    int      smoe_ahead      = 1;     // LLAMA_MOE_SMOE_AHEAD: predict this many layers ahead
+    int      evict_score     = 0;     // LLAMA_MOE_EVICT_SCORE: 0 = true routing frequency,
+                                      // 1 = gate-softmax history (mrs_score)
+    int      smoe_take_max   = -1;    // LLAMA_MOE_TAKE_MAX: admission cutoff by prediction rank
+                                      // (-1 = default 2, measured optimum on this box)
+    uint64_t n_smoe_deferred = 0;
+    uint64_t tm_smoe_proc_us = 0; // of which: CPU topk/logits processing
     // split-loop timeline: sequential segments per iteration, so time between
     // instrumented phases lands in exactly one bucket by construction
     uint64_t tm_seg_prologue_us = 0; // graph entry -> first split
@@ -1991,17 +2181,93 @@ moe_cache_state & moe_cache() {
     return state;
 }
 
+void moe_cache_hot_backfill(moe_cache_state & s, int budget_override = 0);
+void moe_cache_phase_fill(moe_cache_state & s);
+int  moe_cache_effective_rank_cut(const moe_cache_state & s);
+void moe_cache_yield_auto_step(moe_cache_state & s, double graph_ms);
+void moe_cache_slot_events_drain(moe_cache_state & s);
+void * moe_cache_d2h_begin(moe_cache_state & s, ggml_backend_t backend, size_t bytes);
+void moe_cache_d2h_end(moe_cache_state & s, void * dst);
+float moe_cache_rank_yield(const moe_cache_state & s, int r);
+float moe_cache_rank_yield_est(const moe_cache_state & s, int r);
+void moe_cache_hot_fill_start(moe_cache_state & s);
+void moe_cache_hot_fill_stop(moe_cache_state & s);
+void moe_cache_seed_static(moe_cache_state & s);
+
+
+// ---- temporary diagnostics: symbolicated stack for the intermittent exit-time crash ----
+#ifdef _WIN32
+#include <windows.h>
+#include <dbghelp.h>
+#pragma comment(lib, "dbghelp.lib")
+
+static LONG WINAPI moe_crash_filter(EXCEPTION_POINTERS * info) {
+    static bool reentered = false;
+    if (reentered) {
+        return EXCEPTION_EXECUTE_HANDLER;
+    }
+    reentered = true;
+    HANDLE proc = GetCurrentProcess();
+    SymSetOptions(SYMOPT_UNDNAME | SYMOPT_DEFERRED_LOADS | SYMOPT_LOAD_LINES);
+    SymInitialize(proc, NULL, TRUE);
+    void * frames[48] = {};
+    const USHORT n = CaptureStackBackTrace(1, 48, frames, NULL);
+    fprintf(stderr, "\n[MOE-CRASH] code=0x%08lx thread=%lu frames=%u\n",
+            (unsigned long) info->ExceptionRecord->ExceptionCode,
+            (unsigned long) GetCurrentThreadId(), (unsigned)n);
+    for (USHORT i = 0; i < n; ++i) {
+        char buf[sizeof(SYMBOL_INFO) + 256] = {};
+        SYMBOL_INFO * sym = (SYMBOL_INFO *) buf;
+        sym->SizeOfStruct = sizeof(SYMBOL_INFO);
+        sym->MaxNameLen = 200;
+        DWORD64 disp = 0;
+        IMAGEHLP_LINE64 line = {};
+        line.SizeOfStruct = sizeof(line);
+        DWORD line_disp = 0;
+        const char * name = "?";
+        if (SymFromAddr(proc, (DWORD64) frames[i], &disp, sym)) {
+            name = sym->Name;
+        }
+        const char * file = "";
+        if (SymGetLineFromAddr64(proc, (DWORD64) frames[i], &line_disp, &line)) {
+            file = line.FileName;
+        }
+        fprintf(stderr, "[MOE-CRASH]  %2u %-48s +0x%llx  %s:%lu\n", i, name,
+                (unsigned long long) disp, file, (unsigned long) line.LineNumber);
+    }
+    fflush(stderr);
+    return EXCEPTION_EXECUTE_HANDLER;
+}
+
+static void moe_crash_trace_enable() {
+    if (const char * env = getenv("LLAMA_MOE_CRASH_TRACE")) {
+        if (atoi(env) != 0) {
+            SetUnhandledExceptionFilter(moe_crash_filter);
+        }
+    }
+}
+#else
+static void moe_crash_trace_enable() {}
+#endif
+
 void moe_cache_print_summary() {
     moe_cache_state & s = moe_cache();
     if (!s.enabled) {
         return;
     }
+    moe_cache_hot_fill_stop(s);   // must happen before any buffer teardown
+
     if (s.insert_running) {
         {
             std::lock_guard<std::mutex> lock(s.insert_mtx);
             s.insert_stop = true;
         }
         s.insert_cv.notify_all();
+        for (auto & th : s.insert_threads) {
+            if (th.joinable()) {
+                th.join();
+            }
+        }
         if (s.insert_thread.joinable()) {
             s.insert_thread.join();
         }
@@ -2028,6 +2294,52 @@ void moe_cache_print_summary() {
                 s.tm_seg_post_us     / 1000.0 / s.tm_graphs,
                 s.tm_seg_tail_us     / 1000.0 / s.tm_graphs,
                 s.tm_seg_epilogue_us / 1000.0 / s.tm_graphs);
+        const double dg = s.n_dec_graphs > 0 ? (double) s.n_dec_graphs : 1.0;
+        fprintf(stderr, "[MOE-CACHE] inputs breakdown per DECODE graph (n_dec=%llu of %llu graphs): evt_wait=%.2f ms node_scan=%.2f ms | ids_d2h=%.2f ms in %llu reads (enq=%.2f sync=%.2f) total_bytes=%llu | parse=%.2f expert_copy=%.2f\n",
+                (unsigned long long) s.n_dec_graphs, (unsigned long long) s.tm_graphs,
+                s.tm_in_wait_us    / 1000.0 / s.tm_graphs,
+                s.tm_in_scan_us    / 1000.0 / s.tm_graphs,
+                s.tm_in_d2h_dec_us / 1000.0 / dg,
+                (unsigned long long) s.n_in_d2h_ids_dec,
+                s.tm_in_d2h_dec_enq_us  / 1000.0 / dg,
+                s.tm_in_d2h_dec_sync_us / 1000.0 / dg,
+                (unsigned long long) s.bytes_in_d2h,
+                s.tm_in_parse_us   / 1000.0 / s.tm_graphs,
+                s.tm_in_expert_us  / 1000.0 / s.tm_graphs);
+        fprintf(stderr, "[MOE-CACHE] inputs branch counts per graph: iterations=%.1f host_weights=%.1f | evt_path n=%.1f %.2f ms | sync_path n=%.1f %.2f ms\n",
+                (double) s.n_in_loop  / s.tm_graphs,
+                (double) s.n_in_hostw / s.tm_graphs,
+                (double) s.n_in_evt   / s.tm_graphs, s.tm_in_evt_us  / 1000.0 / s.tm_graphs,
+                (double) s.n_in_sync  / s.tm_graphs, s.tm_in_sync_us / 1000.0 / s.tm_graphs);
+        fprintf(stderr, "[MOE-CACHE] split_partition per graph: total=%.2f ms (n=%.1f) | drain+flush=%.2f ms (n=%.1f, %.1f%% of split_partition) | act_d2h=%.2f ms\n",
+                s.tm_splitpart_us / 1000.0 / s.tm_graphs, (double) s.n_splitpart / s.tm_graphs,
+                s.tm_sp_flush_us  / 1000.0 / s.tm_graphs, (double) s.n_sp_flush / s.tm_graphs,
+                s.tm_splitpart_us > 0 ? 100.0 * (double) s.tm_sp_flush_us / (double) s.tm_splitpart_us : 0.0,
+                s.tm_sp_d2h_us    / 1000.0 / s.tm_graphs);
+        fprintf(stderr, "[MOE-CACHE] split_partition split per graph: prologue=%.2f ids_wait=%.2f tail=%.2f mrs=%.2f body=%.2f (activate=%.2f on_ids=%.2f) ms\n",
+                s.tm_sp_pro_us    / 1000.0 / s.tm_graphs,
+                s.tm_ids_wait_us  / 1000.0 / s.tm_graphs,
+                s.tm_sp_tail_us   / 1000.0 / s.tm_graphs,
+                s.tm_ids_wait_us  / 1000.0 / s.tm_graphs,
+                s.tm_mrs_us       / 1000.0 / s.tm_graphs,
+                s.tm_ids_parse_us / 1000.0 / s.tm_graphs,
+                s.tm_sp_act_us    / 1000.0 / s.tm_graphs,
+                s.tm_sp_onids_us  / 1000.0 / s.tm_graphs);
+        fprintf(stderr, "[MOE-CACHE] prologue split per graph: assign=%.2f find=%.2f mrs_queue=%.2f (of prologue=%.2f) ms\n",
+                s.tm_sp_assign_us / 1000.0 / s.tm_graphs,
+                s.tm_sp_find_us   / 1000.0 / s.tm_graphs,
+                s.tm_sp_mrsq_us   / 1000.0 / s.tm_graphs,
+                s.tm_sp_pro_us    / 1000.0 / s.tm_graphs);
+        fprintf(stderr, "[MOE-CACHE] split_partition calls per graph: early=%.1f (%.2f ms) real=%.1f | accounted=%.2f ms of total=%.2f ms\n",
+                (double) s.n_sp_early / s.tm_graphs, s.tm_sp_early_us / 1000.0 / s.tm_graphs,
+                ((double) s.n_splitpart - (double) s.n_sp_early) / s.tm_graphs,
+                (s.tm_ids_wait_us + s.tm_mrs_us + s.tm_ids_parse_us + s.tm_sp_flush_us + s.tm_sp_d2h_us + s.tm_sp_early_us) / 1000.0 / s.tm_graphs,
+                s.tm_splitpart_us / 1000.0 / s.tm_graphs);
+        fprintf(stderr, "[MOE-CACHE] smoe per DECODE graph: total=%.2f ms (event_wait=%.2f ms process=%.2f ms) nonblock=%d deferred=%llu ahead=%d\n",
+                s.tm_smoe_us      / 1000.0 / dg,
+                s.tm_smoe_evt_us  / 1000.0 / dg,
+                s.tm_smoe_proc_us / 1000.0 / dg,
+                (int) s.smoe_nonblock, (unsigned long long) s.n_smoe_deferred, s.smoe_ahead);
     }
     uint64_t total_hits = 0;
     uint64_t total_misses = 0;
@@ -2035,7 +2347,7 @@ void moe_cache_print_summary() {
         total_hits += entry->hits;
         total_misses += entry->misses;
     }
-    fprintf(stderr, "[MOE-CACHE] policy=%s requested=%lld MiB effective=%lld MiB hits=%llu misses=%llu mrs_reads=%llu mrs_fallbacks=%llu mrs_updates=%llu mrs_victims=%llu protected_evictions=%llu prefetch_requests=%llu prefetch_experts=%llu prefetch_bytes=%llu prefetch_dropped=%llu window_layers=%d window_recycles=%llu prefetch_required=%llu prefetch_predicted=%llu prefetch_ready=%llu fallback_prefetch=%llu fate=%d fate_predictions=%llu fate_gate_inputs=%llu fate_gate_ms=%.2f smoe=%d smoe_predictions=%llu smoe_logits=%llu\n",
+    fprintf(stderr, "[MOE-CACHE] policy=%s requested=%lld MiB effective=%lld MiB hits=%llu misses=%llu mrs_reads=%llu mrs_fallbacks=%llu mrs_updates=%llu mrs_victims=%llu protected_evictions=%llu prefetch_requests=%llu prefetch_experts=%llu prefetch_bytes=%llu prefetch_dropped=%llu window_layers=%d window_recycles=%llu prefetch_required=%llu prefetch_predicted=%llu prefetch_ready=%llu fallback_prefetch=%llu fate=%d fate_predictions=%llu fate_gate_inputs=%llu fate_gate_ms=%.2f smoe=%d smoe_predictions=%llu smoe_logits=%llu dup_resident=%llu dup_pending=%llu dup_list=%llu dup_admit=%llu readmit=%llu no_victim=%llu halvings=%llu hot_fill=%llu hot_idle=%llu seeded=%llu clipped=%llu phase_fills=%llu phase_experts=%llu\n",
             s.fifo ? "FIFO" : (s.mrs ? "MRS" : "LRU"), (long long) (s.requested_budget_bytes / 1048576),
             (long long) (s.budget_bytes / 1048576),
             (unsigned long long) total_hits, (unsigned long long) total_misses,
@@ -2056,7 +2368,171 @@ void moe_cache_print_summary() {
             s.fate_gate_us / 1000.0,
             (int) s.smoe_predict,
             (unsigned long long) s.smoe_predictions,
-            (unsigned long long) s.smoe_logits);
+            (unsigned long long) s.smoe_logits,
+            (unsigned long long) s.prefetch_dup_resident, (unsigned long long) s.prefetch_dup_pending,
+            (unsigned long long) s.prefetch_dup_list, (unsigned long long) s.prefetch_dup_admit,
+            (unsigned long long) s.prefetch_readmit, (unsigned long long) s.prefetch_no_victim,
+            (unsigned long long) s.hot_halvings,
+            (unsigned long long) s.hot_backfill_experts, (unsigned long long) s.hot_backfill_idle,
+            (unsigned long long) s.hot_seed_experts, (unsigned long long) s.admit_budget_clipped,
+            (unsigned long long) s.phase_fills, (unsigned long long) s.phase_fill_experts);
+    {
+        // how much of the true routing would a cache of the same capacity capture if it held
+        // the actually-hottest experts instead of the predictor's favourites?
+        uint64_t routed = 0, oracle = 0, resident = 0, mrs_top = 0;
+        int n_slots_used = 0, layers_counted = 0;
+        for (auto & kv : s.layers) {
+            const int layer = kv.first;
+            moe_layer_cache * lc = kv.second.get();
+            if (lc == nullptr || layer < 0 || layer >= (int) s.use_count.size() ||
+                (int) s.use_count[layer].size() != lc->n_expert) {
+                continue;
+            }
+            const std::vector<uint32_t> & uc = s.use_count[layer];
+            const uint64_t total = s.use_total[layer];
+            if (total == 0) {
+                continue;
+            }
+            const int C = std::max(1, lc->n_slots);
+            // oracle: sum of the C largest counts
+            std::vector<uint32_t> sorted = uc;
+            std::partial_sort(sorted.begin(), sorted.begin() + std::min<size_t>(C, sorted.size()), sorted.end(),
+                              std::greater<uint32_t>());
+            uint64_t o = 0;
+            for (int i = 0; i < C && i < (int) sorted.size(); ++i) {
+                o += sorted[i];
+            }
+            // current resident set
+            uint64_t r = 0;
+            for (int e = 0; e < lc->n_expert; ++e) {
+                if (lc->expert_slot[e] >= 0) {
+                    r += uc[e];
+                }
+            }
+            // MRS score top-C (is the eviction/admission score a good hotness proxy?)
+            uint64_t mt = 0;
+            if ((int) lc->mrs_score.size() == lc->n_expert) {
+                std::vector<int> order(lc->n_expert);
+                for (int e = 0; e < lc->n_expert; ++e) {
+                    order[e] = e;
+                }
+                std::partial_sort(order.begin(), order.begin() + std::min<size_t>(C, order.size()), order.end(),
+                                  [&](int a, int b) { return lc->mrs_score[a] > lc->mrs_score[b]; });
+                for (int i = 0; i < C && i < (int) order.size(); ++i) {
+                    mt += uc[order[i]];
+                }
+            }
+            routed += total;
+            oracle += o;
+            resident += r;
+            mrs_top += mt;
+            n_slots_used += C;
+            layers_counted++;
+        }
+        if (routed > 0) {
+            fprintf(stderr, "[MOE-CACHE] hot-set oracle: routed=%llu layers=%d slots/layer=%d | "
+                            "oracle_topC=%.1f%% resident_set=%.1f%% mrs_topC=%.1f%% actual_hit=%.1f%%\n",
+                    (unsigned long long) routed, layers_counted, layers_counted > 0 ? n_slots_used / layers_counted : 0,
+                    100.0 * (double) oracle / (double) routed,
+                    100.0 * (double) resident / (double) routed,
+                    100.0 * (double) mrs_top / (double) routed,
+                    100.0 * (double) total_hits / (double) std::max<uint64_t>(1, total_hits + total_misses));
+        }
+    }
+    {
+        // prefill vs decode: if the prompt's top-C experts cover most of the decode routing,
+        // the prompt is a good cold-start seed; if not, the two phases need separate policies
+        uint64_t dec_all = 0, dec_by_pre = 0, dec_oracle = 0, dec_overlap = 0;
+        uint64_t pre_all = 0, pre_touched = 0, dec_touched = 0;
+        int layers = 0, slots = 0;
+        for (auto & kv : s.layers) {
+            const int layer = kv.first;
+            moe_layer_cache * lc = kv.second.get();
+            if (lc == nullptr || layer < 0 || layer >= (int) s.use_count.size() ||
+                (int) s.use_count[layer].size() != lc->n_expert) {
+                continue;
+            }
+            const std::vector<uint32_t> & dec = s.use_count[layer];
+            const std::vector<uint32_t> & pre = (layer < (int) s.use_count_pre.size() &&
+                                                 s.use_count_pre[layer].size() == dec.size())
+                                                    ? s.use_count_pre[layer]
+                                                    : std::vector<uint32_t>();
+            const uint64_t d_all = s.use_total[layer];
+            if (d_all == 0) {
+                continue;
+            }
+            const int C = std::max(1, lc->n_slots);
+            // oracle: decode's own top-C
+            std::vector<uint32_t> sorted = dec;
+            std::partial_sort(sorted.begin(), sorted.begin() + std::min<size_t>(C, sorted.size()),
+                              sorted.end(), std::greater<uint32_t>());
+            uint64_t oracle = 0;
+            for (int i = 0; i < C && i < (int) sorted.size(); ++i) {
+                oracle += sorted[i];
+            }
+            // prefill's top-C ranked by prefill counts, scored on decode counts
+            uint64_t seeded = 0, pre_sum = 0, pre_nz = 0, dec_nz = 0;
+            uint64_t overlap = 0;
+            if (!pre.empty()) {
+                std::vector<int> order(lc->n_expert);
+                for (int e = 0; e < lc->n_expert; ++e) {
+                    order[e] = e;
+                    pre_sum += pre[e];
+                    if (pre[e] > 0) pre_nz++;
+                    if (dec[e] > 0) dec_nz++;
+                }
+                std::partial_sort(order.begin(), order.begin() + std::min<size_t>(C, order.size()),
+                                  order.end(), [&](int a, int b) { return pre[a] > pre[b]; });
+                // how many experts do the two phases agree on?  low overlap means one shared
+                // cache cannot serve both and the policies really do have to be separated
+                std::vector<int> dec_order = order;
+                std::partial_sort(dec_order.begin(), dec_order.begin() + std::min<size_t>(C, dec_order.size()),
+                                  dec_order.end(), [&](int a, int b) { return dec[a] > dec[b]; });
+                for (int i = 0; i < C && i < (int) order.size(); ++i) {
+                    seeded += dec[order[i]];
+                    for (int j = 0; j < C && j < (int) dec_order.size(); ++j) {
+                        if (order[i] == dec_order[j]) { overlap++; break; }
+                    }
+                }
+            }
+            dec_all += d_all;
+            dec_oracle += oracle;
+            dec_by_pre += seeded;
+            dec_overlap += overlap;
+            pre_all += pre_sum;
+            pre_touched += pre_nz;
+            dec_touched += dec_nz;
+            layers++;
+            slots += C;
+        }
+        if (dec_all > 0 && pre_all > 0) {
+            fprintf(stderr, "[MOE-CACHE] prefill/decode tendency: graphs pre=%llu dec=%llu | "
+                            "decode topC=%.1f%%  seeded-by-prompt-topC=%.1f%%  topC-overlap=%.1f%% | touched experts/layer "
+                            "pre=%.1f dec=%.1f of %d\n",
+                    (unsigned long long) s.use_graphs_pre, (unsigned long long) s.use_graphs_dec,
+                    100.0 * (double) dec_oracle / (double) dec_all,
+                    100.0 * (double) dec_by_pre / (double) dec_all,
+                    100.0 * (double) dec_overlap / (double) std::max<uint64_t>(1, (uint64_t) slots),
+                    layers > 0 ? (double) pre_touched / layers : 0.0,
+                    layers > 0 ? (double) dec_touched / layers : 0.0, s.manifest.n_experts);
+        }
+    }
+    if (s.rank_pred_total[0] > 0) {
+        fprintf(stderr, "[MOE-CACHE] per-rank prediction accuracy:");
+        for (int r = 0; r < moe_cache_state::kRankMax; ++r) {
+            if (s.rank_pred_total[r] == 0) {
+                break;
+            }
+            fprintf(stderr, " r%d=%.1f%%/y%.2f/ye%.2f(%llu)", r + 1,
+                    100.0 * (double) s.rank_pred_hit[r] / (double) s.rank_pred_total[r],
+                    (double) moe_cache_rank_yield(s, r), (double) moe_cache_rank_yield_est(s, r),
+                    (unsigned long long) s.rank_pred_total[r]);
+        }
+        fprintf(stderr, " | cut=%d yield_min=%.2f auto_steps=%llu trendV=%.4f trendP=%.4f budget=%.1fMB fits=%llu rej=%llu\n", moe_cache_effective_rank_cut(s),
+                (double) (s.yield_auto ? s.yield_auto_cur : s.rank_yield_min),
+                (unsigned long long) s.yield_auto_steps, s.trend_V, s.trend_P, s.trend_budget_mb,
+                (unsigned long long) s.trend_fits, (unsigned long long) s.trend_rejects);
+    }
     fprintf(stderr, "[MOE-CACHE] per-weight view summary (shared layer slots):\n");
     for (const auto & entry : s.entries) {
         const uint64_t total = entry->hits + entry->misses;
@@ -2208,6 +2684,81 @@ void moe_cache_init() {
     if (const char * env = getenv("LLAMA_MOE_FIFO")) {
         s.fifo = atoi(env) != 0;
     }
+    if (const char * env = getenv("LLAMA_MOE_CPU_ASYNC")) {
+        s.cpu_half_async = atoi(env);
+    }
+    if (const char * env = getenv("LLAMA_MOE_SMOE_NONBLOCK")) {
+        s.smoe_nonblock = atoi(env) != 0;
+    }
+    if (const char * env = getenv("LLAMA_MOE_SMOE_AHEAD")) {
+        s.smoe_ahead = std::max(1, atoi(env));
+    }
+    if (const char * env = getenv("LLAMA_MOE_TREND_AUTO")) {
+        s.trend_auto = atoi(env) != 0;
+    }
+    if (const char * env = getenv("LLAMA_MOE_BUDGET_FRAC")) {
+        s.budget_frac = (float) atof(env);
+    }
+    if (const char * env = getenv("LLAMA_MOE_TREND_WINDOW")) {
+        s.trend_window = std::max(8, atoi(env));
+    }
+    if (const char * env = getenv("LLAMA_MOE_YIELD_AUTO")) {
+        s.yield_auto = atoi(env) != 0;
+    }
+    if (const char * env = getenv("LLAMA_MOE_YIELD_AUTO_PERIOD")) {
+        s.yield_auto_period = std::max(4, atoi(env));
+    }
+    if (const char * env = getenv("LLAMA_MOE_YIELD_MIN")) {
+        s.rank_yield_min = (float) atof(env);
+    }
+    if (const char * env = getenv("LLAMA_MOE_YIELD_MIN_MIB")) {
+        s.rank_min_bytes = (uint64_t) std::max(0, atoi(env)) * 1048576ull;
+    }
+    if (const char * env = getenv("LLAMA_MOE_ADMIT_BUDGET_MIB")) {
+        s.admit_budget_bytes = (size_t) std::max(0, atoi(env)) * 1048576ull;
+    }
+    if (const char * env = getenv("LLAMA_MOE_RANK_ADAPTIVE")) {
+        s.rank_adaptive = atoi(env) != 0;
+    }
+    if (const char * env = getenv("LLAMA_MOE_RANK_THRESHOLD")) {
+        s.rank_threshold = (float) atof(env);
+    }
+    if (const char * env = getenv("LLAMA_MOE_RANK_MIN_SAMPLES")) {
+        s.rank_min_samples = std::max(1, atoi(env));
+    }
+    if (const char * env = getenv("LLAMA_MOE_HOT_FILL_BOOT")) {
+        s.hot_fill_boot = std::max(0, atoi(env));
+    }
+    if (const char * env = getenv("LLAMA_MOE_HOT_FILL_GRAPHS")) {
+        s.hot_fill_boot_graphs = std::max(0, atoi(env));
+    }
+    if (const char * env = getenv("LLAMA_MOE_HOT_IDLE")) {
+        s.hot_fill_idle = atoi(env) != 0;
+    }
+    if (const char * env = getenv("LLAMA_MOE_HOT_IDLE_GAP_MS")) {
+        s.hot_idle_gap_ms = std::max(1, atoi(env));
+    }
+    if (const char * env = getenv("LLAMA_MOE_HOT_BACKFILL")) {
+        s.hot_backfill = std::max(0, atoi(env));
+    }
+    if (const char * env = getenv("LLAMA_MOE_PHASE_FILL")) {
+        s.phase_fill = atoi(env) != 0;
+    }
+    if (const char * env = getenv("LLAMA_MOE_PHASE_FILL_MIB")) {
+        s.phase_fill_bytes = (size_t) std::max(0, atoi(env)) * 1048576ull;
+    }
+    if (const char * env = getenv("LLAMA_MOE_PREFILL_WEIGHT")) {
+        s.prefill_weight = std::max(0.0f, (float) atof(env));
+    }
+    if (const char * env = getenv("LLAMA_MOE_HOT_HALFLIFE")) {
+        s.hot_halflife = std::max(0, atoi(env));
+    }
+    if (const char * env = getenv("LLAMA_MOE_EVICT_SCORE")) {
+        s.evict_score = atoi(env);
+    }
+    if (const char * env = getenv("LLAMA_MOE_TAKE_MAX")) {
+        s.smoe_take_max = atoi(env);
+    }
     if (const char * env = getenv("LLAMA_MOE_MRS_ALPHA")) {
         char * end = nullptr;
         const float alpha = strtof(env, &end);
@@ -2260,6 +2811,7 @@ void moe_cache_init() {
             s.mrs_top_p, s.window_layers, (long long) (s.vram_limit_bytes / 1048576),
             (long long) (s.vram_guard_bytes / 1048576), (int) s.devpart);
     atexit(moe_cache_print_summary);
+    moe_crash_trace_enable();
 }
 
 int moe_cache_layer_from_name(const char * name) {
@@ -2316,6 +2868,7 @@ const moe_layer_cache & moe_cache_layer_state(const moe_cache_entry & entry) {
 void moe_cache_reset_layer(moe_cache_state & s, moe_layer_cache & layer) {
     layer.expert_slot.assign(layer.n_expert, -1);
     layer.slot_expert.assign(layer.n_slots, -1);
+    layer.slot_rank.assign(layer.n_slots, 255);
     layer.slot_tick.assign(layer.n_slots, 0);
     layer.slot_insert_tick.assign(layer.n_slots, 0);
     layer.slot_pending.assign(layer.n_slots, 0);
@@ -2502,6 +3055,7 @@ moe_cache_entry * moe_cache_ensure(ggml_backend_t split_backend, const ggml_tens
 }
 
 void moe_insert_worker(moe_cache_state & s);
+void moe_insert_spawn_extra_workers(moe_cache_state & s);
 
 void moe_cache_finalize(moe_cache_state & s) {
     if (!s.enabled || s.disabled || s.finalized || s.entries.empty()) {
@@ -2559,6 +3113,8 @@ void moe_cache_finalize(moe_cache_state & s) {
         if (s.n_slots <= 0) {
             fprintf(stderr, "[MOE-CACHE] global pool budget is smaller than one layer-expert slot; cache remains empty\\n");
             s.finalized = true;
+    moe_cache_seed_static(s);
+    moe_cache_hot_fill_start(s);
             return;
         }
         s.global_buf = ggml_backend_alloc_buffer(s.layers.begin()->second->backend,
@@ -2603,6 +3159,7 @@ void moe_cache_finalize(moe_cache_state & s) {
         if (s.split && s.insert_on_miss && !s.prefetch && !s.insert_running) {
             s.insert_running = true;
             s.insert_thread  = std::thread(moe_insert_worker, std::ref(s));
+        moe_insert_spawn_extra_workers(s);
         }
         return;
     }
@@ -2636,6 +3193,7 @@ void moe_cache_finalize(moe_cache_state & s) {
         if (s.split && s.insert_on_miss && !s.prefetch && !s.insert_running) {
             s.insert_running = true;
             s.insert_thread  = std::thread(moe_insert_worker, std::ref(s));
+        moe_insert_spawn_extra_workers(s);
         }
         return;
     }
@@ -2684,16 +3242,24 @@ void moe_cache_finalize(moe_cache_state & s) {
     if (s.split && s.insert_on_miss && !s.prefetch && s.window_layers <= 1 && !s.insert_running) {
         s.insert_running = true;
         s.insert_thread  = std::thread(moe_insert_worker, std::ref(s));
+        moe_insert_spawn_extra_workers(s);
     }
 }
 
 // original copy path: group consecutive experts and copy them together
 void moe_copy_experts_grouped(ggml_backend_t split_backend, const ggml_tensor * input, ggml_tensor * input_cpy,
-                              const std::vector<ggml_bitset_t> & used_ids, int64_t n_expert, size_t expert_size) {
+                              const std::vector<ggml_bitset_t> & used_ids, int64_t n_expert, size_t expert_size,
+                              moe_cache_entry * cache_entry = nullptr) {
+    // Prefill staging copy.  Experts already resident in the device cache only need a
+    // device->device copy (VRAM, ~1 TB/s), which removes their share from the host->device
+    // traffic - the dominant prefill cost with --cpu-moe weights.  Nothing is written into the
+    // cache here: prefill only reads it.
+    const size_t padding = std::min<size_t>(expert_size, 512);
+    GGML_UNUSED(cache_entry);
+
     auto copy_experts = [&](int32_t first_id, int32_t last_id) {
         const size_t expert_offset = first_id * expert_size;
         const size_t expert_size_copy =  (last_id - first_id + 1) * expert_size;
-        const size_t padding = std::min<size_t>(expert_size, 512);
         const size_t padding_end = last_id < n_expert - 1 ? padding : 0;
 
         ggml_backend_tensor_set_async(split_backend,
@@ -2727,6 +3293,22 @@ void moe_copy_experts_grouped(ggml_backend_t split_backend, const ggml_tensor * 
         last_id = id;
     }
     copy_experts(first_id, last_id);
+}
+
+// Score that decides which resident expert is overwritten.  The gate-softmax history
+// (mrs_score) ranked by it covers 0.2% of the true routing, while the ground-truth routing
+// frequency covers 51.6% in the same slots/layer - so frequency is the default and the cache
+// converges to the actually-hot set without any extra admission mechanism.
+bool moe_cache_use_score(const moe_cache_state & s, int layer, int32_t expert, float & score) {
+    if (s.evict_score != 0 || layer < 0 || layer >= (int) s.use_count.size()) {
+        return false;
+    }
+    const std::vector<uint32_t> & uc = s.use_count[layer];
+    if (expert < 0 || expert >= (int32_t) uc.size()) {
+        return false;
+    }
+    score = (float) uc[expert];
+    return true;
 }
 
 int moe_cache_pick_victim(moe_cache_state & s, moe_cache_entry & entry, int layer, bool allow_protected,
@@ -2833,7 +3415,8 @@ int moe_cache_pick_victim(moe_cache_state & s, moe_cache_entry & entry, int laye
                 // the admission stream, while MRS decides what leaves.  Protecting
                 // every layer's historical prediction here can freeze the entire
                 // pool and prevent a new next-layer window from being admitted.
-                const float score = normalized_score(candidate, expert);
+                float score = normalized_score(candidate, expert);
+                moe_cache_use_score(s, owner, expert, score);
                 if (best_slot < 0 || score < best_score ||
                     (score == best_score && s.global_slot_tick[v] < best_tick)) {
                     best_slot = v;
@@ -2909,8 +3492,11 @@ int moe_cache_pick_victim(moe_cache_state & s, moe_cache_entry & entry, int laye
                 if (respect_prediction && protected_by_prediction) {
                     continue;
                 }
-                const float score = expert < (int32_t) lc.mrs_score.size() &&
-                    std::isfinite(lc.mrs_score[expert]) ? lc.mrs_score[expert] : 0.0f;
+                float score = 0.0f;
+                if (!moe_cache_use_score(s, layer, expert, score)) {
+                    score = expert < (int32_t) lc.mrs_score.size() &&
+                        std::isfinite(lc.mrs_score[expert]) ? lc.mrs_score[expert] : 0.0f;
+                }
                 if (best < 0 || score < best_score ||
                     (score == best_score && lc.slot_tick[v] < best_tick)) {
                     best = v;
@@ -3199,6 +3785,7 @@ void moe_cache_copy(moe_cache_state & s, moe_cache_entry & entry, ggml_backend_t
                 s.global_slot_tick[slot] = lc.slot_tick[slot];
             }
             entry.hits++;
+            s.hits_seen++;
             s.graph_stats[entry.layer][0]++;
         } else {
             ggml_backend_tensor_set_async(split_backend, input_cpy, host + (size_t) e * esize,
@@ -3331,15 +3918,55 @@ void moe_cache_prefetch_layer(moe_cache_state & s, int layer, const std::vector<
 
     bool began = false;
     const bool queue_on_worker = s.split && s.insert_running;
+    // fairness: cap each layer to its share of the token budget, otherwise the first layers
+    // consume everything and the later ones never get a slot
+    size_t layer_bytes = 0;
+    size_t layer_budget = 0;   // lazily floored to one bundle: a share smaller than the first
+                               // candidate would reject every admission outright
     s.prefetch_requests++;
-    for (const int32_t e : ranked) {
-        if (e < 0 || e >= lc.n_expert || lc.expert_slot[e] >= 0) {
+    for (size_t i = 0; i < ranked.size(); ++i) {
+        for (size_t j = 0; j < i; ++j) {
+            if (ranked[j] == ranked[i]) {
+                s.prefetch_dup_list++;
+                break;
+            }
+        }
+    }
+    for (size_t ci = 0; ci < ranked.size(); ++ci) {
+        const int32_t e = ranked[ci];
+        // the candidate list arrives in prediction-rank order, so the index is the rank
+        const uint8_t cand_rank = prediction && ci < (size_t) moe_cache_state::kRankMax
+                                      ? (uint8_t) ci : (uint8_t) 255;
+        if (e < 0 || e >= lc.n_expert) {
+            continue;
+        }
+        if (lc.expert_slot[e] >= 0) {
+            // already resident, or resident-and-still-transferring: a second copy would be
+            // pure waste, so the slot map (assigned at admission, before the copy lands) is
+            // the dedup authority here
+            s.prefetch_dup_resident++;
+            if (lc.slot_pending[lc.expert_slot[e]]) {
+                s.prefetch_dup_pending++;
+            }
             continue;
         }
         size_t bundle_bytes = 0;
         for (const moe_cache_entry * entry : it->second) {
             bundle_bytes += entry->expert_size + (e < entry->n_expert - 1 ? std::min(entry->expert_size, (size_t) 512) : 0);
         }
+        // the budget exists to protect the prediction deadline; backfill and seed serve later
+        // tokens and are already self-terminating, so throttling them only delays the hot set
+        if (prediction && s.admit_budget_bytes > 0 && layer_budget == 0) {
+            const size_t share = s.admit_budget_bytes / (size_t) std::max<size_t>(1, s.layers.size());
+            layer_budget = std::max(share, bundle_bytes);
+        }
+        if (prediction && s.admit_budget_bytes > 0 &&
+            (s.graph_admit_bytes + bundle_bytes > s.admit_budget_bytes ||
+             layer_bytes + bundle_bytes > layer_budget)) {
+            s.admit_budget_clipped++;
+            break;   // budget spent: the rest of the ranks wait for the next token
+        }
+        layer_bytes += bundle_bytes;
         if (prediction && s.prefetch_gate && !queue_on_worker) {
             const int dist = layer > s.cur_layer ? layer - s.cur_layer : layer - s.cur_layer + (int) s.layers.size();
             if (!moe_prefetch_feasible(s, bundle_bytes, (int) it->second.size(), dist)) {
@@ -3350,9 +3977,35 @@ void moe_cache_prefetch_layer(moe_cache_state & s, int layer, const std::vector<
         moe_cache_entry & ref = *it->second.front();
         const int victim = moe_cache_pick_victim(s, ref, layer, /*allow_protected=*/false);
         if (victim < 0) {
-            break; // cache full of protected experts
+            s.prefetch_no_victim++;   // every slot is protected/immortal: admission starves
+            break;
         }
         s.prefetch_experts++;
+        s.graph_admit_bytes += bundle_bytes;
+        if (cand_rank < moe_cache_state::kRankMax) {
+            s.rank_bytes[cand_rank] += bundle_bytes;
+            s.rank_admits[cand_rank]++;
+        } else {
+            s.rank_bytes_other += bundle_bytes;
+        }
+        if (lc.slot_expert[victim] == e) {
+            s.prefetch_dup_admit++;   // would be a self-copy: same expert into the same slot
+        }
+        if ((int) s.ever_admitted.size() <= layer) {
+            s.ever_admitted.resize(layer + 1);
+        }
+        {
+            std::vector<ggml_bitset_t> & ea = s.ever_admitted[layer];
+            const size_t words = ggml_bitset_size(lc.n_expert);
+            if (ea.size() != words) {
+                ea.assign(words, 0);
+            }
+            if (ggml_bitset_get(ea.data(), e)) {
+                s.prefetch_readmit++;
+            } else {
+                ggml_bitset_set(ea.data(), e);
+            }
+        }
         if (!queue_on_worker && !began) {
             backend->iface.prefetch_begin(backend);
             began = true;
@@ -3372,6 +4025,7 @@ void moe_cache_prefetch_layer(moe_cache_state & s, int layer, const std::vector<
             if (!s.global_pool) {
                 lc.slot_expert[victim]  = e;
                 lc.expert_slot[e]       = victim;
+                lc.slot_rank[victim]    = cand_rank;
                 lc.slot_tick[victim]    = ++s.tick;
                 lc.slot_insert_tick[victim] = lc.slot_tick[victim];
             }
@@ -3411,6 +4065,7 @@ void moe_cache_prefetch_layer(moe_cache_state & s, int layer, const std::vector<
         if (!s.global_pool) {
             lc.slot_expert[victim]  = e;
             lc.expert_slot[e]       = victim;
+            lc.slot_rank[victim]    = cand_rank;
             lc.slot_tick[victim]    = ++s.tick;
             lc.slot_insert_tick[victim] = lc.slot_tick[victim];
         }
@@ -3825,6 +4480,45 @@ bool moe_cache_predict_fate(moe_cache_state & s, ggml_backend_sched_t sched,
 // pinned host slice for one layer's topk readback; pageable D2H on the compute
 // stream acts as a stream barrier, so the staging must be pinned.  Returns
 // nullptr when unavailable (caller falls back to the pageable vector).
+// Pinned staging for the small host readbacks (router ids, MRS scores).  A cudaMemcpyAsync
+// into a pageable vector blocks the caller inside the driver, which showed up as ~3.7 ms per
+// token of *enqueue* time across the per-layer readbacks; into pinned memory it is a real
+// async copy.  begin() returns the destination, end() must run after the synchronize.
+void * moe_cache_d2h_begin(moe_cache_state & s, ggml_backend_t backend, size_t bytes) {
+    if (s.d2h_pin_failed || bytes == 0 || bytes > (8u << 20)) {
+        return nullptr;
+    }
+    if (s.d2h_pin_buf == nullptr || s.d2h_pin_size < bytes) {
+        if (s.d2h_pin_buf != nullptr) {
+            ggml_backend_buffer_free(s.d2h_pin_buf);
+            s.d2h_pin_buf = nullptr;
+        }
+        ggml_backend_dev_t dev = backend != nullptr ? ggml_backend_get_device(backend) : nullptr;
+        ggml_backend_buffer_type_t buft = dev != nullptr ? ggml_backend_dev_host_buffer_type(dev) : nullptr;
+        if (buft == nullptr) {
+            s.d2h_pin_failed = true;
+            return nullptr;
+        }
+        s.d2h_pin_buf = ggml_backend_buft_alloc_buffer(buft, std::max<size_t>(bytes, 1u << 16));
+        if (s.d2h_pin_buf == nullptr) {
+            s.d2h_pin_failed = true;
+            return nullptr;
+        }
+        s.d2h_pin_size = ggml_backend_buffer_get_size(s.d2h_pin_buf);
+    }
+    s.d2h_stage       = ggml_backend_buffer_get_base(s.d2h_pin_buf);
+    s.d2h_stage_bytes = bytes;
+    return s.d2h_stage;
+}
+
+void moe_cache_d2h_end(moe_cache_state & s, void * dst) {
+    if (s.d2h_stage != nullptr && dst != nullptr && dst != s.d2h_stage) {
+        memcpy(dst, s.d2h_stage, s.d2h_stage_bytes);
+    }
+    s.d2h_stage       = nullptr;
+    s.d2h_stage_bytes = 0;
+}
+
 int32_t * moe_cache_smoe_staging(moe_cache_state & s, ggml_backend_t backend, int layer, int k) {
     if (s.smoe_pin_failed) {
         return nullptr;
@@ -3859,12 +4553,12 @@ int32_t * moe_cache_smoe_staging(moe_cache_state & s, ggml_backend_t backend, in
 bool moe_cache_smoe_enqueue(moe_cache_state & s, ggml_backend_t split_backend,
                             ggml_tensor * tensor, int layer, bool logits_fallback) {
     if (!s.enabled || s.disabled || !s.smoe_predict || split_backend == nullptr || tensor == nullptr ||
-        layer < 0 || layer + 1 >= (int) s.layers.size() ||
+        layer < 0 || layer + s.smoe_ahead >= (int) s.layers.size() ||
         tensor->ne[1] != 1 || tensor->ne[2] != 1 || tensor->ne[3] != 1 ||
         (s.last_smoe_graph == s.graph_id && s.last_smoe_layer == layer)) {
         return false;
     }
-    const auto layer_it = s.layers.find(layer + 1);
+    const auto layer_it = s.layers.find(layer + s.smoe_ahead);
     if (layer_it == s.layers.end() || layer_it->second == nullptr || layer_it->second->n_expert <= 0) {
         return false;
     }
@@ -3933,8 +4627,322 @@ void moe_cache_predict_smoe_split(moe_cache_state & s, ggml_backend_t split_back
 }
 
 // turn one staged readback into the next-layer prediction
+// Cold start: the manifest carries per-layer expert activation frequency measured over a
+// prompt corpus.  Place the hottest entries so the first tokens already hit, instead of
+// paying the CPU path until the runtime hot set has accumulated.
+void moe_cache_seed_static(moe_cache_state & s) {
+    if (s.pin_static <= 0 || s.manifest.hot.empty() || s.manifest.n_static == 0 || s.layers.empty()) {
+        return;
+    }
+    for (auto & kv : s.layers) {
+        const int layer = kv.first;
+        if (layer < 0 || layer >= (int) s.manifest.n_layers) {
+            continue;
+        }
+        moe_layer_cache & lc = *kv.second;
+        if (lc.buf == nullptr || lc.n_slots <= 0) {
+            continue;
+        }
+        const uint16_t * hot = s.manifest.hot.data() + (size_t) layer * s.manifest.n_static;
+        const int want = std::min(std::min(s.pin_static, (int) s.manifest.n_static),
+                                  std::min(lc.n_expert, lc.n_slots));
+        std::vector<int32_t> seed;
+        seed.reserve(want);
+        for (int j = 0; j < want; ++j) {
+            const int32_t e = (int32_t) hot[j];
+            if (e >= 0 && e < lc.n_expert && lc.expert_slot[e] < 0) {
+                seed.push_back(e);
+            }
+        }
+        if (seed.empty()) {
+            continue;
+        }
+        moe_cache_prefetch_layer(s, layer, seed, /*prediction=*/false);
+        s.hot_seed_experts += seed.size();
+    }
+}
+
+// Background filler: when the model has been idle (the user is typing, or between requests)
+// keep moving the actually-hot experts in.  It never blocks the compute path: the mutex only
+// covers bookkeeping, the copies go to the side stream, and completion is polled.
+void moe_cache_hot_fill_thread_main(moe_cache_state * sp) {
+    moe_cache_state & s = *sp;
+    while (!s.hot_fill_stop.load(std::memory_order_relaxed)) {
+        {
+            std::unique_lock<std::mutex> lock(s.hot_fill_mtx, std::try_to_lock);
+            if (!lock.owns_lock() || s.graph_active.load(std::memory_order_relaxed)) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                continue;
+            }
+            const uint64_t now = (uint64_t) ggml_time_us();
+            const uint64_t last = s.last_activity_us.load(std::memory_order_relaxed);
+            if (last != 0 && now - last < (uint64_t) s.hot_idle_gap_ms * 1000ull) {
+                lock.unlock();
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                continue;
+            }
+            moe_cache_hot_backfill(s, s.hot_fill_boot > 0 ? s.hot_fill_boot : s.hot_idle_batch);
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(2));
+    }
+}
+
+void moe_cache_hot_fill_start(moe_cache_state & s) {
+    if (!s.hot_fill_idle || !s.enabled || s.hot_fill_thread.joinable()) {
+        return;
+    }
+    s.hot_fill_stop = false;
+    s.hot_fill_thread = std::thread(moe_cache_hot_fill_thread_main, &s);
+}
+
+void moe_cache_hot_fill_stop(moe_cache_state & s) {
+    if (!s.hot_fill_thread.joinable()) {
+        return;
+    }
+    s.hot_fill_stop = true;
+    s.hot_fill_thread.join();
+}
+
+// The useful depth of the prediction depends on the distribution: track the measured
+// per-rank accuracy and admit every rank that clears the threshold, instead of a fixed depth.
+float moe_cache_rank_yield(const moe_cache_state & s, int r) {
+    if (r < 0 || r >= moe_cache_state::kRankMax || s.rank_bytes[r] == 0) {
+        return 0.0f;
+    }
+    return (float) ((double) s.rank_hits[r] / ((double) s.rank_bytes[r] / 1048576.0));
+}
+
+// An admitted rank's yield is only measurable once it has been admitted.  For deeper ranks
+// price them from the measured accuracy times the observed value of an admission (hits per
+// admission at the best rank), so the gate can open up; the byte budget is what finally caps
+// how deep it goes.
+float moe_cache_rank_yield_est(const moe_cache_state & s, int r) {
+    const float measured = moe_cache_rank_yield(s, r);
+    if (measured > 0.0f || s.rank_admits[0] == 0) {
+        return measured;
+    }
+    const double hits_per_admit = (double) s.rank_hits[0] / (double) s.rank_admits[0];
+    const double mib_per_admit  = ((double) s.rank_bytes[0] / (double) s.rank_admits[0]) / 1048576.0;
+    const double acc = s.rank_pred_total[r] > 0
+                           ? (double) s.rank_pred_hit[r] / (double) s.rank_pred_total[r] : 0.0;
+    return (float) (mib_per_admit > 0.0 ? acc * hits_per_admit / mib_per_admit : 0.0);
+}
+
+int moe_cache_effective_rank_cut(const moe_cache_state & s) {
+    const int fixed = s.smoe_take_max >= 0 ? s.smoe_take_max : 2;
+    float yield_min = s.yield_auto ? std::max(0.5f, s.yield_auto_cur) : s.rank_yield_min;
+    if (s.trend_auto && s.trend_V > 0.0 && s.trend_P > 0.0) {
+        // break-even hits per MB straight from the fit, with hysteresis so the gate does not
+        // oscillate with regression noise
+        const float want = (float) std::min(64.0, std::max(0.5, s.trend_P / s.trend_V));
+        static thread_local float shown = 0.0f;
+        if (shown <= 0.0f || std::abs(want - shown) > 0.1f * shown) {
+            shown = want;
+        }
+        yield_min = shown;
+    }
+    if (yield_min > 0.0f) {
+        // admit ranks while the measured yield stays above the bar: every rank costs the same
+        // bytes, so the deepest affordable rank follows the data instead of a constant
+        // the raw per-rank yields are noisy (and not monotone: r3 measured 7.9 while r4
+        // measured 17.0), so require the deepest rank to clear the bar on the *monotone
+        // envelope*: a deeper rank may not be worth more than a shallower one.
+        int   cut = 0;
+        float env = std::numeric_limits<float>::infinity();
+        for (int r = 0; r < moe_cache_state::kRankMax; ++r) {
+            env = std::min(env, moe_cache_rank_yield_est(s, r));
+            if (env < yield_min) {
+                break;
+            }
+            cut = r + 1;
+        }
+        return cut > 0 ? cut : 1;
+    }
+    if (!s.rank_adaptive) {
+        return fixed;
+    }
+    int cut = 0;
+    for (int r = 0; r < moe_cache_state::kRankMax; ++r) {
+        if (s.rank_pred_total[r] < (uint64_t) s.rank_min_samples) {
+            break;
+        }
+        const float acc = (float) s.rank_pred_hit[r] / (float) s.rank_pred_total[r];
+        if (acc < s.rank_threshold) {
+            break;
+        }
+        cut = r + 1;
+    }
+    return cut > 0 ? cut : 1;
+}
+
+// Fill the hot set from the ground-truth routing frequency using transfer slack.  Called at
+// graph end, after every split: it never waits, never joins, and never delays the prediction
+// prefetch (that runs at split boundaries, before this).  Candidates colder than the coldest
+// resident are skipped, so once the cache holds the hot set this costs nothing at all.
+// Least squares for ms ~= a - V*hits + P*MB over the recent window.  Returns false when the
+// data cannot support a fit (too few points, no spread, singular or implausible solution):
+// the caller then keeps whatever it had, so a bad fit can never slow the run down.
+bool moe_cache_trend_fit(moe_cache_state & s, double & V, double & P) {
+    const auto & pts = s.trend_pts;
+    const size_t n = pts.size();
+    if (n < 16) {
+        return false;
+    }
+    double mh = 0, mb = 0, mm = 0;
+    for (const auto & p : pts) { mh += p.hits; mb += p.mb; mm += p.ms; }
+    mh /= (double) n; mb /= (double) n; mm /= (double) n;
+    double shh = 0, sbb = 0, shb = 0, shm = 0, sbm = 0;
+    double hmin = 1e30, hmax = -1e30, bmin = 1e30, bmax = -1e30;
+    for (const auto & p : pts) {
+        const double h = p.hits - mh, b = p.mb - mb, m = p.ms - mm;
+        shh += h * h; sbb += b * b; shb += h * b; shm += h * m; sbm += b * m;
+        hmin = std::min(hmin, p.hits); hmax = std::max(hmax, p.hits);
+        bmin = std::min(bmin, p.mb);   bmax = std::max(bmax, p.mb);
+    }
+    // need real spread on both regressors, otherwise the fit is pure extrapolation
+    if (hmax - hmin < 0.15 * std::max(1.0, mh) || bmax - bmin < 8.0) {
+        return false;
+    }
+    const double det = shh * sbb - shb * shb;
+    if (std::abs(det) < 1e-9) {
+        return false;
+    }
+    // ms = a + b*h + c*B  with b = dms/dhits, c = dms/dMB
+    const double b = (shm * sbb - sbm * shb) / det;
+    const double c = (sbm * shh - shm * shb) / det;
+    const double vv = -b;   // value of a hit
+    const double pp =  c;   // cost of a megabyte
+    if (!std::isfinite(vv) || !std::isfinite(pp) ||
+        vv < 0.005 || vv > 2.0 || pp < 0.001 || pp > 0.5) {
+        return false;   // implausible: keep the previous model
+    }
+    V = vv;
+    P = pp;
+    return true;
+}
+
+// One extremum-seeking step: probe the threshold up or down, keep the direction while the
+// median token time improves, reverse when it worsens.  Medians (not means) so a single slow
+// token cannot flip the controller.
+void moe_cache_yield_auto_step(moe_cache_state & s, double graph_ms) {
+    if (!s.yield_auto) {
+        return;
+    }
+    if (s.yield_auto_cur <= 0.0f) {
+        s.yield_auto_cur = s.yield_auto_min;
+        s.yield_auto_best = s.yield_auto_min;
+    }
+    s.yield_auto_cur_ms.push_back(graph_ms);
+    if ((int) s.yield_auto_cur_ms.size() < s.yield_auto_period) {
+        return;
+    }
+    if (!s.yield_auto_prev_ms.empty()) {
+        std::vector<double> a = s.yield_auto_prev_ms, b = s.yield_auto_cur_ms;
+        std::nth_element(a.begin(), a.begin() + a.size() / 2, a.end());
+        std::nth_element(b.begin(), b.begin() + b.size() / 2, b.end());
+        const double pa = a[a.size() / 2], pb = b[b.size() / 2];
+        if (pb > pa * 1.005) {
+            s.yield_auto_dir = -s.yield_auto_dir;   // worse: reverse
+        }
+        const float next = s.yield_auto_cur * (1.0f + 0.1f * (float) s.yield_auto_dir);
+        s.yield_auto_cur = std::min(s.yield_auto_max, std::max(0.5f, next));
+        if (pb < pa) {
+            s.yield_auto_best = s.yield_auto_cur;
+        }
+        s.yield_auto_steps++;
+        fprintf(stderr, "[MOE-CACHE] yield-auto: probe %.2f dir=%+d median_ms %.2f -> %.2f (best=%.2f)\n",
+                (double) s.yield_auto_cur, s.yield_auto_dir, pa, pb, (double) s.yield_auto_best);
+    } else {
+        s.yield_auto_best = s.yield_auto_cur;
+    }
+    s.yield_auto_prev_ms.swap(s.yield_auto_cur_ms);
+    s.yield_auto_cur_ms.clear();
+}
+
+// Phase-boundary burst: bring in as much of the decode hot set as the byte cap allows.  Uses
+// the same self-terminating backfill (a candidate must beat the coldest resident), so it stops
+// by itself once the cache holds the hot set, and it never touches the transfer of a running
+// graph - it runs at graph end, like the ordinary backfill.
+void moe_cache_phase_fill(moe_cache_state & s) {
+    if (!s.phase_fill || s.phase_fill_bytes == 0 || s.evict_score != 0 || !s.prefetch) {
+        return;
+    }
+    const int n_layers = (int) s.layers.size();
+    if (n_layers <= 0) {
+        return;
+    }
+    const uint64_t before = s.hot_backfill_experts;
+    size_t spent = 0;
+    for (int pass = 0; pass < 4096; ++pass) {
+        const uint64_t prev = s.hot_backfill_experts;
+        moe_cache_hot_backfill(s, n_layers);
+        const uint64_t moved = s.hot_backfill_experts - prev;
+        if (moved == 0) {
+            break;   // nothing hotter than the coldest resident: converged
+        }
+        spent = (size_t) (s.hot_backfill_experts - before) * 2ull * 1048576ull;   // ~2 MiB/expert
+        if (spent >= s.phase_fill_bytes) {
+            break;
+        }
+    }
+    s.phase_fills++;
+    s.phase_fill_experts += s.hot_backfill_experts - before;
+}
+
+void moe_cache_hot_backfill(moe_cache_state & s, int budget_override) {
+    if (!s.enabled || s.disabled || s.hot_backfill <= 0 || s.evict_score != 0 ||
+        !s.prefetch || !s.finalized || s.layers.empty()) {
+        return;
+    }
+    const int n_layers = (int) s.layers.size();
+    // fill fast at the start (a cold cache is the expensive state), then settle to the steady
+    // budget: matching boot and steady measured the same plateau, but a bigger boot budget
+    // reaches it sooner.
+    int budget = budget_override > 0 ? budget_override
+               : (s.hot_fill_boot > 0 && (int) s.graph_id <= s.hot_fill_boot_graphs
+                      ? s.hot_fill_boot : s.hot_backfill);
+    bool moved = false;
+    for (int k = 0; k < n_layers && budget > 0; ++k) {
+        const int layer = (s.hot_cursor + k) % n_layers;
+        s.hot_cursor = (layer + 1) % n_layers;
+        auto il = s.layers.find(layer);
+        if (il == s.layers.end() || layer < 0 || layer >= (int) s.use_count.size()) {
+            continue;
+        }
+        moe_layer_cache & lc = *il->second;
+        const std::vector<uint32_t> & uc = s.use_count[layer];
+        if (lc.buf == nullptr || (int) uc.size() != lc.n_expert) {
+            continue;
+        }
+        int      best       = -1;
+        uint32_t best_count = 0;
+        uint32_t min_resident = UINT32_MAX;
+        for (int e = 0; e < lc.n_expert; ++e) {
+            if (lc.expert_slot[e] >= 0) {
+                min_resident = std::min(min_resident, uc[e]);
+                continue;
+            }
+            if (uc[e] > best_count || (best < 0 && uc[e] > 0)) {
+                best       = e;
+                best_count = uc[e];
+            }
+        }
+        if (best < 0 || best_count <= min_resident) {
+            continue;   // nothing hotter than what is already resident
+        }
+        const std::vector<int32_t> one = { best };
+        moe_cache_prefetch_layer(s, layer, one, /*prediction=*/false);
+        s.hot_backfill_experts++;
+        moved = true;
+        budget--;
+    }
+    if (!moved) {
+        s.hot_backfill_idle++;
+    }
+}
+
 void moe_cache_smoe_process(moe_cache_state & s, const moe_cache_state::smoe_pending_read & pending) {
-    const int target_layer = pending.layer + 1;
+    const int target_layer = pending.layer + s.smoe_ahead;
     const auto layer_it = s.layers.find(target_layer);
     if (layer_it == s.layers.end() || layer_it->second == nullptr) {
         return;
@@ -3943,14 +4951,29 @@ void moe_cache_smoe_process(moe_cache_state & s, const moe_cache_state::smoe_pen
     // cap the take to the routed count plus a small margin; the remaining slots are left
     // to MRS-retained history instead of being churned by over-admission
     const int n_used = layer_it->second->n_used;
-    const int take_max = n_used > 0 ? std::min(n_used + 2, n_expert) : n_expert;
+    // admission cutoff by PREDICTION RANK (not a count of transfers): measured hits-per-byte
+    // decays monotonically with rank (4.7 / 3.1 / 2.2 / 1.8 for cutoff 1 / 2 / 3 / 4), because
+    // the logit ordering stops being informative past the first few experts.  n_used is only
+    // known once the layer has been partitioned, so fall back to a fixed cutoff instead of
+    // silently removing the cutoff altogether.
+    // default 2: measured hits-per-byte over this trace is 5.2 / 4.0 / 3.2 for cutoff
+    // 2 / 3 / 4 and each extra ~100MB/token of prefetch costs ~7ms of GPU time through
+    // PCIe contention (14.1-14.3 t/s at cutoff 2 vs 13.4 at 4 vs 10 at 12).
+    const int rank_cut = moe_cache_effective_rank_cut(s);
 
     std::vector<int32_t> merged;
+    std::vector<int32_t> cand;   // full rank-ordered candidates, for per-rank accuracy
     if (pending.logits == nullptr) {
         const int32_t * topk = pending.staged != nullptr ? pending.staged : s.smoe_stage[pending.layer].data();
         const int n_topk = pending.staged != nullptr ? pending.k : (int) s.smoe_stage[pending.layer].size();
-        const int take = std::min(s.n_slots > 0 ? std::min(s.n_slots, n_topk) : n_topk, take_max);
-        merged.reserve(take);
+        const int take = std::min(s.n_slots > 0 ? std::min(s.n_slots, n_topk) : n_topk, rank_cut);
+        merged.reserve(take > 0 ? take : 0);
+        cand.reserve(std::min(n_topk, (int) moe_cache_state::kRankMax));
+        for (int i = 0; i < n_topk && i < moe_cache_state::kRankMax; ++i) {
+            if (topk[i] >= 0 && topk[i] < n_expert) {
+                cand.push_back(topk[i]);
+            }
+        }
         for (int i = 0; i < take; ++i) {
             if (topk[i] >= 0 && topk[i] < n_expert) {
                 merged.push_back(topk[i]);
@@ -3988,8 +5011,12 @@ void moe_cache_smoe_process(moe_cache_state & s, const moe_cache_state::smoe_pen
                           [&](int a, int b) {
             return logits[a] != logits[b] ? logits[a] > logits[b] : a < b;
         });
-        const int take = std::min(s.n_slots > 0 ? std::min(s.n_slots, candidate_k) : candidate_k, take_max);
-        merged.reserve(take);
+        const int take = std::min(s.n_slots > 0 ? std::min(s.n_slots, candidate_k) : candidate_k, rank_cut);
+        merged.reserve(take > 0 ? take : 0);
+        cand.reserve(std::min(candidate_k, (int) moe_cache_state::kRankMax));
+        for (int i = 0; i < candidate_k && i < moe_cache_state::kRankMax; ++i) {
+            cand.push_back(order[i]);
+        }
         for (int i = 0; i < take; ++i) {
             merged.push_back(order[i]);
         }
@@ -4004,6 +5031,14 @@ void moe_cache_smoe_process(moe_cache_state & s, const moe_cache_state::smoe_pen
         ggml_bitset_set(bits.data(), merged[i]);
         rank[merged[i]] = (uint16_t) i;
     }
+    // measure accuracy for every candidate rank, not only the admitted prefix: otherwise a
+    // narrow cutoff starves the statistics and the adaptive depth can never grow
+    for (int i = 0; i < (int) cand.size() && i < moe_cache_state::kRankMax; ++i) {
+        s.rank_pred_total[i]++;
+        if (rank[cand[i]] == 0xFFFF) {
+            rank[cand[i]] = (uint16_t) i;
+        }
+    }
     s.pred_valid[target_layer] = 1;
     if (s.prefetch && s.finalized) {
         s.deferred_prefetch[target_layer] = merged;
@@ -4012,8 +5047,10 @@ void moe_cache_smoe_process(moe_cache_state & s, const moe_cache_state::smoe_pen
     s.smoe_logits += (uint64_t) n_expert;
 }
 
-// consume every staged readback of one backend; the stream only holds work up
-// to the previous split at the call sites, so this never waits on future splits
+// consume every staged readback of one backend.  LLAMA_MOE_SMOE_NONBLOCK=1 makes this a
+// poll: entries whose copy has not landed stay pending and are retried at the next split,
+// so the scheduler thread never blocks on the predictor.  (The graph-end drain_all still
+// blocks once, to retire whatever is left.)
 void moe_cache_smoe_drain(moe_cache_state & s, ggml_backend_t backend) {
     bool any = false;
     for (const auto & p : s.smoe_pending) {
@@ -4028,13 +5065,26 @@ void moe_cache_smoe_drain(moe_cache_state & s, ggml_backend_t backend) {
     std::vector<moe_cache_state::smoe_pending_read> rest;
     for (const auto & p : s.smoe_pending) {
         if (p.backend == backend) {
+            const auto tm_se0 = std::chrono::steady_clock::now();
             if (p.ev != nullptr) {
-                ggml_backend_event_synchronize(p.ev);
+                if (s.smoe_nonblock && backend->iface.event_query != nullptr &&
+                    !backend->iface.event_query(backend, p.ev)) {
+                    rest.push_back(p);   // copy still in flight: retry at a later split
+                    s.n_smoe_deferred++;
+                    continue;
+                }
+                if (!s.smoe_nonblock || backend->iface.event_query == nullptr) {
+                    ggml_backend_event_synchronize(p.ev);
+                }
                 ggml_backend_event_free(p.ev);
             } else {
                 ggml_backend_synchronize(backend);
             }
+            const auto tm_se1 = std::chrono::steady_clock::now();
             moe_cache_smoe_process(s, p);
+            const auto tm_se2 = std::chrono::steady_clock::now();
+            s.tm_smoe_evt_us  += (uint64_t) std::chrono::duration_cast<std::chrono::microseconds>(tm_se1 - tm_se0).count();
+            s.tm_smoe_proc_us += (uint64_t) std::chrono::duration_cast<std::chrono::microseconds>(tm_se2 - tm_se1).count();
         } else {
             rest.push_back(p);
         }
@@ -4127,6 +5177,15 @@ bool moe_cache_queue_mrs_scores(moe_cache_state & s, ggml_backend_sched_t sched,
     if (!s.mrs || n_expert <= 0) {
         return false;
     }
+    // LLAMA_MOE_MRS_FULL=0: skip the per-layer full-score readback (the caller then
+    // updates MRS from the already-read top-k ids/weights instead)
+    static const int mrs_full = []() {
+        const char * env = getenv("LLAMA_MOE_MRS_FULL");
+        return env != nullptr ? atoi(env) : 1;
+    }();
+    if (mrs_full == 0) {
+        return false;
+    }
     const char * prefixes[] = {
         "ffn_moe_probs_masked",
         "ffn_moe_probs_biased",
@@ -4152,8 +5211,10 @@ bool moe_cache_queue_mrs_scores(moe_cache_state & s, ggml_backend_sched_t sched,
         return false;
     }
     scores.assign(n_expert, 0.0f);
-    ggml_backend_tensor_get_async(score_backend, score_tensor, scores.data(), 0,
-                                  (size_t) n_expert * sizeof(float));
+    const size_t score_bytes = (size_t) n_expert * sizeof(float);
+    void * score_stage = moe_cache_d2h_begin(s, score_backend, score_bytes);
+    ggml_backend_tensor_get_async(score_backend, score_tensor,
+                                  score_stage != nullptr ? score_stage : scores.data(), 0, score_bytes);
     return true;
 }
 
@@ -4166,13 +5227,108 @@ void moe_insert_drain(moe_cache_state & s);
 void moe_insert_flush(moe_cache_state & s);
 void moe_cache_slot_events_drain(moe_cache_state & s);
 
+// ---- async CPU-half executor -------------------------------------------------
+static void moe_cpu_half_worker(moe_cache_state & s) {
+#ifdef _WIN32
+    SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_BELOW_NORMAL);
+#endif
+    std::unique_lock<std::mutex> lock(s.cpu_half_mtx);
+    for (;;) {
+        s.cpu_half_cv.wait(lock, [&]() { return s.cpu_half_ready; });
+        ggml_backend_t backend = s.cpu_half_backend;
+        ggml_cgraph *  graph   = s.cpu_half_graph;
+        ggml_backend_event_t ev = s.cpu_half_event;
+        s.cpu_half_ready   = false;
+        s.cpu_half_running = true;
+        lock.unlock();
+        if (ev != nullptr) {
+            // the activation D2H that fills cur_cpu is still in flight on the GPU stream
+            ggml_backend_event_synchronize(ev);
+        }
+        ggml_backend_graph_compute_async(backend, graph);
+        lock.lock();
+        s.cpu_half_running = false;
+        s.cpu_half_cv.notify_all();
+    }
+}
+
+void moe_cpu_half_submit(moe_cache_state & s, ggml_backend_t backend, ggml_cgraph * graph, ggml_backend_event_t wait_ev) {
+    std::unique_lock<std::mutex> lock(s.cpu_half_mtx);
+    if (!s.cpu_half_started) {
+        s.cpu_half_started = true;
+        s.cpu_half_thread  = std::thread(moe_cpu_half_worker, std::ref(s));
+        s.cpu_half_thread.detach();
+    }
+    s.cpu_half_cv.wait(lock, [&]() { return !s.cpu_half_ready && !s.cpu_half_running; });
+    s.cpu_half_backend = backend;
+    s.cpu_half_graph   = graph;
+    s.cpu_half_event   = wait_ev;
+    s.cpu_half_ready   = true;
+    s.cpu_half_cv.notify_all();
+}
+
+void moe_cpu_half_join(moe_cache_state & s) {
+    std::unique_lock<std::mutex> lock(s.cpu_half_mtx);
+    s.cpu_half_cv.wait(lock, [&]() { return !s.cpu_half_ready && !s.cpu_half_running; });
+}
+
+// find the CPU-half split of this layer and hand it to the worker; called from the
+// partition hook, i.e. while the GPU half is still being prepared.  The CPU-half host
+// leaves are filled here too (the scheduler used to do it when the CPU split came up).
+static void moe_cpu_half_submit_layer(moe_cache_state & s, ggml_backend_sched_t sched, int layer) {
+    auto pit = s.split_parts.find(layer);
+    if (pit == s.split_parts.end() || pit->second.graph_id != s.graph_id) {
+        return;
+    }
+    for (int si = 0; si < sched->n_splits; ++si) {
+        struct ggml_backend_sched_split * sp = &sched->splits[si];
+        for (int n = 0; n < sp->graph.n_nodes; ++n) {
+            ggml_tensor * cand = sp->graph.nodes[n];
+            ggml_tensor * ids_leaf = nullptr;
+            if (cand->op == GGML_OP_MOE_CPU && cand->src[4] != nullptr &&
+                strstr(cand->src[4]->name, "_ids_cpu") != nullptr) {
+                ids_leaf = cand->src[4];
+            } else if (cand->op == GGML_OP_MUL_MAT_ID && cand->src[2] != nullptr &&
+                       strstr(cand->src[2]->name, "_ids_cpu") != nullptr) {
+                ids_leaf = cand->src[2];
+            }
+            if (ids_leaf == nullptr) {
+                continue;
+            }
+            const char * dash = strrchr(ids_leaf->name, '-');
+            if (dash == nullptr || atoi(dash + 1) != layer) {
+                continue;
+            }
+            if (ids_leaf->data != nullptr) {
+                memcpy(ids_leaf->data, pit->second.ids_cpu.data(),
+                       pit->second.ids_cpu.size() * sizeof(int32_t));
+            }
+            ggml_tensor * wgt_cpu_t = moe_graph_find(s, sched, "ffn_moe_wgt_cpu", layer);
+            if (wgt_cpu_t != nullptr && wgt_cpu_t->data != nullptr) {
+                memcpy(wgt_cpu_t->data, pit->second.wgt_cpu.data(),
+                       pit->second.wgt_cpu.size() * sizeof(float));
+            }
+            s.n_cpu_async++;
+            moe_cpu_half_submit(s, sched->backends[sp->backend_id], &sp->graph, s.cur_event);
+            return;
+        }
+    }
+}
+
 moe_cache_state::split_part & moe_split_partition(moe_cache_state & s, ggml_backend_sched_t sched,
                                                   ggml_backend_t split_backend, ggml_tensor * node, int layer) {
+    const auto tm_call0 = std::chrono::steady_clock::now();
     moe_cache_state::split_part & part = s.split_parts[layer];
     if (part.graph_id == s.graph_id) {
+        s.tm_sp_early_us += (uint64_t) std::chrono::duration_cast<std::chrono::microseconds>(
+            std::chrono::steady_clock::now() - tm_call0).count();
+        s.n_sp_early++;
         return part;
     }
+    const auto tm_pro0 = std::chrono::steady_clock::now();
     part = moe_cache_state::split_part();
+    s.tm_sp_assign_us += (uint64_t) std::chrono::duration_cast<std::chrono::microseconds>(
+        std::chrono::steady_clock::now() - tm_pro0).count();
     part.graph_id = s.graph_id;
     // track the per-layer wall time for the transfer feasibility estimator
     if (layer != s.cur_layer) {
@@ -4188,9 +5344,13 @@ moe_cache_state::split_part & moe_split_partition(moe_cache_state & s, ggml_back
         s.cur_layer = layer;
     }
     if (s.finalized) {
+        const auto tm_act0 = std::chrono::steady_clock::now();
         moe_cache_activate_layer(s, layer);
+        s.tm_sp_act_us += (uint64_t) std::chrono::duration_cast<std::chrono::microseconds>(
+            std::chrono::steady_clock::now() - tm_act0).count();
     }
     // retire completed insert-worker copies so their slots count as resident below
+    const auto tm_spf0 = std::chrono::steady_clock::now();
     moe_insert_drain(s);
     // Deferred prefetches use the backend side stream.  Flush worker
     // submissions before joining that stream so no copy can cross the next
@@ -4204,9 +5364,15 @@ moe_cache_state::split_part & moe_split_partition(moe_cache_state & s, ggml_back
             moe_cache_slot_events_drain(s);
         }
     }
+    s.tm_sp_flush_us += (uint64_t) std::chrono::duration_cast<std::chrono::microseconds>(
+        std::chrono::steady_clock::now() - tm_spf0).count();
+    s.n_sp_flush++;
 
+    const auto tm_find0 = std::chrono::steady_clock::now();
     ggml_tensor * router_ids = moe_graph_find(s, sched, "ffn_moe_topk", layer);
     ggml_tensor * router_wgt = moe_graph_find(s, sched, "ffn_moe_wgt_final", layer);
+    s.tm_sp_find_us += (uint64_t) std::chrono::duration_cast<std::chrono::microseconds>(
+        std::chrono::steady_clock::now() - tm_find0).count();
 
     if (router_ids == nullptr || router_wgt == nullptr) {
         fprintf(stderr, "[MOE-SPLIT-DBG] partition layer=%d graph=%lld map_size=%zu topk=%p wgt_final=%p\n",
@@ -4234,14 +5400,21 @@ moe_cache_state::split_part & moe_split_partition(moe_cache_state & s, ggml_back
     std::vector<float> wgt(k);
     std::vector<float> route_scores;
     ggml_backend_t route_score_backend = nullptr;
+    const auto tm_mrsq0 = std::chrono::steady_clock::now();
     const bool queued_route_scores = moe_cache_queue_mrs_scores(
         s, sched, split_backend, layer, (int) n_expert, route_scores, route_score_backend);
+    s.tm_sp_mrsq_us += (uint64_t) std::chrono::duration_cast<std::chrono::microseconds>(
+        std::chrono::steady_clock::now() - tm_mrsq0).count();
     const auto tm0 = std::chrono::steady_clock::now();
+    s.tm_sp_pro_us += (uint64_t) std::chrono::duration_cast<std::chrono::microseconds>(tm0 - tm_pro0).count();
     ggml_backend_tensor_get_async(split_backend, router_ids, part.ids.data(), 0, k * sizeof(int32_t));
     ggml_backend_tensor_get_async(split_backend, router_wgt, wgt.data(),      0, k * sizeof(float));
     ggml_backend_synchronize(split_backend);
     if (queued_route_scores && route_score_backend != split_backend) {
         ggml_backend_synchronize(route_score_backend);
+    }
+    if (queued_route_scores) {
+        moe_cache_d2h_end(s, route_scores.data());   // staged copy landed: move it into the vector
     }
     const auto tm1 = std::chrono::steady_clock::now();
     s.tm_ids_wait_us += (uint64_t) std::chrono::duration_cast<std::chrono::microseconds>(tm1 - tm0).count();
@@ -4252,6 +5425,60 @@ moe_cache_state::split_part & moe_split_partition(moe_cache_state & s, ggml_back
         moe_cache_update_mrs_selected(s, layer, part.ids.data(), wgt.data(), (int) k, (int) n_expert);
     }
     s.tm_mrs_us += (uint64_t) std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - tm_mrs0).count();
+    if (s.hot_fill_idle) {
+        s.last_activity_us.store((uint64_t) ggml_time_us(), std::memory_order_relaxed);
+    }
+    {
+        // true usage: ids as selected by the router this token.  Counts decay by half every
+        // hot_halflife tokens so the score tracks a sliding window: a stationary user keeps
+        // the same hot set (no churn), a changed prefix can displace it.
+        if (s.use_graph_id != s.graph_id) {
+            s.use_graph_id = s.graph_id;
+            s.hot_tokens++;
+            if (s.hot_halflife > 0 && s.hot_tokens % (uint64_t) s.hot_halflife == 0) {
+                for (std::vector<uint32_t> & counts : s.use_count) {
+                    for (uint32_t & c : counts) {
+                        c >>= 1;
+                    }
+                }
+                for (uint64_t & t : s.use_total) {
+                    t >>= 1;
+                }
+                s.hot_halvings++;
+            }
+        }
+        const bool is_prefill = false;   // the partition hook only ever runs for decode
+        s.use_graphs_dec++;
+        if (s.phase_fill && s.last_graph_prefill) {
+            s.phase_pending = 1;         // decode starts right after prefill: fill at graph end
+        }
+        s.last_graph_prefill = false;
+        if ((int) s.use_count.size() <= layer) {
+            s.use_count.resize(layer + 1);
+            s.use_total.resize(layer + 1, 0);
+            s.use_count_pre.resize(layer + 1);
+            s.use_total_pre.resize(layer + 1, 0);
+        }
+        std::vector<uint32_t> & uc = is_prefill ? s.use_count_pre[layer] : s.use_count[layer];
+        if ((int) uc.size() != (int) n_expert) {
+            uc.assign(n_expert, 0);
+        }
+        for (int i = 0; i < (int) k; ++i) {
+            const int32_t e = part.ids[i];
+            if (e >= 0 && e < n_expert) {
+                uc[e] += 256;   // Q8: the prefill counts below are scaled relative to this
+                (is_prefill ? s.use_total_pre[layer] : s.use_total[layer]) += 256;
+                // was this expert predicted for this layer, and at which rank?
+                if (layer < (int) s.pred_valid.size() && s.pred_valid[layer] &&
+                    layer < (int) s.pred_rank.size() && e < (int) s.pred_rank[layer].size()) {
+                    const uint16_t r = s.pred_rank[layer][e];
+                    if (r < moe_cache_state::kRankMax) {
+                        s.rank_pred_hit[r]++;
+                    }
+                }
+            }
+        }
+    }
 
     // an expert may run on the GPU only if every weight kind of the layer has it resident;
     // otherwise the later kinds would read an unfilled input region (stale bytes, possible NaN)
@@ -4364,17 +5591,31 @@ moe_cache_state::split_part & moe_split_partition(moe_cache_state & s, ggml_back
 
     // queue the activation D2H before this layer's MoE GEMMs so the CPU half can start
     // as soon as the activation is ready instead of after the whole GPU split
+    const auto tm_spd0 = std::chrono::steady_clock::now();
     ggml_backend_tensor_get_async(split_backend, node->src[1], cur_cpu_t->data, 0, ggml_nbytes(cur_cpu_t));
+    s.tm_sp_d2h_us += (uint64_t) std::chrono::duration_cast<std::chrono::microseconds>(
+        std::chrono::steady_clock::now() - tm_spd0).count();
+    s.n_sp_d2h++;
     if (s.cur_event == nullptr) {
         s.cur_event = ggml_backend_event_new(ggml_backend_get_device(split_backend));
     }
     ggml_backend_event_record(s.cur_event, split_backend);
 
     // prediction + eviction protection as in the non-split path
+    const auto tm_onids0 = std::chrono::steady_clock::now();
     moe_cache_on_ids(s, router_ids, part.ids.data());
+    s.tm_sp_onids_us += (uint64_t) std::chrono::duration_cast<std::chrono::microseconds>(
+        std::chrono::steady_clock::now() - tm_onids0).count();
 
     s.tm_ids_parse_us += (uint64_t) std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - tm1).count();
     s.graph_stats[layer][4] += (uint64_t) (k - part.n_gpu);
+    if (s.cpu_half_async) {
+        // the CPU half's inputs (ids/wgt leaves + the activation D2H) are ready: hand
+        // its split to the worker now so it runs alongside the GPU half
+        moe_cpu_half_submit_layer(s, sched, layer);
+    }
+    s.tm_sp_tail_us += (uint64_t) std::chrono::duration_cast<std::chrono::microseconds>(
+        std::chrono::steady_clock::now() - tm1).count();
     return part;
 }
 
@@ -4390,6 +5631,20 @@ struct moe_insert_done {
 };
 
 static std::vector<moe_insert_done> g_insert_done; // guarded by moe_cache().insert_mtx
+
+
+// LLAMA_MOE_INSERT_WORKERS: run more than one staging worker.  Pageable H2D copies block
+// the calling thread until the driver staged them, so a single worker serializes the
+// whole prefetch pipeline; extra workers give the driver independent submissions.
+void moe_insert_spawn_extra_workers(moe_cache_state & s) {
+    static const int n_workers = []() {
+        const char * env = getenv("LLAMA_MOE_INSERT_WORKERS");
+        return env != nullptr ? std::max(1, atoi(env)) : 1;
+    }();
+    while ((int) s.insert_threads.size() < n_workers - 1) {
+        s.insert_threads.emplace_back(moe_insert_worker, std::ref(s));
+    }
+}
 
 void moe_insert_worker(moe_cache_state & s) {
 #ifdef _WIN32
@@ -4625,6 +5880,7 @@ void moe_cache_copy_split(moe_cache_state & s, moe_cache_entry & entry, ggml_bac
             s.global_slot_tick[slot] = lc.slot_tick[slot];
         }
         entry.hits++;
+        s.hits_seen++;
         s.graph_stats[entry.layer][0]++;
     };
 
@@ -4701,8 +5957,33 @@ static enum ggml_status ggml_backend_sched_compute_splits(ggml_backend_sched_t s
     std::vector<ggml_bitset_t> used_ids;
     moe_cache_init();
     moe_cache_state & mcs = moe_cache();
+    static const int dump_splits = []() { const char * e = getenv("LLAMA_MOE_DUMP_SPLITS"); return e != nullptr ? atoi(e) : 0; }();
+    static int dump_done = 0;
+    if (dump_splits && mcs.enabled && !mcs.layers.empty() &&
+        (mcs.graph_id == 20 || mcs.graph_id == 200) && dump_done < 2) {
+        dump_done++;
+        fprintf(stderr, "[MOE-SPLITS] n_nodes=%d n_leafs=%d n_splits=%d\n",
+                sched->graph.n_nodes, sched->graph.n_leafs, sched->n_splits);
+        for (int i = 0; i < sched->n_splits; ++i) {
+            const ggml_backend_sched_split * sp = &sched->splits[i];
+            fprintf(stderr, "[MOE-SPLITS] split %3d backend=%-7s nodes=%3d inputs=%2d",
+                    i, ggml_backend_name(sched->backends[sp->backend_id]), sp->graph.n_nodes, sp->n_inputs);
+            if (i < 12) {
+                fprintf(stderr, " ops:");
+                for (int j = 0; j < sp->graph.n_nodes && j < 12; ++j) {
+                    fprintf(stderr, " %s", ggml_op_name(sp->graph.nodes[j]->op));
+                }
+            }
+            fprintf(stderr, "\n");
+        }
+    }
     if (mcs.enabled) {
         mcs.graph_id++;
+        mcs.graph_admit_bytes = 0;
+        if (mcs.hot_fill_idle) {
+            std::lock_guard<std::mutex> lock(mcs.hot_fill_mtx);
+            mcs.graph_active = true;
+        }
     }
     if (mcs.devpart) {
         // the table tensors live in graph memory and may have moved
@@ -4716,6 +5997,21 @@ static enum ggml_status ggml_backend_sched_compute_splits(ggml_backend_sched_t s
     const uint64_t tm_g0_wait = mcs.tm_ids_wait_us, tm_g0_parse = mcs.tm_ids_parse_us, tm_g0_copy = mcs.tm_copy_us;
     const uint64_t tm_g0_cpu = mcs.tm_cpu_us, tm_g0_gpu = mcs.tm_gpu_us;
     const uint64_t tm_g0_pre = mcs.tm_pre_us;
+    const uint64_t tm_g0_in_wait  = mcs.tm_in_wait_us,  tm_g0_in_scan  = mcs.tm_in_scan_us;
+    const uint64_t tm_g0_in_d2h   = mcs.tm_in_d2h_ids_us, tm_g0_in_parse = mcs.tm_in_parse_us;
+    const uint64_t tm_g0_in_expert = mcs.tm_in_expert_us, tm_g0_in_d2h_n = mcs.n_in_d2h_ids;
+    const uint64_t tm_g0_dec      = mcs.n_in_d2h_ids_dec;
+    const uint64_t tm_g0_d2h_enq  = mcs.tm_in_d2h_enq_us, tm_g0_d2h_sync = mcs.tm_in_d2h_sync_us;
+    const uint64_t tm_g0_d2h_bytes = mcs.bytes_in_d2h;
+    const uint64_t tm_g0_seg_drain = mcs.tm_seg_drain_us, tm_g0_seg_inputs = mcs.tm_seg_inputs_us;
+    const uint64_t tm_g0_seg_compute = mcs.tm_seg_compute_us;
+    const uint64_t tm_g0_in_flag = mcs.tm_in_flag_us, tm_g0_in_flag_n = mcs.n_in_flag;
+    const uint64_t tm_g0_in_gen  = mcs.tm_in_gen_us,  tm_g0_in_gen_n  = mcs.n_in_gen;
+    const uint64_t tm_g0_in_hostw_n = mcs.n_in_hostw, tm_g0_in_loop_n = mcs.n_in_loop;
+    const uint64_t tm_g0_cpuhalf = mcs.tm_cpuhalf_us, tm_g0_cpuhalf_evt = mcs.tm_cpuhalf_evt_us;
+    const uint64_t tm_g0_cpuhalf_n = mcs.n_cpuhalf;
+    const uint64_t tm_g0_splitpart = mcs.tm_splitpart_us, tm_g0_splitpart_n = mcs.n_splitpart;
+    const uint64_t tm_g0_sp_d2h = mcs.tm_sp_d2h_us, tm_g0_sp_d2h_n = mcs.n_sp_d2h;
 
     int prev_backend_id = -1;
 
@@ -4790,6 +6086,7 @@ static enum ggml_status ggml_backend_sched_compute_splits(ggml_backend_sched_t s
         // copy the input tensors to the split backend
         const int64_t trace_copy_start_us = trace_splits ? ggml_time_us() : 0;
         for (int input_id = 0; input_id < split->n_inputs; input_id++) {
+            mcs.n_in_loop++;
             ggml_backend_t input_backend = ggml_backend_sched_get_tensor_backend(sched, split->inputs[input_id]);
             struct ggml_tensor * input = split->inputs[input_id];
             struct ggml_tensor * input_cpy = tensor_copy(input, split_backend_id, sched->cur_copy);
@@ -4801,6 +6098,7 @@ static enum ggml_status ggml_backend_sched_compute_splits(ggml_backend_sched_t s
             }
 
             if (input->flags & GGML_TENSOR_FLAG_INPUT) {
+                const auto tm_if0 = std::chrono::steady_clock::now();
                 // inputs from the user must be copied immediately to prevent the user overwriting the data before the copy is done
                 if (sched->events[split_backend_id][sched->cur_copy] != NULL) {
                     ggml_backend_event_synchronize(sched->events[split_backend_id][sched->cur_copy]);
@@ -4808,19 +6106,32 @@ static enum ggml_status ggml_backend_sched_compute_splits(ggml_backend_sched_t s
                     ggml_backend_synchronize(split_backend);
                 }
                 ggml_backend_tensor_copy(input, input_cpy);
+                mcs.tm_in_flag_us += (uint64_t) std::chrono::duration_cast<std::chrono::microseconds>(
+                    std::chrono::steady_clock::now() - tm_if0).count();
+                mcs.n_in_flag++;
             } else {
                 // wait for the split backend to finish using the input before overwriting it
+                const auto tm_in_w0 = std::chrono::steady_clock::now();
                 if (sched->events[split_backend_id][sched->cur_copy] != NULL) {
                     ggml_backend_event_wait(split_backend, sched->events[split_backend_id][sched->cur_copy]);
+                    mcs.tm_in_evt_us += (uint64_t) std::chrono::duration_cast<std::chrono::microseconds>(
+                        std::chrono::steady_clock::now() - tm_in_w0).count();
+                    mcs.n_in_evt++;
                 } else {
                     ggml_backend_synchronize(split_backend);
+                    mcs.tm_in_sync_us += (uint64_t) std::chrono::duration_cast<std::chrono::microseconds>(
+                        std::chrono::steady_clock::now() - tm_in_w0).count();
+                    mcs.n_in_sync++;
                 }
+                mcs.tm_in_wait_us += (uint64_t) std::chrono::duration_cast<std::chrono::microseconds>(
+                    std::chrono::steady_clock::now() - tm_in_w0).count();
 
                 // when offloading MoE weights, we can reduce the amount of data copied by copying only the experts that are used
                 // a split can contain several MUL_MAT_ID nodes (e.g. MoE gate+up+down), so scan all of them
                 // the decode graph is reused across tokens: after the first direct-read pass the node's
                 // src[0] points at the cache view instead of input_cpy, so match that too
                 moe_cache_entry * scan_entry = nullptr;
+                const auto tm_in_s0 = std::chrono::steady_clock::now();
                 {
                     auto it_e = mcs.by_weight.find(input);
                     if (it_e != mcs.by_weight.end()) {
@@ -4836,6 +6147,8 @@ static enum ggml_status ggml_backend_sched_compute_splits(ggml_backend_sched_t s
                         break;
                     }
                 }
+                mcs.tm_in_scan_us += (uint64_t) std::chrono::duration_cast<std::chrono::microseconds>(
+                    std::chrono::steady_clock::now() - tm_in_s0).count();
                 if (mcs.split && node != nullptr &&
                     ggml_backend_buffer_get_usage(input->buffer) == GGML_BACKEND_BUFFER_USAGE_WEIGHTS &&
                     ggml_backend_buffer_is_host(input->buffer) && node->src[2] != nullptr &&
@@ -4866,8 +6179,12 @@ static enum ggml_status ggml_backend_sched_compute_splits(ggml_backend_sched_t s
                         }
                         continue;
                     }
+                    const auto tm_sp0 = std::chrono::steady_clock::now();
                     moe_cache_state::split_part & part =
                         moe_split_partition(mcs, sched, split_backend, node, atoi(dash + 1));
+                    mcs.tm_splitpart_us += (uint64_t) std::chrono::duration_cast<std::chrono::microseconds>(
+                        std::chrono::steady_clock::now() - tm_sp0).count();
+                    mcs.n_splitpart++;
                     if (cache_entry != nullptr && cache_entry->buf != nullptr) {
                         if (part.direct) {
                             if (cache_entry->view == nullptr) {
@@ -4897,6 +6214,16 @@ static enum ggml_status ggml_backend_sched_compute_splits(ggml_backend_sched_t s
                                 if (e >= 0 && e < cache_entry->n_expert) {
                                     if (part.gpu[e]) {
                                         cache_entry->hits++;
+                                        mcs.hits_seen++;
+                                        const int32_t sl = cache_entry->layer_cache->expert_slot[e];
+                                        if (sl >= 0 && sl < (int) cache_entry->layer_cache->slot_rank.size()) {
+                                            const uint8_t r = cache_entry->layer_cache->slot_rank[sl];
+                                            if (r < moe_cache_state::kRankMax) {
+                                                mcs.rank_hits[r]++;
+                                            } else {
+                                                mcs.rank_hits_other++;
+                                            }
+                                        }
                                     } else {
                                         cache_entry->misses++;
                                         // direct views keep hit reads zero-copy; misses are still
@@ -4926,6 +6253,7 @@ static enum ggml_status ggml_backend_sched_compute_splits(ggml_backend_sched_t s
                 } else if (node != nullptr &&
                     ggml_backend_buffer_get_usage(input->buffer) == GGML_BACKEND_BUFFER_USAGE_WEIGHTS &&
                     ggml_backend_buffer_is_host(input->buffer)) {
+                    mcs.n_in_hostw++;
 
                     const int64_t n_expert   = node->op == GGML_OP_MUL_MAT_ID ? input->ne[2] : input->ne[1];
                     const size_t expert_size = node->op == GGML_OP_MUL_MAT_ID ? input->nb[2] : input->nb[1];
@@ -4947,20 +6275,82 @@ static enum ggml_status ggml_backend_sched_compute_splits(ggml_backend_sched_t s
                     }
 
                     if (ids_tensor != prev_ids_tensor) {
-                        ids.resize(ggml_nbytes(ids_tensor) / sizeof(int32_t));
-                        ggml_backend_tensor_get_async(ids_backend, ids_tensor, ids.data(), 0, ggml_nbytes(ids_tensor));
+                        const size_t ids_bytes = ggml_nbytes(ids_tensor);
+                        static int ids_dbg = 0;
+                        if (mcs.timing && ids_dbg < 8) {
+                            ids_dbg++;
+                            fprintf(stderr, "[MOE-CACHE] ids readback #%d: tensor='%s' type=%s ne=[%lld,%lld] bytes=%zu decode=%d\n",
+                                    ids_dbg, ids_tensor->name, ggml_type_name(ids_tensor->type),
+                                    (long long) ids_tensor->ne[0], (long long) ids_tensor->ne[1],
+                                    ids_bytes, (int) (ids_tensor->ne[1] == 1));
+                        }
+                        const auto tm_in_d0 = std::chrono::steady_clock::now();
+                        ids.resize(ids_bytes / sizeof(int32_t));
+                        void * ids_stage = moe_cache_d2h_begin(mcs, ids_backend, ids_bytes);
+                        ggml_backend_tensor_get_async(ids_backend, ids_tensor,
+                                                      ids_stage != nullptr ? ids_stage : ids.data(), 0, ids_bytes);
+                        const auto tm_in_d1 = std::chrono::steady_clock::now();
                         ggml_backend_synchronize(ids_backend);
+                        moe_cache_d2h_end(mcs, ids.data());
+                        const auto tm_in_d2 = std::chrono::steady_clock::now();
+                        const uint64_t enq_us = (uint64_t) std::chrono::duration_cast<std::chrono::microseconds>(tm_in_d1 - tm_in_d0).count();
+                        const uint64_t syn_us = (uint64_t) std::chrono::duration_cast<std::chrono::microseconds>(tm_in_d2 - tm_in_d1).count();
+                        mcs.tm_in_d2h_enq_us  += enq_us;
+                        mcs.tm_in_d2h_sync_us += syn_us;
+                        mcs.tm_in_d2h_ids_us  += enq_us + syn_us;
+                        mcs.bytes_in_d2h      += ids_bytes;
+                        mcs.n_in_d2h_ids++;
+                        if (ids_tensor->ne[1] == 1) {
+                            mcs.n_in_d2h_ids_dec++;
+                            mcs.tm_in_d2h_dec_us      += enq_us + syn_us;
+                            mcs.tm_in_d2h_dec_enq_us  += enq_us;
+                            mcs.tm_in_d2h_dec_sync_us += syn_us;
+                        } else {
+                            mcs.n_in_d2h_ids_pre++;
+                            mcs.tm_in_d2h_pre_us += enq_us + syn_us;
+                        }
 
                         // find the used experts
+                        const auto tm_in_p0 = std::chrono::steady_clock::now();
                         used_ids.clear();
                         used_ids.resize(ggml_bitset_size(n_expert));
+                        // this is the only place the prefill routing is visible at all (the
+                        // partition hook is decode-only), so record the prompt's tendency here
+                        const bool pre_hist = ids_tensor->ne[1] > 1;
+                        const char * pre_dash = strrchr(ids_tensor->name, '-');
+                        const int pre_layer = pre_dash != nullptr ? atoi(pre_dash + 1) : -1;
+                        std::vector<uint32_t> * pre_counts = nullptr;
+                        if (pre_hist) {
+                            mcs.last_graph_prefill = true;
+                        }
+                        if (pre_hist && pre_layer >= 0 && pre_layer < (int) mcs.layers.size()) {
+                            if ((int) mcs.use_count_pre.size() <= pre_layer) {
+                                mcs.use_count_pre.resize(pre_layer + 1);
+                                mcs.use_total_pre.resize(pre_layer + 1, 0);
+                            }
+                            pre_counts = &mcs.use_count_pre[pre_layer];
+                            if ((int) pre_counts->size() != (int) n_expert) {
+                                pre_counts->assign(n_expert, 0);
+                            }
+                            if (mcs.use_graph_id_pre != mcs.graph_id) {
+                                mcs.use_graph_id_pre = mcs.graph_id;
+                                mcs.use_graphs_pre++;
+                            }
+                        }
                         for (int64_t i1 = 0; i1 < ids_tensor->ne[1]; i1++) {
                             for (int64_t i0 = 0; i0 < ids_tensor->ne[0]; i0++) {
                                 int32_t id = ids[i1 * ids_tensor->nb[1]/sizeof(int32_t) + i0 * ids_tensor->nb[0]/sizeof(int32_t)];
                                 GGML_ASSERT(id >= 0 && id < n_expert);
                                 ggml_bitset_set(used_ids.data(), id);
+                                if (pre_counts != nullptr) {
+                                    const uint32_t w = (uint32_t) std::lround(256.0 * mcs.prefill_weight);
+                                    (*pre_counts)[id] += w;
+                                    mcs.use_total_pre[pre_layer] += w;
+                                }
                             }
                         }
+                        mcs.tm_in_parse_us += (uint64_t) std::chrono::duration_cast<std::chrono::microseconds>(
+                            std::chrono::steady_clock::now() - tm_in_p0).count();
 
                         prev_ids_tensor = ids_tensor;
                         if (mcs.fate_predict && !mcs.smoe_predict) {
@@ -4985,6 +6375,7 @@ static enum ggml_status ggml_backend_sched_compute_splits(ggml_backend_sched_t s
                                 } else {
                                     ggml_backend_synchronize(ids_backend);
                                 }
+                                moe_cache_d2h_end(mcs, route_scores.data());
                                 const auto tm_mrs0 = std::chrono::steady_clock::now();
                                 moe_cache_update_mrs_top_p(
                                      mcs, layer, route_scores.data(), (int) n_expert,
@@ -4996,14 +6387,20 @@ static enum ggml_status ggml_backend_sched_compute_splits(ggml_backend_sched_t s
                     }
 
                     moe_cache_entry * cache_entry = moe_cache_ensure(split_backend, input, input_cpy);
+                    const auto tm_in_e0 = std::chrono::steady_clock::now();
                     if (cache_entry != nullptr && cache_entry->buf != nullptr && ids_tensor->ne[1] == 1) {
                         // single-token decode: serve used experts from the device cache
                         moe_cache_copy(mcs, *cache_entry, split_backend, input, input_cpy, used_ids);
                     } else {
-                        // prefill or uncached: group consecutive experts and copy them together
+                        // prefill or uncached: group consecutive experts and copy them together.
+                        // Resident experts come from the cache (D2D) when enabled - prefill
+                        // benefits without any transfer into the cache.
                         moe_copy_experts_grouped(split_backend, input, input_cpy, used_ids, n_expert, expert_size);
                     }
+                    mcs.tm_in_expert_us += (uint64_t) std::chrono::duration_cast<std::chrono::microseconds>(
+                        std::chrono::steady_clock::now() - tm_in_e0).count();
                 } else {
+                    const auto tm_ig0 = std::chrono::steady_clock::now();
                     // try async copy, but if not possible, we can still use a sync copy without synchronizing the dst backend, since we handle the synchronization here with multiple copies and events
                     // TODO: add public function to facilitate this, since applications do not have direct access to the backend interface
                     if (!split_backend->iface.cpy_tensor_async || !split_backend->iface.cpy_tensor_async(input_backend, split_backend, input, input_cpy)) {
@@ -5015,6 +6412,9 @@ static enum ggml_status ggml_backend_sched_compute_splits(ggml_backend_sched_t s
                         }
                         ggml_backend_tensor_copy(input, input_cpy);
                     }
+                    mcs.tm_in_gen_us += (uint64_t) std::chrono::duration_cast<std::chrono::microseconds>(
+                        std::chrono::steady_clock::now() - tm_ig0).count();
+                    mcs.n_in_gen++;
                 }
             }
         }
@@ -5029,7 +6429,8 @@ static enum ggml_status ggml_backend_sched_compute_splits(ggml_backend_sched_t s
         // MoE GPU/CPU split, CPU half: fill the runtime leaves with the partition
         // computed by the GPU-half hook earlier in this pass
         // (devpart: the CPU half consumes device-produced views, there are no host leaves)
-        if (moe_cpu_half && !mcs.devpart) {
+        if (moe_cpu_half && !mcs.devpart && !mcs.cpu_half_async) {
+            const auto tm_ch0 = std::chrono::steady_clock::now();
             for (int i = 0; i < split->graph.n_nodes; ++i) {
                 ggml_tensor * cand = split->graph.nodes[i];
                 ggml_tensor * ids_leaf = nullptr;
@@ -5053,7 +6454,10 @@ static enum ggml_status ggml_backend_sched_compute_splits(ggml_backend_sched_t s
                 // wait only for the small activation D2H queued before this layer's GPU
                 // MoE work - not for the GPU GEMMs themselves
                 if (mcs.cur_event != nullptr) {
+                    const auto tm_ce0 = std::chrono::steady_clock::now();
                     ggml_backend_event_synchronize(mcs.cur_event);
+                    mcs.tm_cpuhalf_evt_us += (uint64_t) std::chrono::duration_cast<std::chrono::microseconds>(
+                        std::chrono::steady_clock::now() - tm_ce0).count();
                 }
                 memcpy(ids_leaf->data, pit->second.ids_cpu.data(),
                        pit->second.ids_cpu.size() * sizeof(int32_t));
@@ -5064,6 +6468,9 @@ static enum ggml_status ggml_backend_sched_compute_splits(ggml_backend_sched_t s
                 }
                 break;
             }
+            mcs.tm_cpuhalf_us += (uint64_t) std::chrono::duration_cast<std::chrono::microseconds>(
+                std::chrono::steady_clock::now() - tm_ch0).count();
+            mcs.n_cpuhalf++;
         }
 
         if (trace_experts_file != nullptr) {
@@ -5105,7 +6512,17 @@ static enum ggml_status ggml_backend_sched_compute_splits(ggml_backend_sched_t s
         MOE_TL_MARK(tm_seg_inputs_us);
         if (!sched->callback_eval) {
             const auto tm3 = std::chrono::steady_clock::now();
-            enum ggml_status ec = ggml_backend_graph_compute_async(split_backend, &split->graph);
+            enum ggml_status ec = GGML_STATUS_SUCCESS;
+            if (moe_cpu_half && mcs.cpu_half_async == 1) {
+                // the worker already ran this split (dispatched from the partition hook);
+                // join it here, before the consumer's input copy reads its output
+                const auto tj0 = std::chrono::steady_clock::now();
+                moe_cpu_half_join(mcs);
+                mcs.tm_cpu_join_us += (uint64_t) std::chrono::duration_cast<std::chrono::microseconds>(
+                    std::chrono::steady_clock::now() - tj0).count();
+            } else {
+                ec = ggml_backend_graph_compute_async(split_backend, &split->graph);
+            }
             if (moe_cpu_half) {
                 mcs.tm_cpu_us += (uint64_t) std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - tm3).count();
             } else {
@@ -5227,11 +6644,48 @@ static enum ggml_status ggml_backend_sched_compute_splits(ggml_backend_sched_t s
     }
 
     MOE_TL_MARK(tm_seg_epilogue_us);
+    if (mcs.hot_fill_idle) {
+        std::lock_guard<std::mutex> lock(mcs.hot_fill_mtx);
+        mcs.graph_active = false;
+        mcs.last_activity_us = (uint64_t) ggml_time_us();
+    } else {
+        moe_cache_hot_backfill(mcs);   // the idle thread does this when it is running
+    }
+    if (mcs.phase_pending) {
+        mcs.phase_pending = 0;
+        moe_cache_phase_fill(mcs);
+    }
 #undef MOE_TL_MARK
 
     const uint64_t tm_graph_us = (uint64_t) std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - tm_graph0).count();
     mcs.tm_sync_host_us += tm_graph_us;
     mcs.tm_graphs++;
+    moe_cache_yield_auto_step(mcs, (double) tm_graph_us / 1000.0);
+    {
+        const double graph_ms = (double) tm_graph_us / 1000.0;
+        mcs.trend_ms_hat = mcs.trend_ms_hat <= 0.0 ? graph_ms : 0.9 * mcs.trend_ms_hat + 0.1 * graph_ms;
+        const uint64_t h_now = mcs.hits_seen;
+        const double h_delta = (double) (h_now - mcs.trend_hits_prev);
+        mcs.trend_hits_prev = h_now;
+        const double mb_delta = (double) mcs.graph_admit_bytes / 1048576.0;
+        mcs.trend_pts.push_back({ graph_ms, h_delta, mb_delta });
+        if ((int) mcs.trend_pts.size() > mcs.trend_window) {
+            mcs.trend_pts.erase(mcs.trend_pts.begin());
+        }
+        double V = 0.0, P = 0.0;
+        if (moe_cache_trend_fit(mcs, V, P)) {
+            mcs.trend_V = mcs.trend_V <= 0.0 ? V : 0.75 * mcs.trend_V + 0.25 * V;
+            mcs.trend_P = mcs.trend_P <= 0.0 ? P : 0.75 * mcs.trend_P + 0.25 * P;
+            mcs.trend_fits++;
+            if (mcs.budget_frac > 0.0f && mcs.trend_P > 0.0) {
+                const double mb = (double) mcs.budget_frac * mcs.trend_ms_hat / mcs.trend_P;
+                mcs.trend_budget_mb = std::min(512.0, std::max(16.0, mb));
+                mcs.admit_budget_bytes = (size_t) (mcs.trend_budget_mb * 1048576.0);
+            }
+        } else {
+            mcs.trend_rejects++;
+        }
+    }
     if (mcs.stats_file != nullptr) {
         fprintf(mcs.stats_file, "%llu,-1,%llu,%llu,%llu,%llu,0,%llu,%llu,%llu\n",
                 (unsigned long long) mcs.graph_id, (unsigned long long) tm_graph_us,
@@ -5241,6 +6695,41 @@ static enum ggml_status ggml_backend_sched_compute_splits(ggml_backend_sched_t s
                 (unsigned long long) (mcs.tm_cpu_us - tm_g0_cpu),
                 (unsigned long long) (mcs.tm_gpu_us - tm_g0_gpu),
                 (unsigned long long) (mcs.tm_pre_us - tm_g0_pre));
+        // extended per-graph row (schema: header is stale, parse by position)
+        fprintf(mcs.stats_file, "%llu,-2,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu,%llu\n",
+                (unsigned long long) mcs.graph_id,
+                (unsigned long long) (mcs.tm_in_wait_us - tm_g0_in_wait),
+                (unsigned long long) (mcs.tm_in_scan_us - tm_g0_in_scan),
+                (unsigned long long) (mcs.tm_in_d2h_enq_us - tm_g0_d2h_enq),
+                (unsigned long long) (mcs.tm_in_d2h_sync_us - tm_g0_d2h_sync),
+                (unsigned long long) (mcs.n_in_d2h_ids - tm_g0_in_d2h_n),
+                (unsigned long long) (mcs.bytes_in_d2h - tm_g0_d2h_bytes),
+                (unsigned long long) (mcs.tm_in_parse_us - tm_g0_in_parse),
+                (unsigned long long) (mcs.tm_in_expert_us - tm_g0_in_expert),
+                (unsigned long long) (mcs.tm_seg_drain_us - tm_g0_seg_drain),
+                (unsigned long long) (mcs.tm_seg_inputs_us - tm_g0_seg_inputs));
+        // -3 row: the two branches the -2 row does not cover
+        fprintf(mcs.stats_file, "%llu,-3,%llu,%llu,%llu,%llu,%llu,%llu\n",
+                (unsigned long long) mcs.graph_id,
+                (unsigned long long) (mcs.tm_in_flag_us - tm_g0_in_flag),
+                (unsigned long long) (mcs.n_in_flag - tm_g0_in_flag_n),
+                (unsigned long long) (mcs.tm_in_gen_us - tm_g0_in_gen),
+                (unsigned long long) (mcs.n_in_gen - tm_g0_in_gen_n),
+                (unsigned long long) (mcs.n_in_loop - tm_g0_in_loop_n),
+                (unsigned long long) (mcs.n_in_hostw - tm_g0_in_hostw_n));
+        // -4 row: cpu-half leaf fill and the host-side partition fallback
+        fprintf(mcs.stats_file, "%llu,-4,%llu,%llu,%llu,%llu,%llu,%llu,%llu\n",
+                (unsigned long long) mcs.graph_id,
+                (unsigned long long) (mcs.tm_cpuhalf_us - tm_g0_cpuhalf),
+                (unsigned long long) (mcs.tm_cpuhalf_evt_us - tm_g0_cpuhalf_evt),
+                (unsigned long long) (mcs.n_cpuhalf - tm_g0_cpuhalf_n),
+                (unsigned long long) (mcs.tm_splitpart_us - tm_g0_splitpart),
+                (unsigned long long) (mcs.n_splitpart - tm_g0_splitpart_n),
+                (unsigned long long) (mcs.tm_sp_d2h_us - tm_g0_sp_d2h),
+                (unsigned long long) (mcs.n_sp_d2h - tm_g0_sp_d2h_n));
+        if (mcs.n_in_d2h_ids_dec > tm_g0_dec) {
+            mcs.n_dec_graphs++;
+        }
         fflush(mcs.stats_file);
     }
 
@@ -5299,12 +6788,23 @@ ggml_backend_sched_t ggml_backend_sched_new(
     sched->graph_inputs_capacity = GGML_SCHED_MAX_SPLIT_INPUTS;
     sched->graph_inputs = (struct ggml_tensor **) calloc(sched->graph_inputs_capacity, sizeof(struct ggml_tensor *));
 
+    // Single-copy schedulers skip event creation, so every wait before an input
+    // overwrite falls back to ggml_backend_synchronize(), which blocks the host and
+    // drains the stream. A --cpu-moe decode graph has hundreds of host-resident
+    // weight inputs, so that fallback dominates the token time. Create the events
+    // regardless; backends without event support return NULL and keep the fallback.
+    // GGML_SCHED_NO_SINGLE_COPY_EVENTS=1 restores the old behaviour for A/B runs.
+    static const bool single_copy_events = []() {
+        const char * e = getenv("GGML_SCHED_NO_SINGLE_COPY_EVENTS");
+        return e == nullptr || atoi(e) == 0;
+    }();
+
     for (int b = 0; b < n_backends; b++) {
         sched->backends[b] = backends[b];
         sched->bufts[b] = bufts ? bufts[b] : ggml_backend_get_default_buffer_type(backends[b]);
         GGML_ASSERT(ggml_backend_supports_buft(backends[b], sched->bufts[b]));
 
-        if (sched->n_copies > 1) {
+        if (sched->n_copies > 1 || single_copy_events) {
             for (int c = 0; c < sched->n_copies; c++) {
                 sched->events[b][c] = ggml_backend_event_new(backends[b]->device);
             }

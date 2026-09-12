@@ -1983,14 +1983,22 @@ ggml_tensor * llama_model_qwen4exp::graph::build_layer_ffn(ggml_tensor * cur, co
         const char * env = getenv("LLAMA_MOE_PREDICT_SMOE");
         return env != nullptr && atoi(env) != 0;
     }();
+    // how many layers ahead the predictor aims (LLAMA_MOE_SMOE_AHEAD, default 1):
+    // a longer horizon gives the prefetch a real slack window instead of the
+    // physically impossible one-layer deadline; the gate below must match it
+    static const int smoe_ahead = []() {
+        const char * env = getenv("LLAMA_MOE_SMOE_AHEAD");
+        return env != nullptr ? std::max(1, atoi(env)) : 1;
+    }();
+    const int smoe_target = il + smoe_ahead;
     if (smoe_predict && smoe_gpu_out != nullptr && ffn_shexp_gated != nullptr &&
-            n_tokens == 1 && il + 1 < (int) hparams.n_layer() &&
-            model.layers[il + 1].ffn_gate_inp != nullptr) {
+            n_tokens == 1 && smoe_target < (int) hparams.n_layer() &&
+            model.layers[smoe_target].ffn_gate_inp != nullptr) {
         ggml_tensor * smoe_hidden = ggml_add(ctx0, ffn_input, smoe_gpu_out);
         smoe_hidden = ggml_add(ctx0, smoe_hidden, ffn_shexp_gated);
         cb(smoe_hidden, "ffn_smoe_hidden", il);
 
-        ggml_tensor * smoe_logits = build_lora_mm(model.layers[il + 1].ffn_gate_inp, smoe_hidden);
+        ggml_tensor * smoe_logits = build_lora_mm(model.layers[smoe_target].ffn_gate_inp, smoe_hidden);
         cb(smoe_logits, "ffn_smoe_predict_logits", il);
         // Keep ranking on the device.  Reading the full 512-way logits back to
         // the host once per layer turns the predictor into a synchronization

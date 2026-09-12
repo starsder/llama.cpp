@@ -143,6 +143,8 @@ extern "C" {
         // (optional) event synchronization
         // record an event on this stream
         void (*event_record)(ggml_backend_t backend, ggml_backend_event_t event);
+        // non-blocking: true once the event has completed; does NOT consume/free it
+        bool (*event_query) (ggml_backend_t backend, ggml_backend_event_t event);
         // wait for an event on on a different stream
         void (*event_wait)  (ggml_backend_t backend, ggml_backend_event_t event);
 

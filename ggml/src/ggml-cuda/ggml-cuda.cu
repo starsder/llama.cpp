@@ -2587,8 +2587,14 @@ static bool ggml_backend_cuda_prefetch_event_query(ggml_backend_t backend, void 
 static size_t ggml_backend_cuda_pin_host_memory(ggml_backend_t backend, void * data, size_t size) {
     ggml_backend_cuda_context * cuda_ctx = (ggml_backend_cuda_context *) backend->context;
     ggml_cuda_set_device(cuda_ctx->device);
-    // already pinned (e.g. CUDA_Host buffers): nothing to do
-    {
+    // LLAMA_MOE_PIN_TRY_MIB: actually try cudaHostRegister for up to this many MiB
+    // (bounded, so a failed/expensive registration cannot blow up memory like the
+    // unbounded path did); 0 = keep the old "assume already pinned" fast path
+    static const long try_mib = []() {
+        const char * env = getenv("LLAMA_MOE_PIN_TRY_MIB");
+        return env != nullptr ? atol(env) : 0;
+    }();
+    if (try_mib <= 0) {
         cudaPointerAttributes attrs;
         if (cudaPointerGetAttributes(&attrs, data) == cudaSuccess && attrs.type == cudaMemoryTypeHost) {
             return size;
@@ -2599,10 +2605,19 @@ static size_t ggml_backend_cuda_pin_host_memory(ggml_backend_t backend, void * d
     const uintptr_t begin = ((uintptr_t) data) & ~(page - 1);
     const uintptr_t end   = (((uintptr_t) data + size) + page - 1) & ~(page - 1);
     const size_t chunk = 32ull*1024*1024;
+    const size_t budget = try_mib > 0 ? (size_t) try_mib * 1024 * 1024 : SIZE_MAX;
     size_t pinned = 0;
-    for (uintptr_t p = begin; p < end; p += chunk) {
-        const size_t n = (size_t) std::min((uintptr_t) chunk, end - p);
+    for (uintptr_t p = begin; p < end && pinned < budget; p += chunk) {
+        const size_t n = (size_t) std::min<uintptr_t>(chunk, std::min<uintptr_t>(end - p, budget - pinned));
+        const auto t0 = std::chrono::steady_clock::now();
         const cudaError_t res = cudaHostRegister((void *) p, n, cudaHostRegisterDefault);
+        static int logged_pin = 0;
+        if (logged_pin++ < 6) {
+            const double ms = std::chrono::duration_cast<std::chrono::microseconds>(
+                std::chrono::steady_clock::now() - t0).count() / 1000.0;
+            fprintf(stderr, "[PIN-TRY] register(%p, %zu MiB) -> %s in %.1f ms\n",
+                    (void *) p, n / 1048576, res == cudaSuccess ? "OK" : cudaGetErrorName(res), ms);
+        }
         if (res != cudaSuccess) {
             static int logged = 0;
             if (logged++ < 3) {
@@ -4513,6 +4528,16 @@ static enum ggml_status ggml_backend_cuda_graph_compute(ggml_backend_t backend, 
     return GGML_STATUS_SUCCESS;
 }
 
+static bool ggml_backend_cuda_event_query(ggml_backend_t backend, ggml_backend_event_t event) {
+    GGML_UNUSED(backend);
+    const cudaError_t res = cudaEventQuery((cudaEvent_t) event->context);
+    if (res == cudaErrorNotReady) {
+        return false;
+    }
+    CUDA_CHECK(res);
+    return true;
+}
+
 static void ggml_backend_cuda_event_record(ggml_backend_t backend, ggml_backend_event_t event) {
     ggml_backend_cuda_context * cuda_ctx = (ggml_backend_cuda_context *)backend->context;
 
@@ -4799,6 +4824,7 @@ static const ggml_backend_i ggml_backend_cuda_interface = {
     /* .graph_plan_compute      = */ NULL,
     /* .graph_compute           = */ ggml_backend_cuda_graph_compute,
     /* .event_record            = */ ggml_backend_cuda_event_record,
+    /* .event_query             = */ ggml_backend_cuda_event_query,
     /* .event_wait              = */ ggml_backend_cuda_event_wait,
     /* .graph_optimize          = */ ggml_backend_cuda_graph_optimize,
     /* .prefetch_begin          = */ ggml_backend_cuda_prefetch_begin,

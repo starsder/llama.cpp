@@ -153,3 +153,17 @@ a.out.*
 
 AGENTS.local.md
 .pi/SYSTEM.md
+
+# qwen4exp experiment artifacts (run logs, stats, generated prompts)
+*-err.txt
+*-out.txt
+stats-*.csv
+prompt*.txt
+.tools-run.lock
+dsh-*.txt
+abl-*.csv
+bisect-*.txt
+bz*.txt
+graph-ab-*
+nojoin-*
+vram-samples.txt
