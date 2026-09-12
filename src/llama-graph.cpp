@@ -2317,6 +2317,23 @@ ggml_tensor * llm_graph_context::build_moe_ffn(
         if (e == nullptr || atoi(e) == 0) {
             return false;
         }
+        // SAFETY: LLAMA_MOE_SPLIT=1 silently corrupts the output (handoff 6.30) - the CPU half's
+        // leaves are not reliably consistent with the current layer/token.  Plain "1" now refuses
+        // to engage and only documents the problem; LLAMA_MOE_SPLIT=2 is the explicit debug opt-in
+        // and still carries the corruption risk.
+        const char * devpart = getenv("LLAMA_MOE_DEVPART");
+        const bool force = devpart != nullptr && atoi(devpart) != 0;  // devpart has its own path
+        if (atoi(e) < 2 && !force) {
+            static bool warned = false;
+            if (!warned) {
+                fprintf(stderr, "llama-graph: LLAMA_MOE_SPLIT=1 refused: the host GPU/CPU split path is known\n"
+                                "             to silently corrupt the output (see handoff 6.30). Use\n"
+                                "             LLAMA_MOE_SPLIT=0 for the correct path, LLAMA_MOE_SPLIT=2 to opt in\n"
+                                "             for debugging, or LLAMA_MOE_DEVPART=1 for the (verified) device path.\n");
+                warned = true;
+            }
+            return false;
+        }
         // the split needs the runtime expert cache; without a budget it degenerates to
         // all-CPU experts with extra scheduling overhead, which plain --cpu-moe does better
         const char * m = getenv("LLAMA_MOE_CACHE_MIB");

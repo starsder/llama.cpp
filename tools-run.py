@@ -90,7 +90,7 @@ BASE_ENV = {
     "LLAMA_MOE_PREDICT_TOPK": "26",
     "LLAMA_MOE_PREFETCH": "1",
     "LLAMA_MOE_PREFETCH_JOIN": "0",
-    "LLAMA_MOE_SPLIT": "1",
+    "LLAMA_MOE_SPLIT": "0",   # SAFETY: =1 silently corrupts output (handoff 6.30)
     "LLAMA_MOE_INSERT_ON_MISS": "0",
     "LLAMA_MOE_FALLBACK_PREFETCH": "0",
     "LLAMA_MOE_DIRECT_READ": "1",
