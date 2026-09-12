@@ -84,7 +84,8 @@ EXE = ROOT / "build-ple-trace-mrs" / "bin" / "llama-cli.exe"
 MODEL = Path(r"F:\models\qwen38\unsloth-iq3-xxs\UD-IQ3_XXS\Qwen3.8-Flash-Next-UD-IQ3_XXS-00001-of-00003.gguf")
 
 BASE_ENV = {
-    "LLAMA_MOE_CACHE_MIB": "2048",
+    # verified best config (handoff 6.29/6.32): adaptive budget, minimal guard, no PLE caches
+    "LLAMA_MOE_CACHE_MIB": "auto",
     "LLAMA_MOE_PREDICT_SMOE": "1",
     "LLAMA_MOE_PREDICT_FATE": "0",
     "LLAMA_MOE_PREDICT_TOPK": "26",
@@ -97,12 +98,12 @@ BASE_ENV = {
     "LLAMA_MOE_MRS": "1",
     "LLAMA_MOE_MRS_ALPHA": "0.75",
     "LLAMA_MOE_MRS_TOPP": "20",
-    "LLAMA_MOE_VRAM_LIMIT_MIB": "15360",
-    "LLAMA_MOE_VRAM_GUARD_MIB": "1024",
+    "LLAMA_MOE_VRAM_LIMIT_MIB": "15667",
+    "LLAMA_MOE_VRAM_GUARD_MIB": "512",
     "LLAMA_MOE_CACHE_TIMING": "1",
     "LLAMA_TOKEN_PROF": "1",
-    "LLAMA_PLE_CACHE_MIB": "2048",
-    "LLAMA_PLE_GPU_CACHE_MIB": "1024",
+    "LLAMA_PLE_CACHE_MIB": "0",
+    "LLAMA_PLE_GPU_CACHE_MIB": "0",
     "GGML_OP_OFFLOAD_MIN_BATCH": "1",
 }
 
