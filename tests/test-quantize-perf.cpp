@@ -3,6 +3,32 @@
 #include "ggml.h"
 #include "ggml-cpu.h"
 
+
+#define GGML_COMMON_DECL_CPP
+#include "../ggml/src/ggml-common.h"
+
+// Internal ggml-cpu interfaces exercised by --repack-check (exported from ggml-cpu for tests/benchmarks)
+extern "C" void ggml_gemv_iq4_xs_8x8_q8_K(int n, float * s, size_t bs, const void * vx, const void * vy, int nr, int nc);
+extern "C" void ggml_gemm_iq4_xs_8x8_q8_K(int n, float * s, size_t bs, const void * vx, const void * vy, int nr, int nc);
+extern "C" int ggml_repack_iq4_xs_to_iq4_xs_8(struct ggml_tensor * t, const void * data, size_t data_size);
+
+// 8x8 interleaved iq4_xs block produced by ggml_repack_iq4_xs_to_iq4_xs_8 (ggml/src/ggml-cpu/repack.cpp);
+// mirrored here because ggml-cpu/repack.h is not on the test include path
+struct block_iq4_xsx8 {
+    ggml_half d[8];            // deltas for 8 iq4_xs blocks
+    uint16_t  scales_h[8];     // high 2 bits of the 6-bit sub-block scales for 8 iq4_xs blocks
+    uint8_t   scales_l[QK_K/8];// low 4 bits of the 6-bit sub-block scales for 8 iq4_xs blocks
+    uint8_t   qs[QK_K * 4];    // nibbles / quants for 8 iq4_xs blocks
+};
+static_assert(sizeof(block_iq4_xsx8) == 8 * sizeof(block_iq4_xs), "wrong iq4_xsx8 block size/padding");
+
+// 4-row interleaved Q8_K activation block for the gemm kernel (ggml/src/ggml-cpu/repack.h)
+struct block_q8_Kx4 {
+    float   d[4];        // deltas for 4 q8_K blocks
+    int8_t  qs[QK_K*4];  // quants interleaved in chunks of 8 bytes - A0,A1,A2,A3
+    int16_t bsums[QK_K/4];
+};
+static_assert(sizeof(block_q8_Kx4) == 4 * (sizeof(float) + QK_K + (QK_K/16) * sizeof(int16_t)), "wrong q8_Kx4 block size/padding");
 #undef NDEBUG
 #include <algorithm>
 #include <assert.h>
@@ -37,12 +63,17 @@ struct quantize_perf_params {
     bool op_dequantize_row_q = false;
     bool op_quantize_row_q_dot = false;
     bool op_vec_dot_q = false;
+    bool op_repack_check = false;
     int64_t iterations = ITERATIONS;
 };
 
-#if defined(__x86_64__) || defined(__i386__)
+#if defined(__x86_64__) || defined(__i386__) || defined(_M_X64) || defined(_M_IX86)
 
+#if defined(_MSC_VER)
+#include <intrin.h>
+#else
 #include <x86intrin.h>
+#endif
 inline int64_t cpu_cycles() {
 // Rough way to detect new-ish CPUs
 #ifdef __POPCNT__
@@ -107,6 +138,132 @@ static void benchmark_function(size_t size, size_t q_size, int64_t iterations, c
     printf("      quantized throughput : %9.2f GB/s\n",  gigabytes_per_second(q_size * iterations, total_time_us));
 }
 
+// Correctness + speed self-check for the iq4_xs 8x8 interleaved (repack) kernel:
+// random block_iq4_xs rows -> scalar ggml_vec_dot_iq4_xs_q8_K reference -> repack to 8x8 ->
+// ggml_gemv_iq4_xs_8x8_q8_K, results must match the reference (relative error < 1e-4)
+static int repack_check(const std::vector<size_t> & test_sizes, int64_t iterations) {
+    int n_failed = 0;
+    for (size_t size : test_sizes) {
+        if (size % QK_K != 0) {
+            fprintf(stderr, "error: repack-check size %zu not divisible by %d\n", size, QK_K);
+            return 1;
+        }
+        const int64_t nb = size / QK_K;
+
+        std::vector<block_iq4_xs> x(8 * nb);
+        std::vector<block_q8_K>   y(nb);
+
+        // pseudo-random but valid blocks: random quants/scales, sane deltas
+        uint32_t seed = 1234;
+        auto next_u32 = [&seed]() { seed = seed*1664525u + 1013904223u; return seed; };
+        for (int64_t i = 0; i < 8*nb; i++) {
+            x[i].d = ggml_fp32_to_fp16(0.01f + 0.5f * (next_u32() % 1024) / 1024.0f);
+            x[i].scales_h = (uint16_t) next_u32();
+            for (int j = 0; j < QK_K/64; j++) x[i].scales_l[j] = (uint8_t) next_u32();
+            for (int j = 0; j < QK_K/2;  j++) x[i].qs[j]       = (uint8_t) next_u32();
+        }
+        for (int64_t i = 0; i < nb; i++) {
+            y[i].d = 0.01f + (next_u32() % 1024) / 1024.0f;
+            for (int j = 0; j < QK_K; j++) y[i].qs[j] = (int8_t) next_u32();
+            for (int j = 0; j < QK_K/16; j++) {
+                int16_t ssum = 0;
+                for (int k = 0; k < 16; k++) ssum += y[i].qs[16*j + k];
+                y[i].bsums[j] = ssum;
+            }
+        }
+
+        // reference: scalar vec_dot per row (via the public traits table; the symbol itself is internal)
+        const auto * iq4_xs_cpu = ggml_get_type_traits_cpu(GGML_TYPE_IQ4_XS);
+        float sref[8];
+        for (int r = 0; r < 8; r++) {
+            iq4_xs_cpu->vec_dot(size, &sref[r], 0, x.data() + r*nb, 0, y.data(), 0, 1);
+        }
+
+        // repack into the 8x8 interleaved layout through the real conversion path
+        std::vector<block_iq4_xsx8> x8(nb);
+        struct ggml_tensor t = {};
+        t.type  = GGML_TYPE_IQ4_XS;
+        t.ne[0] = size; t.ne[1] = 8; t.ne[2] = 1; t.ne[3] = 1;
+        t.data  = x8.data();
+        int rc = ggml_repack_iq4_xs_to_iq4_xs_8(&t, x.data(), x.size() * sizeof(block_iq4_xs));
+        if (rc != 0) {
+            fprintf(stderr, "error: ggml_repack_iq4_xs_to_iq4_xs_8 failed\n");
+            return 1;
+        }
+
+        // 8x8 kernel: 1 activation row, 8 interleaved weight rows
+        float sout[8] = {};
+        ggml_gemv_iq4_xs_8x8_q8_K(size, sout, 0, x8.data(), y.data(), 1, 8);
+
+        printf("repack-check iq4_xs_8x8, %zu values x 8 rows\n", size);
+        for (int r = 0; r < 8; r++) {
+            const float err = fabsf(sout[r] - sref[r]) / std::max(fabsf(sref[r]), 1e-6f);
+            const bool ok = err < 1e-4f;
+            printf("  row %d: ref = %12.6f  repack = %12.6f  rel.err = %.3g  %s\n", r, sref[r], sout[r], err, ok ? "OK" : "FAIL");
+            if (!ok) n_failed++;
+        }
+
+        // gemm kernel: 4 activation rows interleaved as block_q8_Kx4
+        std::vector<block_q8_K> y4(4 * nb);
+        for (int64_t i = 0; i < 4*nb; i++) {
+            y4[i].d = 0.01f + (next_u32() % 1024) / 1024.0f;
+            for (int j = 0; j < QK_K; j++) y4[i].qs[j] = (int8_t) next_u32();
+        }
+        std::vector<block_q8_Kx4> y4x4(nb);
+        for (int64_t i = 0; i < nb; i++) {
+            for (int m = 0; m < 4; m++) {
+                y4x4[i].d[m] = y4[m*nb + i].d;
+                for (int c = 0; c < QK_K/8; c++) {
+                    memcpy(&y4x4[i].qs[32*c + 8*m], &y4[m*nb + i].qs[8*c], 8);
+                }
+            }
+        }
+        float sref4[4][8];
+        for (int m = 0; m < 4; m++) {
+            for (int r = 0; r < 8; r++) {
+                iq4_xs_cpu->vec_dot(size, &sref4[m][r], 0, x.data() + r*nb, 0, y4.data() + m*nb, 0, 1);
+            }
+        }
+        float sout4[4][8] = {};
+        ggml_gemm_iq4_xs_8x8_q8_K(size, &sout4[0][0], 8, x8.data(), y4x4.data(), 4, 8);
+        float gemm_max_err = 0.0f;
+        for (int m = 0; m < 4; m++) {
+            for (int r = 0; r < 8; r++) {
+                const float err = fabsf(sout4[m][r] - sref4[m][r]) / std::max(fabsf(sref4[m][r]), 1e-6f);
+                if (err >= 1e-4f) {
+                    printf("  gemm act.row %d row %d: ref = %12.6f  repack = %12.6f  rel.err = %.3g  FAIL\n", m, r, sref4[m][r], sout4[m][r], err);
+                    n_failed++;
+                }
+                gemm_max_err = std::max(gemm_max_err, err);
+            }
+        }
+        printf("  gemm 4 act.rows x 8 rows: max rel.err = %.3g  %s\n", gemm_max_err, gemm_max_err < 1e-4f ? "OK" : "FAIL");
+
+        const size_t weight_bytes = 8 * nb * sizeof(block_iq4_xs);
+
+        printf("  scalar vec_dot iq4_xs_q8_K (8 rows)\n");
+        auto scalar_fn = [&](void) -> float {
+            float acc = 0.0f;
+            for (int r = 0; r < 8; r++) {
+                float row;
+                iq4_xs_cpu->vec_dot(size, &row, 0, x.data() + r*nb, 0, y.data(), 0, 1);
+                acc += row;
+            }
+            return acc;
+        };
+        benchmark_function(size, weight_bytes, iterations, scalar_fn);
+
+        printf("  ggml_gemv_iq4_xs_8x8_q8_K\n");
+        auto repack_fn = [&](void) -> float {
+            ggml_gemv_iq4_xs_8x8_q8_K(size, sout, 0, x8.data(), y.data(), 1, 8);
+            return sout[0];
+        };
+        benchmark_function(size, weight_bytes, iterations, repack_fn);
+    }
+    printf("%s\n", n_failed == 0 ? "REPACK-CHECK PASS" : "REPACK-CHECK FAIL");
+    return n_failed == 0 ? 0 : 1;
+}
+
 static void usage(char * argv[]) {
     printf("Benchmark quantization specific functions on synthetic data\n");
     printf("\n");
@@ -135,6 +292,7 @@ static void usage(char * argv[]) {
     printf("                        set alignment offset as OFFSET (0)\n");
     printf("  -i NUM, --iterations NUM\n");
     printf("                        set test iteration number (%d)\n", ITERATIONS);
+    printf("  --repack-check        run the iq4_xs 8x8 repack correctness + speed self-check and exit\n");
 }
 
 int main(int argc, char * argv[]) {
@@ -190,6 +348,8 @@ int main(int argc, char * argv[]) {
                 invalid_param = true;
                 break;
             }
+        } else if (arg == "--repack-check") {
+            params.op_repack_check = true;
         } else if (arg == "--type") {
             if (++i >= argc) {
                 invalid_param = true;
@@ -261,6 +421,10 @@ int main(int argc, char * argv[]) {
     int64_t iterations = params.iterations;
 
     ggml_cpu_init();
+
+    if (params.op_repack_check) {
+        return repack_check(params.test_sizes, iterations);
+    }
 
     for (int i = 0; i < GGML_TYPE_COUNT; i++) {
         ggml_type type = (ggml_type) i;

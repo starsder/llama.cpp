@@ -432,7 +432,8 @@ extern "C" {
         GGML_TYPE_Q2_0    = 42,
         GGML_TYPE_TBQ3_0  = 43, // TurboQuant 3-bit
         GGML_TYPE_TBQ4_0  = 44, // TurboQuant 4-bit
-        GGML_TYPE_COUNT   = 45,
+        GGML_TYPE_IQ4_XS_8_8 = 45, // IQ4_XS with 8x8 runtime repacking interleave
+        GGML_TYPE_COUNT   = 46,
     };
 
     // precision

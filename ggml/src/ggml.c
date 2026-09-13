@@ -958,6 +958,12 @@ static const struct ggml_type_traits type_traits[GGML_TYPE_COUNT] = {
         .type_size                = 0,
         .is_quantized             = false,
     },
+    [GGML_TYPE_IQ4_XS_8_8] = {
+        .type_name                = "iq4_xs_8_8",
+        .blck_size                = QK_K,
+        .type_size                = 8 * sizeof(block_iq4_xs), // 8x8 interleave: sizeof(block_iq4_xsx8)
+        .is_quantized             = true,
+    },
 };
 
 const struct ggml_type_traits * ggml_get_type_traits(enum ggml_type type) {
