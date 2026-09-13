@@ -1186,6 +1186,39 @@ LLAMA_MOE_PLE_CACHE_MIB=0  LLAMA_MOE_PLE_GPU_CACHE_MIB=0
 若某场景更看重**预测准确度/长期放置质量**（例如超长生成里放置质量会复利），可用
 `LLAMA_MOE_SMOE_NONBLOCK=0 LLAMA_MOE_SMOE_AHEAD=1`（r1 93.1%、速度相当）。
 
+
+### 6.34 评估：IQ4_NL 的 AVX2 dot/repack 算子对我们**没有帮助**（实测）
+
+**仓库里确实有这套算子**：`ggml/src/ggml-cpu/repack.cpp` 有 `iq4_nl_4x4/8x8/16x1` 的 gemv/gemm
+（`block_iq4_nlx4/x8/x16`），`arch/x86/repack.cpp` 有 AVX2 实现，类型表把 `GGML_TYPE_IQ4_NL`
+映射到 `IQ4_NL_4_4 / 8_8 / 16_4`。但入口是 `GGML_ASSERT(t->type == GGML_TYPE_IQ4_NL)`
+（repack.cpp:3602/3659/3716）⇒ **只对 IQ4_NL 张量生效**。
+
+**为什么用不上 / 不该用**
+1. **格式不匹配**：我们的专家是 **IQ3_XXS**（缓存只按偏移搬原始字节、CPU 半边 `DIRECT_READ` 走 mmap）
+   ⇒ 这套算子是死代码；要换格式必须**整个模型重新量化**。
+2. **就算能用，上限只有 1.3%**（实测单次解码图 55.4 ms 分解）：
+
+   | 阶段 | 时间 | 占比 |
+   |---|---|---|
+   | 预取（专家权重 H2D / 缓存填充） | **43 ms** | **78%** |
+   | `ids_wait`（每层路由 ids 回读的往返延迟） | **17.8 ms** | **32%** |
+   | GPU 入队 | 7.6 ms | 14% |
+   | 分区 | 2.7 ms | 5% |
+   | **CPU 半边（所有 dot 都在这里）** | **0.7 ms** | **1.3%** |
+
+3. **换格式会让真正的墙更糟**：IQ4_NL = 4.5 bpw，IQ3_XXS ≈ 3.06 bpw ⇒ **每字节多 47%**；
+   而墙是预取的 PCIe 争用（本文档 §① 实测边际 0.073 ms/MB ≈ 13.8 GB/s）。
+   裸算子吞吐实测（`test-quantize-perf --op vec_dot_q`，generic AVX2）：
+   iq4_nl 12.62 GB/s、q4_0 11.70、q8_0 32.00 —— 而 PCIe 供给约 5 GB/s
+   ⇒ **dot 有 ~2.5× 富余，从来不是瓶颈**。
+
+**真正该打的（供后续）**
+- `pre=43 ms`：缓存填充的 PCIe 争用 ⇒ 方向是"**更少字节 / 更准准入**"（§V/P 已分析：命中 ~80% 后边际价值≈0），
+  而不是更快的 dot 算子；
+- `ids_wait=17.8 ms`：每次回读只有 **2088 字节**（48 层合计 ~100 KB）⇒ 是**延迟**不是带宽，
+  属 split 结构性的主机往返；要动只能改流水（风险高）。
+
 ---
 
 ## 7. 复现命令
