@@ -1188,6 +1188,8 @@ LLAMA_MOE_PLE_CACHE_MIB=0  LLAMA_MOE_PLE_GPU_CACHE_MIB=0
 
 
 ### 6.34 评估：IQ4_NL 的 AVX2 dot/repack 算子对我们**没有帮助**（实测）
+> **⚠ 6.35 更正了本节的两个事实**：①我们的专家**不是** IQ3_XXS（实为 `iq2_s` + `iq4_nl`）；
+> ②"格式不匹配"不是根本原因 —— 真正原因是 **repack buft 从未被选中**。结论（对 MoE 帮助有限）仍成立。
 
 **仓库里确实有这套算子**：`ggml/src/ggml-cpu/repack.cpp` 有 `iq4_nl_4x4/8x8/16x1` 的 gemv/gemm
 （`block_iq4_nlx4/x8/x16`），`arch/x86/repack.cpp` 有 AVX2 实现，类型表把 `GGML_TYPE_IQ4_NL`
@@ -1218,6 +1220,40 @@ LLAMA_MOE_PLE_CACHE_MIB=0  LLAMA_MOE_PLE_GPU_CACHE_MIB=0
   而不是更快的 dot 算子；
 - `ids_wait=17.8 ms`：每次回读只有 **2088 字节**（48 层合计 ~100 KB）⇒ 是**延迟**不是带宽，
   属 split 结构性的主机往返；要动只能改流水（风险高）。
+
+
+### 6.35 权重类型实测（unsloth UD = 动态量化，混合多格式）+ 6.34 的更正
+
+**用 `tools-gguf-types.py <gguf>`（只读 GGUF 头，不读张量数据）实测三个分片：**
+
+| 类型 | 张量数 | 字节 | 占比 |
+|---|---|---|---|
+| **`iq4_nl`** | 49 | **47.9 GiB** | **63%** |
+| `iq2_s` | 94 | 23.5 GiB | 31% |
+| `q6_K` | 250 | 3.1 GiB | 4% |
+| `q8_0` | 248 | 0.8 GiB | 1% |
+| `f32` / `bf16` / `iq3_s` | 560 | 1.2 GiB | 1% |
+
+⇒ 文件名里的 "IQ3_XXS" **不是**任何一个张量的类型（是量化配方名）；**`iq4_nl` 才是最大头**。
+
+**张量级事实**
+- **`per_layer_token_embd.weight` = `iq4_nl` = 26.8 GiB** ⇒ 这正是 PLE 缓存那套 IQ4_NL dot 算子的**用途**
+  （PLE 两层缓存现在**关着** ⇒ 该算子目前处于**闲置**状态，不是死代码）；
+- 专家矩阵：`ffn_gate_exps`/`ffn_up_exps` = `iq2_s`（256.25 MiB），**`ffn_down_exps` = `iq4_nl`（450 MiB）**
+  （只有 blk.2 的 gate/up 是 `iq3_s` 343.75 MiB）；
+- 每个专家 = 0.500 + 0.500 + 0.879 = **1.88 MiB**，其中 **down 占 46.8%**（与准入权重无关，是配方决定）。
+
+**6.34 的更正（两处）**
+1. ~~"我们的专家是 IQ3_XXS"~~ → 实为 `iq2_s` + `iq4_nl`；
+2. ~~"格式不匹配（IQ4_NL 算子只对 IQ4_NL 张量生效）"~~ → 算子确实能匹配 `ffn_down_exps`，**但根本原因是
+   它从未被启用**：`GGML_CPU_REPACK=ON`（算子已编入）、`ggml-cpu.cpp` 只**注册**该 buft，
+   而 **`src/llama-model.cpp` 里 0 处 repack、`src/*.cpp` 里没有任何
+   `ggml_backend_cpu_repack_buffer_type()` 调用** ⇒ 没有任何张量会被分配到 repack 缓冲；
+   且 MoE 专家权重被**钉在 CUDA_Host 大缓冲**（45.8 GiB，SMoE 缓存用）⇒ CPU 半边也不可能走 repack 缓冲。
+   **结论不变**：对 MoE 没有帮助（CPU 半边 0.7 ms / 55.4 ms）；**若要重新打开 PLE 缓存，才是该用它的时候**。
+
+**预取字节账（用真实类型算，256 token 运行）**：gate 26.6% / up 26.6% / **down 46.8%**，
+合计 **92.5–103.8 MB/token** ⇒ 与 §① 实测的"每档 ≈100MB/token、0.073 ms/MB"一致。
 
 ---
 
