@@ -1400,6 +1400,32 @@ bundle stride 实测 **2078208 B** = `11 × lcm(512, 82, 18)=11 × 188928` ⇒ �
 （实测缓存关闭 = 9.2 t/s，全部专家由 CPU 计算），此时 i-quant 内核就是**唯一**瓶颈，
 repack/interleave（"4n"那套）能给 2–3× 量级 [INFERENCE]，是那个模式下的第一优先项。
 
+
+### 6.40 AVX2 内核可行性边界 + "做完值多少"（决定是否投工）
+
+**AVX2 repack 的真实覆盖（读源码所得）**
+- `x86/arch/repack.cpp` 的 `gemv_q4_b32_8x8_q8_0_lut_avx<block_tx8>` 是**真 SIMD**（AVX2：`vpshufb` LUT），
+  但被 `static_assert` **限定**为 `block_q4_0x8` / `block_iq4_nlx8` / `block_mxfp4x8`
+  ⇒ **只适用于 4-bit、16 项 LUT 的类型**；
+- `IQ4_NL` 在 AVX2 上有 `iq4_nl_8x8_q8_0`（`ne[1] % 8 == 0`）；`Q2_K` 走 AVX512、`Q5_K`/`Q6_K` 仅 NEON；
+- **`iq2_s` / `iq3_s` 在 AVX2 上完全没有 repack**，且其算法是 2/3-bit grid-LUT + Q8_K bsums，
+  **不能套用上述模板** ⇒ 要做就是**从零写新的 AVX2 内核**（数天量级 + 正确性风险）。
+- `test-backend-ops` 不含 repack 类型，`test-quantize-perf` 也无法直接调 gemv-8x8（`nr` 语义不同）
+  ⇒ **repack 的加速比只能在"真正把 CPU 半边接上 repack 缓冲"之后实测**。
+
+**做完值多少（按已测数据推算）**
+
+| 场景 | 现状 | i-quant 内核 3× 之后 |
+|---|---|---|
+| 有缓存（默认，97 或 42 槽） | `cpu=1.5–1.7 ms / 63.3 ms` = **2.4–2.7%** | token 时间 +2.5%，**不值** |
+| 纯 CPU / 缓存关（9.2 t/s） | ~900 MB 专家/token ÷ 109 ms ≈ **8.3 GB/s**（正是 iq2_s 2.3 与 iq4_nl 15 的混合）⇒ **整个 token = 内核速度** | **9.2 → ~20 t/s**，**很值** |
+
+⇒ **i-quant 内核只在"CPU 才算"的模式下是全部瓶颈**；默认配置里只占 2.4%。
+另外即便内核快 3×，`iq2_s` 也只有 ~7 GB/s < 预取等效 13.8 GB/s，**仍不足以翻转 V/P**（需要 ~6×）。
+
+**优先级的建议（非内核）**：主机侧预取 `pre=49.3 ms (78%)`，搬运 ~630 MB/token = 真实漏命中(~180 MB)的 **3.5×**，
+且速率只有 ~13 GB/s（主机拷贝级）⇒ 收紧准入 + 并行化拷贝，[INFERENCE] 可把 token 63→~35 ms。
+
 ---
 
 ## 7. 复现命令
