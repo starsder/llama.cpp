@@ -52,7 +52,7 @@ def skip_value(f, t):
 
 def main():
     path = sys.argv[1]
-    flt = sys.argv[2] if len(sys.argv) > 2 else None
+    flt = sys.argv[2] if len(sys.argv) > 2 and not sys.argv[2].startswith("--") else None
     with open(path, "rb") as f:
         if f.read(4) != b"GGUF":
             sys.exit("not a GGUF file")
@@ -75,6 +75,33 @@ def main():
             for d in ne[1:]:
                 nbytes *= d
             rows.append((name, ptype, nbytes, ne))
+
+    if "--check" in sys.argv:
+        # the SMoE cache hands the kernels nb[2] = bundle_stride and moves expert_size
+        # bytes per expert; both are divided by the block byte size, so per-expert and
+        # per-row geometry must be exact multiples of it.  Mixed-type (UD) quants make
+        # this per-tensor, not per-file - check every tensor, not just the expert ones.
+        bad = 0
+        for name, ptype, nbytes, ne in rows:
+            t = next((k for k, v in GGML_TYPES.items() if v[0] == ptype), None)
+            if t is None:
+                continue
+            _, blck, tsize = GGML_TYPES[t]
+            if ne[0] % blck != 0:
+                print(f"  FAIL {name}: ne[0]={ne[0]} is not a multiple of block {blck} ({ptype})")
+                bad += 1
+                continue
+            row = (ne[0] // blck) * tsize
+            expert = row * (ne[1] if len(ne) > 1 else 1)
+            if expert % tsize != 0:
+                print(f"  FAIL {name}: per-expert {expert}B is not a multiple of block {tsize}B ({ptype})")
+                bad += 1
+            if nbytes != expert * (ne[2] if len(ne) > 2 else 1):
+                print(f"  FAIL {name}: nbytes {nbytes} != expert*ne[2] (non-dense expert layout?)")
+                bad += 1
+        print(f"\n== geometry check: {'PASS' if bad == 0 else f'{bad} FAILURES'} "
+              f"({len(rows)} tensors)")
+        return
 
     hist = collections.Counter()
     bytes_by_type = collections.Counter()

@@ -3109,6 +3109,20 @@ moe_cache_entry * moe_cache_ensure(ggml_backend_t split_backend, const ggml_tens
     entry->n_expert    = (int) input->ne[2];
     entry->component_stride = moe_cache_component_stride(*entry);
 
+    // UD (dynamic) quants mix tensor types inside one file - this model carries
+    // iq2_s gate/up and an iq4_nl down - so the slot geometry must come from each
+    // tensor's own block size.  The direct-read view hands the kernels
+    // nb[2] = bundle_stride divided by type_size, and every copy moves expert_size
+    // bytes; a block size that does not divide those would silently mis-address
+    // every expert of that tensor.  Refuse such a layout instead of corrupting.
+    if (entry->type_size == 0 || entry->expert_size % entry->type_size != 0) {
+        fprintf(stderr, "[MOE-CACHE] %s: expert size %zu is not a multiple of the %zu-byte block "
+                        "(unsupported quant layout), disabling cache\n",
+                input->name, entry->expert_size, entry->type_size);
+        s.disabled = true;
+        return nullptr;
+    }
+
     if (s.predictor && s.manifest.n_experts != (uint32_t) entry->n_expert) {
         fprintf(stderr, "[MOE-CACHE] manifest experts %u != tensor experts %d, disabling predictor\n",
                 s.manifest.n_experts, entry->n_expert);
