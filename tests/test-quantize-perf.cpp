@@ -63,6 +63,7 @@ struct quantize_perf_params {
     bool op_dequantize_row_q = false;
     bool op_quantize_row_q_dot = false;
     bool op_vec_dot_q = false;
+    bool op_roundtrip = false;
     bool op_repack_check = false;
     int64_t iterations = ITERATIONS;
 };
@@ -275,7 +276,7 @@ static void usage(char * argv[]) {
     printf("  -3                    use size as L1, L2, L3 sizes (L1:%d L2:%d L3:%d)\n", L1_SIZE, L2_SIZE, L3_SIZE);
     printf("  -4                    use size as L1, L2, L3, MEM sizes (L1:%d L2:%d L3:%d MEM:%d)\n", L1_SIZE, L2_SIZE, L3_SIZE, MEM_SIZE);
     printf("  --op OP               set test operation as quantize_row_q_reference, quantize_row_q, dequantize_row_q,\n");
-    printf("                        quantize_row_q_dot, vec_dot_q (all)\n");
+    printf("                        quantize_row_q_dot, vec_dot_q, roundtrip (all)\n");
     printf("  --type TYPE           set test type as");
     for (int i = 0; i < GGML_TYPE_COUNT; i++) {
         ggml_type type = (ggml_type) i;
@@ -342,6 +343,8 @@ int main(int argc, char * argv[]) {
                 params.op_dequantize_row_q = true;
             } else if (op == "quantize_row_q_dot") {
                 params.op_quantize_row_q_dot = true;
+            } else if (op == "roundtrip") {
+                params.op_roundtrip = true;
             } else if (op == "vec_dot_q") {
                 params.op_vec_dot_q = true;
             } else {
@@ -396,7 +399,7 @@ int main(int argc, char * argv[]) {
     if (params.test_sizes.empty()) {
         params.test_sizes.push_back(L1_SIZE);
     }
-    if (!(params.op_quantize_row_q_reference || params.op_quantize_row_q || params.op_dequantize_row_q || params.op_quantize_row_q_dot || params.op_vec_dot_q)) {
+    if (!(params.op_quantize_row_q_reference || params.op_quantize_row_q || params.op_dequantize_row_q || params.op_quantize_row_q_dot || params.op_vec_dot_q || params.op_roundtrip)) {
         params.op_quantize_row_q_reference = params.op_quantize_row_q = params.op_dequantize_row_q = params.op_quantize_row_q_dot = params.op_vec_dot_q = true;
     }
 
@@ -435,6 +438,23 @@ int main(int argc, char * argv[]) {
         }
 
         if ((qfns_cpu->from_float || qfns_cpu->vec_dot) && qfns->to_float) {
+            if (params.op_roundtrip) {
+                // encode -> decode a sine wave; report RMS error relative to the signal RMS
+                if (qfns_cpu->from_float && qfns->to_float) {
+                    size_t n = params.test_sizes.back();
+                    qfns_cpu->from_float(test_data1, test_q1, n);
+                    qfns->to_float(test_q1, (float *) test_data2, n);
+                    double num = 0.0, den = 0.0;
+                    for (size_t i = 0; i < n; i++) {
+                        const double e = (double) test_data2[i] - test_data1[i];
+                        num += e * e;
+                        den += (double) test_data1[i] * test_data1[i];
+                    }
+                    printf("%-12s n=%-7zu rms_rel_err = %.6f   (mse/var = %.6f)\n", ggml_type_name(type), n,
+                           sqrt(num / (double) n) / sqrt(den / (double) n), num / den);
+                }
+                continue;
+            }
             printf("%s\n", ggml_type_name(type));
 
             ggml_quantize_init(type);
