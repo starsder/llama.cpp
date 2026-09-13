@@ -1313,6 +1313,49 @@ bundle stride 实测 **2078208 B** = `11 × lcm(512, 82, 18)=11 × 188928` ⇒ �
 另外：若目的是省 *PCIe 字节*，压缩必须由 **GPU 直接解压** 才有意义（否则解压后仍要传）；若目的是省 *VRAM*（更多槽），
 则现实途径同样只有更低 bpw 格式。
 
+
+### 6.38 内核覆盖矩阵：我们的格式 × 计算路径 × CPU/GPU 是否都有加速算子
+
+**运行时 SIMD（实测首行日志）**：`AVX = 1  AVX2 = 1  F16C = 1  FMA = 1`（Zen 3）——
+`GGML_NATIVE=ON` 走 `-march=native`；CMakeCache 里 `GGML_AVX2:BOOL=OFF` 只是**没走显式开关**，不代表没开。
+
+**GPU 侧**
+- 解码热路径 MMVQ（`mmvq.cu`）显式覆盖我们全部类型：
+  `IQ2_S→vec_dot_iq2_s_q8_1`、`IQ4_NL→vec_dot_iq4_nl_q8_1`、`IQ3_S→vec_dot_iq3_s_q8_1`、`Q6_K`、`Q8_0`
+  （且各有 `VDR_*_MMVQ` 向量化参数）⇒ **不存在退化成 f16/cuBLAS 的解码路径**。
+- 预填充/批处理 MMQ（`mmq.cuh`）：`Q8_0`/`Q6_K`/`IQ2_S`/`IQ3_S`/`IQ4_NL` 全部有 case + 各自的 tile 配置。
+- `GET_ROWS`/`SET_ROWS` 有 CUDA 实现；`FLASH_ATTN_EXT` 支持 q8_0 KV；GDN/SSM/ARGSORT/TOP_K 均在 CUDA0。
+
+**CPU 侧（`ggml-cpu.c` 的 `type_traits_cpu`）**
+
+| 类型 | CPU `vec_dot` | 激活量化 | 用量 |
+|---|---|---|---|
+| `IQ2_S` | `ggml_vec_dot_iq2_s_q8_K` | Q8_K | MoE gate/up（46 层） |
+| `IQ3_S` | `ggml_vec_dot_iq3_s_q8_K` | Q8_K | MoE gate/up（blk.2） |
+| `IQ4_NL` | `ggml_vec_dot_iq4_nl_q8_0` | Q8_0 | MoE down（48 层）、PLE |
+| `Q6_K` | `ggml_vec_dot_q6_K_q8_K` | Q8_K | 注意力等 |
+| `Q8_0` | `ggml_vec_dot_q8_0_q8_0` | Q8_0 | 嵌入/部分权重 |
+
+⇒ **两边都有加速算子，没有"裸回落"**。
+
+**唯一"有但用不上"的加速**：CPU **repack**（`iq4_nl_4x4/8x8/16x1`，见 6.35）——
+该 buft 在本 fork 从未被选中，且 MoE 权重被钉在 **CUDA_Host** 缓冲（SMoE 缓存用），CPU 半边读的是它，
+不可能走 CPU repack 缓冲。**且即便用上也无意义**：CPU 半边只有 0.7 ms / 55.4 ms = 1.3%。
+
+**调度实测（`GGML_SCHED_DEBUG=2` + `--verbose`，工具 `tools-op-backend-scan.py`）**
+- 文本路径：97228 节点 CUDA0 / 498 CPU（0.5%）。CPU 上只有三类：
+  1. `MOE_CPU`（设计如此，`ggml-cuda.cu:5615` 显式 `return false`）；
+  2. `GET_ROWS`（`token_embd` 497M + `per_layer_token_embd` 26.8GiB）—— 因为
+     `get_op_batch_size(GET_ROWS) == 0` 永远低于 offload 阈值，**故意留 host**（张量常驻 host，省一次 D2H）；
+  3. **blk.47 的 `MUL_MAT_ID`/`SWIGLU` 走未融合 CPU MoE 路径**（15 节点）——
+     最后一层没有侧图预测（`smoe_target = il + ahead < n_layer` 的边界），故 split 未接管，
+     落到 `--cpu-moe` 的未融合子图。代价已被计入 `cpu=0.7 ms`，可忽略，但可记为已知边界。
+- 视觉路径（mmproj + 图）：`POOL_*`/`WIN_*` **完全没有出现**（ViT 用 `IM2COL`/`UPSCALE`，均在 CUDA0）⇒
+  那些无 CUDA 的算子与本模型无关。
+- 每层 4 个 split（gate/up/down 各自一对 host leaf + 1 个 CPU MoE）⇒ 约 192 splits/token，
+  这是 split 结构的固有开销，也是 `ids_wait` 的来源之一。
+- `GGML_OP_MOE_PARTITION_APPLY` 在整个源码里 **0 引用**（枚举死条目，可清理）。
+
 ---
 
 ## 7. 复现命令
