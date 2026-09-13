@@ -1460,6 +1460,37 @@ iq2_xs/iq2_s/iq3_xxs/iq3_s 系列共用），是这批内核的共同病灶。
 `ggml_backend_dev_get_extra_bufts` 把 repack buft 纳入了 CPU buft 列表（机制泛型，源码里不出现
 "repack" 字样）；实测加载日志无 `CPU_REPACK model buffer size` 行，即**注册了但零分配**。
 
+
+### 6.42 KV 量化类型评测：速度 / MoE 缓存槽 / PPL / KL 散度（含一个 TBQ4 的坏点）
+
+配置：`-c 262144`（用户的真实场景）、200 token、8k→256k 的 MoE 缓存 `auto`、`-fa 1`、
+perplexity 用 wikitext-2 `wiki.test.raw`。预算：本模型只有 **12/48 层是 full-attention**
+（`full_attention_interval=4`）、`n_head_kv=2`、head_dim 256 ⇒ KV = 12,288 元素/token。
+
+| KV | bpw | 256k KV 大小 | **MoE 缓存槽** | gen t/s | PPL(8ch) | PPL(1ch) | Mean KLD | 99.9% KLD |
+|---|---|---|---|---|---|---|---|---|
+| **f16** | 16 | 6.0 GiB | **0** ✗✗ | 缓存报废 | 2.0120 | 2.4566 | （基准） | — |
+| `q8_0` | 8.5 | 3.19 GiB | 29 | 15.7 | **2.0128** | **2.3458** | **0.0308** | 1.20 |
+| `q4_0` | 4.5 | 1.69 GiB | 45 | 16.1 | 2.0234 | 2.5026 | 0.0569 | 1.99 |
+| ⚠️ `tbq4_0` | 4.06 | 1.52 GiB | 47 | 15.3 | **崩溃 exit=5** | **65.00** ✗✗ | 崩溃 | — |
+| `tbq3_0` | 3.06 | 1.15 GiB | **51** ✓ | **16.2** | 2.0728 | 2.7151 | 0.1164 | 2.71 |
+
+**结论**
+1. **速度**：KV 类型对 t/s 的直接作用很小（15.3–16.2），真正的差别是**它给 MoE 缓存留多少槽**
+   （0 → 51，命中率 0 → 79%）。⚠️ **f16 在 256k 会把缓存整个挤成 0**
+   （`policy=MRS requested=6144 MiB effective=0 MiB`，所有专家回落 CPU）⇒ f16 在 256k 不是"质量基准"而是**关掉缓存**。
+2. **质量**：`q8_0` ≈ f16（KLD 0.031，几乎无损）；`q4_0` KLD 0.057（PPL +0.6%）；
+   `tbq3_0` KLD 0.116（PPL +3.0%）—— 是 `q4_0` 的 **2.0×**、`q8_0` 的 **3.8×**。
+3. ⚠️ **`tbq4_0` 是坏的**：8 chunks 直接 **exit=5 崩溃**（复现两次），1 chunk/`-b 512` 下
+   **PPL = 65.0**（对照 f16 2.4566、q8_0 2.3458、q4_0 2.5026）⇒ 任何长度下都不可用。
+   `llama-cli` 短 greedy 生成仍能输出看似正常的文本（"Paris"），容易骗过肉眼 —— 必须用 PPL/KLD 才能看出。
+   **`run-256k-tbq.ps1` / `run-8k-tbq.ps1` 用的正是 `tbq4_0`，建议换成 `tbq3_0` 或 `q4_0`。**
+
+**推荐**：256k 场景 `-ctk/-ctv tbq3_0`（51 槽、最快、KLD 0.116 的代价）；要更保真用 `q4_0`（45 槽、KLD 0.057）。
+
+工具：`tools-kv-matrix.py`（llama-bench 速度 + llama-perplexity PPL/KLD 矩阵，含 f16 base 生成）、
+`tools-kv-summary.py`（解析 sweep 日志）。语料：`ppl/wikitext-2-raw/wiki.test.raw`（已下载）。
+
 ---
 
 ## 7. 复现命令
