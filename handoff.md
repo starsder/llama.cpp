@@ -1426,6 +1426,40 @@ repack/interleave（"4n"那套）能给 2–3× 量级 [INFERENCE]，是那个�
 **优先级的建议（非内核）**：主机侧预取 `pre=49.3 ms (78%)`，搬运 ~630 MB/token = 真实漏命中(~180 MB)的 **3.5×**，
 且速率只有 ~13 GB/s（主机拷贝级）⇒ 收紧准入 + 并行化拷贝，[INFERENCE] 可把 token 63→~35 ms。
 
+
+### 6.41 AVX2 i-quant 内核优化：两个实验都做了，结论是**此路在 AVX2 上到顶**
+
+**先确认病根**：`ggml_vec_dot_iq2_s_q8_K` 内循环每 32 个权重做 4 次标量 LUT 索引 + 4 次
+`_mm256_set_epi64x`；全仓库这种 `_mm256_set_epi64x(iq...)` 拼装有 **14 处**（iq1_s/iq1_m/iq2_xxs/
+iq2_xs/iq2_s/iq3_xxs/iq3_s 系列共用），是这批内核的共同病灶。
+
+**实验 1：寄存器内组装索引 + `_mm256_i32gather_epi64`**
+- 正确性：`test-backend-ops test -b CPU -o MUL_MAT -p "type_a=iq2_s"` → **11/11 OK**（改写等价）；
+- 速度：**2.30 → 1.29 GB/s（慢 1.8×）** ⇒ AMD（Zen 3）的 gather 是微码实现，比"4 次标量载入 + 插入"更慢。
+- ⇒ 已回退。
+
+**实验 2：`_mm_loadl_epi64` 直载表项 + `punpcklqdq` + `vinserti128`**（去掉 4 次插入）
+- 速度：**2.30 → 2.30 GB/s（0%）** ⇒ 编译器本就把 `set_epi64x` 生成等价最优序列。
+- ⇒ 已回退。
+
+**为什么到顶（结构性原因，已用表格数据验证）**
+1. 这些 grid 是**学习出来的码本**：三张表（`iq2xxs_grid[256]` / `iq2xs_grid[512]` / `iq2s_grid[1024]`）
+   的输出字节只取 3 个值 `{8,25,43}`，但**索引→字节不是按位分段的函数**（逐位验证：1/2/3-bit 字段
+   都无法解释任何输出字节）⇒ 不能用移位 + `vpshufb` 算出来，**只能查表**；
+2. AVX2 **没有 byte-gather**，而 `vpgatherqq` 在 Zen 3 上更慢（实验 1）；`vpshufb` 每通道只能索引 16 项，
+   256/1024 项的表需要 16 次 shuffle + 15 次 blend，得不偿失；
+3. 对比 `q2_K`（2.625 bpw）= **48.6 G 权重/s** 而 `iq2_s`（2.56 bpw）= 7.2 G/s：差距**不是**因为没优化，
+   而是因为 K-quant 根本不需要查表（纯位解包 + `maddubs`）。
+
+⇒ **AVX2 上能给 i-quant 的唯一有效加速是 repack/interleave**，而它只对**16 项 LUT 的 4-bit 类型**有效
+（`vpshufb` 天生适配）——这也正是上游只为 `iq4_nl` / `q4_0` / `mxfp4` 提供 8x8 的原因。
+**本仓库里还没有 8x8 的类型**：`iq4_xs`（12.16 GB/s，Q8_K 版）—— 它才是"这批算子"里唯一
+理论上还能拿到 1.5–2× 的成员（需要一个 Q8_K 版 8x8 模板，工作量中等、可验证）。
+
+**更正**：6.35 里"repack buft 从未被选中"的**理由**有误 —— `src/llama-model.cpp:1073-1078` 确实通过
+`ggml_backend_dev_get_extra_bufts` 把 repack buft 纳入了 CPU buft 列表（机制泛型，源码里不出现
+"repack" 字样）；实测加载日志无 `CPU_REPACK model buffer size` 行，即**注册了但零分配**。
+
 ---
 
 ## 7. 复现命令
