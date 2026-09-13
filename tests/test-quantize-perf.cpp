@@ -125,7 +125,7 @@ static void usage(char * argv[]) {
         const auto * qfns     = ggml_get_type_traits(type);
         const auto * qfns_cpu = ggml_get_type_traits_cpu(type);
         if (ggml_type_name(type) != NULL) {
-            if (qfns_cpu->from_float && qfns->to_float) {
+            if ((qfns_cpu->from_float || qfns_cpu->vec_dot) && qfns->to_float) {
                 printf(" %s", ggml_type_name(type));
             }
         }
@@ -270,7 +270,7 @@ int main(int argc, char * argv[]) {
             continue;
         }
 
-        if (qfns_cpu->from_float && qfns->to_float) {
+        if ((qfns_cpu->from_float || qfns_cpu->vec_dot) && qfns->to_float) {
             printf("%s\n", ggml_type_name(type));
 
             ggml_quantize_init(type);
@@ -335,8 +335,18 @@ int main(int argc, char * argv[]) {
 
             if (params.op_vec_dot_q) {
                 printf("  vec_dot_q\n");
-                qfns_cpu->from_float(test_data1, test_q1, largest);
-                qfns_cpu->from_float(test_data2, test_q2, largest);
+                if (qfns_cpu->from_float != nullptr) {
+                    qfns_cpu->from_float(test_data1, test_q1, largest);
+                    qfns_cpu->from_float(test_data2, test_q2, largest);
+                } else {
+                    // i-quants have no from_float (they need an importance matrix).  Their
+                    // vec_dot kernels are table driven and branch free, so feeding raw bytes
+                    // measures the same throughput as real weights would.
+                    for (size_t j = 0; j < largest*4; ++j) {
+                        ((uint8_t *) test_q1)[j] = (uint8_t) (0x9eu*j + 13u*j*j + 7u);
+                        ((uint8_t *) test_q2)[j] = (uint8_t) (0x37u*j + 29u*j*j + 5u);
+                    }
+                }
                 for (size_t size : params.test_sizes) {
                     printf("    %zu values (%.2f MB)\n", size, 4*size/(float)(1024*1024));
                     auto quantize_fn = [&](void) -> float {
