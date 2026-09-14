@@ -1,0 +1,166 @@
+51 prompts: ['chat_en_1', 'chat_en_2', 'chat_en_3', 'chat_en_4', 'chat_zh_1', 'chat_zh_2', 'chat_zh_3', 'code-algorithm', 'code-cpp', 'code-python', 'code-rust', 'code-sql', 'code_cpp_1', 'code_cpp_2', 'code_js_1', 'code_py_1', 'code_py_2', 'code_sql_1', 'dialogue', 'en-biology', 'en-climate', 'en-cooking', 'en-economics', 'en-history', 'en-legal', 'en-medicine', 'en-philosophy', 'en-physics', 'en-story', 'japanese', 'long_en_1', 'long_en_2', 'long_zh_1', 'math-calc', 'math-proof', 'math_1', 'math_2', 'math_3', 'reason_1', 'reason_2', 'sum_1', 'summarize', 'trans_1', 'trans_2', 'translation', 'zh-economy', 'zh-history', 'zh-physics', 'zh-poem', 'zh-story', 'zh-tech']
+usable: 51
+test set: ['trans_2', 'translation', 'zh-economy', 'zh-history', 'zh-physics', 'zh-poem', 'zh-story', 'zh-tech']
+K=2 pairs=510 ep=588 | mlp @16=10.8 @32=16.5 | xt @16=10.5 @32=16.7 | xt+mlp @16=11.2 @32=17.3
+K=4 pairs=890 ep=337 | mlp @16=13.2 @32=20.0 | xt @16=13.0 @32=20.2 | xt+mlp @16=14.0 @32=21.3
+K=8 pairs=1910 ep=200 | mlp @16=21.1 @32=30.7 | xt @16=19.4 @32=29.8 | xt+mlp @16=22.1 @32=32.7
+K=16 pairs=3950 ep=200 | mlp @16=20.9 @32=30.3 | xt @16=18.1 @32=28.0 | xt+mlp @16=21.8 @32=32.1
+K=24 pairs=5990 ep=200 | mlp @16=25.9 @32=36.7 | xt @16=21.8 @32=32.4 | xt+mlp @16=26.8 @32=38.1
+K=32 pairs=8030 ep=200 | mlp @16=28.9 @32=41.1 | xt @16=23.7 @32=35.4 | xt+mlp @16=30.0 @32=42.6
+K=43 pairs=10418 ep=200 | mlp @16=37.4 @32=51.7 | xt @16=30.5 @32=44.1 | xt+mlp @16=39.0 @32=53.4
+{
+  "K=2": {
+    "train_pairs": 510,
+    "epochs": 588,
+    "mlp": {
+      "cov@8": 0.0673,
+      "cov@16": 0.1081,
+      "cov@24": 0.139,
+      "cov@32": 0.1649
+    },
+    "xt": {
+      "cov@8": 0.0628,
+      "cov@16": 0.1052,
+      "cov@24": 0.1393,
+      "cov@32": 0.1673
+    },
+    "xt+mlp": {
+      "cov@8": 0.0685,
+      "cov@16": 0.1121,
+      "cov@24": 0.1453,
+      "cov@32": 0.1734
+    }
+  },
+  "K=4": {
+    "train_pairs": 890,
+    "epochs": 337,
+    "mlp": {
+      "cov@8": 0.0829,
+      "cov@16": 0.1323,
+      "cov@24": 0.1694,
+      "cov@32": 0.2001
+    },
+    "xt": {
+      "cov@8": 0.0772,
+      "cov@16": 0.1295,
+      "cov@24": 0.1694,
+      "cov@32": 0.2023
+    },
+    "xt+mlp": {
+      "cov@8": 0.0853,
+      "cov@16": 0.1395,
+      "cov@24": 0.1801,
+      "cov@32": 0.2133
+    }
+  },
+  "K=8": {
+    "train_pairs": 1910,
+    "epochs": 200,
+    "mlp": {
+      "cov@8": 0.1351,
+      "cov@16": 0.2113,
+      "cov@24": 0.265,
+      "cov@32": 0.3074
+    },
+    "xt": {
+      "cov@8": 0.1179,
+      "cov@16": 0.1938,
+      "cov@24": 0.2506,
+      "cov@32": 0.2975
+    },
+    "xt+mlp": {
+      "cov@8": 0.1391,
+      "cov@16": 0.2214,
+      "cov@24": 0.2805,
+      "cov@32": 0.3272
+    }
+  },
+  "K=16": {
+    "train_pairs": 3950,
+    "epochs": 200,
+    "mlp": {
+      "cov@8": 0.135,
+      "cov@16": 0.2092,
+      "cov@24": 0.2614,
+      "cov@32": 0.3027
+    },
+    "xt": {
+      "cov@8": 0.1118,
+      "cov@16": 0.1813,
+      "cov@24": 0.2358,
+      "cov@32": 0.2804
+    },
+    "xt+mlp": {
+      "cov@8": 0.1388,
+      "cov@16": 0.2181,
+      "cov@24": 0.2756,
+      "cov@32": 0.3214
+    }
+  },
+  "K=24": {
+    "train_pairs": 5990,
+    "epochs": 200,
+    "mlp": {
+      "cov@8": 0.1694,
+      "cov@16": 0.2595,
+      "cov@24": 0.32,
+      "cov@32": 0.3666
+    },
+    "xt": {
+      "cov@8": 0.1401,
+      "cov@16": 0.2175,
+      "cov@24": 0.2762,
+      "cov@32": 0.3238
+    },
+    "xt+mlp": {
+      "cov@8": 0.1759,
+      "cov@16": 0.268,
+      "cov@24": 0.332,
+      "cov@32": 0.3815
+    }
+  },
+  "K=32": {
+    "train_pairs": 8030,
+    "epochs": 200,
+    "mlp": {
+      "cov@8": 0.1879,
+      "cov@16": 0.2893,
+      "cov@24": 0.3582,
+      "cov@32": 0.4106
+    },
+    "xt": {
+      "cov@8": 0.1522,
+      "cov@16": 0.2371,
+      "cov@24": 0.3018,
+      "cov@32": 0.3541
+    },
+    "xt+mlp": {
+      "cov@8": 0.1959,
+      "cov@16": 0.2996,
+      "cov@24": 0.3715,
+      "cov@32": 0.4265
+    }
+  },
+  "K=43": {
+    "train_pairs": 10418,
+    "epochs": 200,
+    "mlp": {
+      "cov@8": 0.2467,
+      "cov@16": 0.3744,
+      "cov@24": 0.4565,
+      "cov@32": 0.5168
+    },
+    "xt": {
+      "cov@8": 0.1975,
+      "cov@16": 0.3053,
+      "cov@24": 0.3812,
+      "cov@32": 0.4406
+    },
+    "xt+mlp": {
+      "cov@8": 0.2597,
+      "cov@16": 0.3895,
+      "cov@24": 0.4734,
+      "cov@32": 0.5345
+    }
+  }
+}

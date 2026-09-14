@@ -1,0 +1,1 @@
+Write a Python script that watches a directory for new CSV files, validates their schema, and loads them into SQLite with logging.

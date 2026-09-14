@@ -1,0 +1,87 @@
+pooled train pairs: 765
+probs top-10 vs dumped experts agreement: 1.0000
+tensors ready torch.Size([48, 765, 2560])
+training hard-CE...
+training soft-CE...
+training soft-res (h+router_logits)...
+losses: hard=112.0654 soft=278.2179 softres=286.4230
+{
+  "en": {
+    "hard_ce": {
+      "cov@8": 0.3767,
+      "cov@16": 0.5408,
+      "cov@24": 0.6231,
+      "cov@32": 0.6763
+    },
+    "soft_ce": {
+      "cov@8": 0.3633,
+      "cov@16": 0.5126,
+      "cov@24": 0.5871,
+      "cov@32": 0.6319
+    },
+    "soft_res": {
+      "cov@8": 0.2684,
+      "cov@16": 0.3884,
+      "cov@24": 0.4581,
+      "cov@32": 0.5041
+    },
+    "xt+soft_res": {
+      "cov@8": 0.3072,
+      "cov@16": 0.4414,
+      "cov@24": 0.5194,
+      "cov@32": 0.5763
+    }
+  },
+  "zh": {
+    "hard_ce": {
+      "cov@8": 0.3459,
+      "cov@16": 0.51,
+      "cov@24": 0.6021,
+      "cov@32": 0.6635
+    },
+    "soft_ce": {
+      "cov@8": 0.3318,
+      "cov@16": 0.4779,
+      "cov@24": 0.5559,
+      "cov@32": 0.6044
+    },
+    "soft_res": {
+      "cov@8": 0.2433,
+      "cov@16": 0.3615,
+      "cov@24": 0.4375,
+      "cov@32": 0.4871
+    },
+    "xt+soft_res": {
+      "cov@8": 0.2816,
+      "cov@16": 0.4194,
+      "cov@24": 0.5034,
+      "cov@32": 0.5637
+    }
+  },
+  "code": {
+    "hard_ce": {
+      "cov@8": 0.2242,
+      "cov@16": 0.3293,
+      "cov@24": 0.3975,
+      "cov@32": 0.4501
+    },
+    "soft_ce": {
+      "cov@8": 0.2129,
+      "cov@16": 0.3058,
+      "cov@24": 0.3678,
+      "cov@32": 0.4146
+    },
+    "soft_res": {
+      "cov@8": 0.1331,
+      "cov@16": 0.1935,
+      "cov@24": 0.2351,
+      "cov@32": 0.2681
+    },
+    "xt+soft_res": {
+      "cov@8": 0.1587,
+      "cov@16": 0.2292,
+      "cov@24": 0.2804,
+      "cov@32": 0.3245
+    }
+  }
+}

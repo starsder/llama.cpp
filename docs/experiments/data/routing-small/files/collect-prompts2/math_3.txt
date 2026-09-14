@@ -1,0 +1,1 @@
+A fair coin is flipped 10 times. What is the probability of exactly 6 heads? What is the expected number of heads? Show your work.

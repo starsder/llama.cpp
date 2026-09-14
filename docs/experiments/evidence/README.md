@@ -4,6 +4,8 @@
 
 ## 1. 有什么，以及没有什么
 
+- **新增：[路由轻量数据包](../data/routing-small/README.md)**：164份提示词、token记录、采集清单和历史评估小文件（正文约0.70 MiB），使用独立来源清单；不计入下方原有125份日志。大体积hidden／router数据只走云盘，不进入Git／Git LFS，目前尚无云盘链接。
+
 - **125份原始小日志**，源文件合计1,599,928字节。保留所选文件的完整文字，仅作编码、路径脱敏和CRLF→LF处理；不是截取成功段落。
 - [measurements.json](measurements.json)：原有CLI、pressure128、固定历史400步和旧baseline400的聚合结果。保留失败、退出码、缺失吞吐及top-1分歧；剔除巨大的逐行数组和全词表logits。来源JSON本身并非全部逐字上传。
 - [provenance.json](provenance.json)：原始来源SHA-256、公开副本SHA-256、变换规则、14份数值来源、125份日志及缺失材料。原始哈希证明所取材料的身份，不代表未上传的原件可由本目录恢复。

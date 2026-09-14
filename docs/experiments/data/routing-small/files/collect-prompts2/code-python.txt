@@ -1,0 +1,1 @@
+Write a Python implementation of a red-black tree with insert, delete, and search operations. Include detailed comments explaining the rotation and recoloring cases.

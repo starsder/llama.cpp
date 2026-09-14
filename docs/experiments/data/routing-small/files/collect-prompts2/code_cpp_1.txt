@@ -1,0 +1,1 @@
+Write a C++17 program that parses a simplified JSON subset (objects, arrays, strings, numbers) using recursive descent, with error reporting.

@@ -1,0 +1,1 @@
+Explain how a transformer neural network works, covering self-attention, positional encoding, and training objectives. Write for a graduate student audience.

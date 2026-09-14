@@ -1,0 +1,1 @@
+Given a table orders(id, customer_id, amount, created_at) and customers(id, name, country), write SQL queries: top 5 customers by revenue per country, month-over-month growth, and customers with no orders in 90 days. Explain the execution plans.

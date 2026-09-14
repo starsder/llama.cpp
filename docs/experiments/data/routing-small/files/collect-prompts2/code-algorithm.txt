@@ -1,0 +1,1 @@
+Explain and implement Dijkstra's shortest path algorithm with a binary heap. Analyze time complexity, then describe how A* differs and when each is appropriate.

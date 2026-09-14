@@ -1,0 +1,1 @@
+Write a C++17 thread pool implementation using std::thread, std::mutex, condition variables, and a task queue. Support futures for return values. Explain your synchronization choices.

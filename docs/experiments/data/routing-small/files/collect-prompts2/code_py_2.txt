@@ -1,0 +1,1 @@
+Implement a thread-safe LRU cache in Python with TTL expiry, then explain the design decisions.

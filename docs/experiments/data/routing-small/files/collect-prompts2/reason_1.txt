@@ -1,0 +1,1 @@
+Three switches outside a room control three bulbs inside. You may enter the room once. How do you determine which switch controls which bulb? Explain the reasoning fully.

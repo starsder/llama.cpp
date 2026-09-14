@@ -1,0 +1,1 @@
+Implement a memory pool allocator in C++ for fixed-size blocks and benchmark it against new/delete in a loop.

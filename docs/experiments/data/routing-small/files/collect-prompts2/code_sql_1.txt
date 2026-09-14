@@ -1,0 +1,1 @@
+Given tables users(id, name), orders(id, user_id, amount, created_at), write SQL for: top 10 users by spend last 30 days, and monthly revenue with running total. Explain each.

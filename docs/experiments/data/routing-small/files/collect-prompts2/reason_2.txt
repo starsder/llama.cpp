@@ -1,0 +1,1 @@
+If a train leaves station A at 60 km/h and another leaves station B (300 km away) at 40 km/h heading toward each other, when and where do they meet? Then explain how the answer changes if the second train leaves 30 minutes later.

@@ -1,0 +1,186 @@
+{
+  "overall": [
+    {
+      "slots": 16,
+      "events": 91849,
+      "cache_mib": 1443.84,
+      "cache_gib": 1.41,
+      "local_hidden_cosine": 0.988007420626092,
+      "local_hidden_relative_l2": 0.12306429709573655,
+      "fifo_pool_hit8": 0.4239213273960522,
+      "fifo_ranked_recall8": 0.23005966314276693,
+      "fifo_ranked_recall16": 0.4239213273960522
+    },
+    {
+      "slots": 22,
+      "events": 91849,
+      "cache_mib": 1985.28,
+      "cache_gib": 1.93875,
+      "local_hidden_cosine": 0.9897106475434975,
+      "local_hidden_relative_l2": 0.1104776639456379,
+      "fifo_pool_hit8": 0.49343623773802653,
+      "fifo_ranked_recall8": 0.20693747346187766,
+      "fifo_ranked_recall16": 0.3812085597012488
+    },
+    {
+      "slots": 32,
+      "events": 91849,
+      "cache_mib": 2887.68,
+      "cache_gib": 2.82,
+      "local_hidden_cosine": 0.9916009163397231,
+      "local_hidden_relative_l2": 0.09520318168806327,
+      "fifo_pool_hit8": 0.5771238663458502,
+      "fifo_ranked_recall8": 0.182007969602282,
+      "fifo_ranked_recall16": 0.33315686616076384
+    },
+    {
+      "slots": 44,
+      "events": 91849,
+      "cache_mib": 3970.56,
+      "cache_gib": 3.8775,
+      "local_hidden_cosine": 0.9929221990295761,
+      "local_hidden_relative_l2": 0.0842280963495579,
+      "fifo_pool_hit8": 0.6331587714618558,
+      "fifo_ranked_recall8": 0.16647296105564569,
+      "fifo_ranked_recall16": 0.3030449433309018
+    },
+    {
+      "slots": 64,
+      "events": 91849,
+      "cache_mib": 5775.36,
+      "cache_gib": 5.64,
+      "local_hidden_cosine": 0.9939599319243789,
+      "local_hidden_relative_l2": 0.07398582288186618,
+      "fifo_pool_hit8": 0.6858417075852759,
+      "fifo_ranked_recall8": 0.15124688347178522,
+      "fifo_ranked_recall16": 0.27198309181373775
+    }
+  ],
+  "requests": [
+    {
+      "request_id": "r01",
+      "token_rows": 95,
+      "graph_count": 19,
+      "topk_records": 912
+    },
+    {
+      "request_id": "r02",
+      "token_rows": 89,
+      "graph_count": 19,
+      "topk_records": 912
+    },
+    {
+      "request_id": "r03",
+      "token_rows": 94,
+      "graph_count": 19,
+      "topk_records": 912
+    },
+    {
+      "request_id": "r04",
+      "token_rows": 90,
+      "graph_count": 19,
+      "topk_records": 912
+    },
+    {
+      "request_id": "r05",
+      "token_rows": 93,
+      "graph_count": 19,
+      "topk_records": 912
+    },
+    {
+      "request_id": "r06",
+      "token_rows": 94,
+      "graph_count": 19,
+      "topk_records": 912
+    },
+    {
+      "request_id": "r07",
+      "token_rows": 94,
+      "graph_count": 19,
+      "topk_records": 912
+    },
+    {
+      "request_id": "r08",
+      "token_rows": 99,
+      "graph_count": 19,
+      "topk_records": 912
+    },
+    {
+      "request_id": "r09",
+      "token_rows": 91,
+      "graph_count": 19,
+      "topk_records": 912
+    },
+    {
+      "request_id": "r10",
+      "token_rows": 97,
+      "graph_count": 19,
+      "topk_records": 912
+    },
+    {
+      "request_id": "r11",
+      "token_rows": 94,
+      "graph_count": 19,
+      "topk_records": 912
+    },
+    {
+      "request_id": "r12",
+      "token_rows": 88,
+      "graph_count": 19,
+      "topk_records": 912
+    },
+    {
+      "request_id": "r13",
+      "token_rows": 114,
+      "graph_count": 19,
+      "topk_records": 912
+    },
+    {
+      "request_id": "r14",
+      "token_rows": 103,
+      "graph_count": 19,
+      "topk_records": 912
+    },
+    {
+      "request_id": "r15",
+      "token_rows": 102,
+      "graph_count": 19,
+      "topk_records": 912
+    },
+    {
+      "request_id": "r16",
+      "token_rows": 98,
+      "graph_count": 19,
+      "topk_records": 912
+    },
+    {
+      "request_id": "r17",
+      "token_rows": 105,
+      "graph_count": 19,
+      "topk_records": 912
+    },
+    {
+      "request_id": "r18",
+      "token_rows": 98,
+      "graph_count": 19,
+      "topk_records": 912
+    },
+    {
+      "request_id": "r19",
+      "token_rows": 106,
+      "graph_count": 19,
+      "topk_records": 912
+    },
+    {
+      "request_id": "r20",
+      "token_rows": 103,
+      "graph_count": 19,
+      "topk_records": 912
+    }
+  ],
+  "overlap": {
+    "events": 73649,
+    "overlap": 26296.25,
+    "jaccard": 18072.499988906566
+  }
+}

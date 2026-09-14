@@ -1,0 +1,1 @@
+Solve step by step: a tank is filled by pipe A in 6 hours and drained by pipe B in 9 hours. If both are open, how long to fill? Then generalize.

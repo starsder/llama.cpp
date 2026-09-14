@@ -1,0 +1,1 @@
+Write a Node.js script that recursively scans a folder, computes SHA-256 of each file, and outputs a duplicate-file report.

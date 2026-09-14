@@ -1,0 +1,1 @@
+Solve step by step: compute the integral of x^2 * e^x dx using integration by parts, then find the volume of the solid formed by rotating y = sqrt(x) around the x-axis from 0 to 4.
