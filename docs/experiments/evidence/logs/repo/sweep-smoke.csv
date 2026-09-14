@@ -1,0 +1,2 @@
+tag,prompt_tps,gen_tps,cache_mib,slots,hit_pct,hits,misses,crash,secs
+smoke-base,23.6,13.7,2601,27,49.8,45183,45567,,29.7

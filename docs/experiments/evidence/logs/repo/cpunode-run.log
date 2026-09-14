@@ -1,0 +1,1567 @@
+[MOE-CACHE] loaded prediction manifest LOCAL_MODELS\qwen38\traces\moe-predict-v1.bin: layers=48 experts=512 trans=32 static=64
+[MOE-CACHE] enabled: budget=8192 MiB predictor=1 prefetch=1 topk=26 static=0 split=1
+[CPUNODE] GET_ROWS model.input_embed 16 us
+[CPUNODE] GET_ROWS node_1 99 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-47 703 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-47 694 us
+[CPUNODE] GLU ffn_moe_swiglu-47 15 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-47 440 us
+[MOE-CACHE] 144 expert tensors, 95049728 bytes per full round, 90 slots per tensor, 8158.2 MiB device total
+[MOE-CACHE] pinned 9216 static hot expert copies
+[CPUNODE] GET_ROWS model.input_embed 177 us
+[CPUNODE] GET_ROWS node_1 1445 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-47 0 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-47 0 us
+[CPUNODE] GLU ffn_moe_swiglu-47 0 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-47 0 us
+[CPUNODE] GET_ROWS model.input_embed 46 us
+[CPUNODE] GET_ROWS node_1 363 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-47 0 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-47 0 us
+[CPUNODE] GLU ffn_moe_swiglu-47 0 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-47 0 us
+[CPUNODE] GET_ROWS model.input_embed 22 us
+[CPUNODE] GET_ROWS node_1 164 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-47 199 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-47 216 us
+[CPUNODE] GLU ffn_moe_swiglu-47 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-47 283 us
+
+
+Loading model... 
+
+▄▄ ▄▄
+██ ██
+██ ██  ▀▀█▄ ███▄███▄  ▀▀█▄    ▄████ ████▄ ████▄
+██ ██ ▄█▀██ ██ ██ ██ ▄█▀██    ██    ██ ██ ██ ██
+██ ██ ▀█▄██ ██ ██ ██ ▀█▄██ ██ ▀████ ████▀ ████▀
+                                    ██    ██
+                                    ▀▀    ▀▀
+
+build      : b10722-b76199698
+model      : LOCAL_MODELS\qwen38\unsloth-iq3-xxs\UD-IQ3_XXS\Qwen3.8-Flash-Next-UD-IQ3_XXS-00001-of-00003.gguf
+ftype      : IQ3_XXS - 3.0625 bpw
+modalities : text
+
+available commands:
+  /exit or Ctrl+C     stop or exit
+  /regen              regenerate the last response
+  /clear              clear the chat history
+  /read <file>        add a text file
+  /glob <pattern>     add text files using globbing pattern
+
+
+
+> The capital of France is
+
+[Start thinking]
+
+The[CPUNODE] GET_ROWS model.input_embed 5 us
+[CPUNODE] GET_ROWS node_1 30 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-0 56 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-0 55 us
+[CPUNODE] GLU ffn_moe_swiglu-0 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-0 100 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-1 3 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-1 5 us
+[CPUNODE] GLU ffn_moe_swiglu-1 1 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-1 10 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-2 5 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-2 5 us
+[CPUNODE] GLU ffn_moe_swiglu-2 1 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-2 15 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-3 8 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-3 4 us
+[CPUNODE] GLU ffn_moe_swiglu-3 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-3 16 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-4 4 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-4 5 us
+[CPUNODE] GLU ffn_moe_swiglu-4 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-4 10 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-5 6 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-5 5 us
+[CPUNODE] GLU ffn_moe_swiglu-5 1 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-5 9 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-6 22 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-6 21 us
+[CPUNODE] GLU ffn_moe_swiglu-6 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-6 38 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-7 6 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-7 4 us
+[CPUNODE] GLU ffn_moe_swiglu-7 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-7 9 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-8 5 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-8 6 us
+[CPUNODE] GLU ffn_moe_swiglu-8 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-8 8 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-9 4 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-9 5 us
+[CPUNODE] GLU ffn_moe_swiglu-9 1 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-9 7 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-10 4 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-10 6 us
+[CPUNODE] GLU ffn_moe_swiglu-10 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-10 8 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-11 4 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-11 4 us
+[CPUNODE] GLU ffn_moe_swiglu-11 1 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-11 8 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-12 146 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-12 79 us
+[CPUNODE] GLU ffn_moe_swiglu-12 1 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-12 218 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-13 5 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-13 6 us
+[CPUNODE] GLU ffn_moe_swiglu-13 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-13 8 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-14 134 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-14 71 us
+[CPUNODE] GLU ffn_moe_swiglu-14 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-14 244 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-15 5 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-15 4 us
+[CPUNODE] GLU ffn_moe_swiglu-15 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-15 9 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-16 4 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-16 5 us
+[CPUNODE] GLU ffn_moe_swiglu-16 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-16 8 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-17 5 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-17 4 us
+[CPUNODE] GLU ffn_moe_swiglu-17 1 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-17 8 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-18 21 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-18 20 us
+[CPUNODE] GLU ffn_moe_swiglu-18 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-18 36 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-19 6 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-19 5 us
+[CPUNODE] GLU ffn_moe_swiglu-19 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-19 9 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-20 135 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-20 123 us
+[CPUNODE] GLU ffn_moe_swiglu-20 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-20 74 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-21 22 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-21 22 us
+[CPUNODE] GLU ffn_moe_swiglu-21 1 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-21 40 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-22 21 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-22 18 us
+[CPUNODE] GLU ffn_moe_swiglu-22 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-22 40 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-23 7 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-23 6 us
+[CPUNODE] GLU ffn_moe_swiglu-23 1 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-23 12 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-24 156 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-24 143 us
+[CPUNODE] GLU ffn_moe_swiglu-24 3 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-24 239 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-25 137 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-25 124 us
+[CPUNODE] GLU ffn_moe_swiglu-25 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-25 191 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-26 7 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-26 6 us
+[CPUNODE] GLU ffn_moe_swiglu-26 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-26 13 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-27 5 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-27 5 us
+[CPUNODE] GLU ffn_moe_swiglu-27 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-27 10 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-28 182 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-28 135 us
+[CPUNODE] GLU ffn_moe_swiglu-28 3 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-28 248 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-29 24 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-29 22 us
+[CPUNODE] GLU ffn_moe_swiglu-29 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-29 38 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-30 7 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-30 8 us
+[CPUNODE] GLU ffn_moe_swiglu-30 3 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-30 11 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-31 7 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-31 6 us
+[CPUNODE] GLU ffn_moe_swiglu-31 1 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-31 12 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-32 6 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-32 6 us
+[CPUNODE] GLU ffn_moe_swiglu-32 1 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-32 9 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-33 24 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-33 25 us
+[CPUNODE] GLU ffn_moe_swiglu-33 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-33 40 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-34 20 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-34 20 us
+[CPUNODE] GLU ffn_moe_swiglu-34 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-34 35 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-35 48 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-35 39 us
+[CPUNODE] GLU ffn_moe_swiglu-35 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-35 63 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-36 39 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-36 37 us
+[CPUNODE] GLU ffn_moe_swiglu-36 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-36 61 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-37 202 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-37 178 us
+[CPUNODE] GLU ffn_moe_swiglu-37 3 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-37 252 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-38 104 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-38 84 us
+[CPUNODE] GLU ffn_moe_swiglu-38 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-38 153 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-39 7 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-39 5 us
+[CPUNODE] GLU ffn_moe_swiglu-39 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-39 11 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-40 19 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-40 18 us
+[CPUNODE] GLU ffn_moe_swiglu-40 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-40 31 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-41 34 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-41 36 us
+[CPUNODE] GLU ffn_moe_swiglu-41 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-41 62 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-42 215 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-42 224 us
+[CPUNODE] GLU ffn_moe_swiglu-42 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-42 411 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-43 39 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-43 38 us
+[CPUNODE] GLU ffn_moe_swiglu-43 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-43 66 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-44 152 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-44 221 us
+[CPUNODE] GLU ffn_moe_swiglu-44 3 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-44 336 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-45 52 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-45 65 us
+[CPUNODE] GLU ffn_moe_swiglu-45 1 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-45 100 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-46 169 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-46 150 us
+[CPUNODE] GLU ffn_moe_swiglu-46 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-46 140 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-47 128 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-47 81 us
+[CPUNODE] GLU ffn_moe_swiglu-47 1 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-47 98 us
+[CPUNODE] GET_ROWS model.input_embed 12 us
+ user[CPUNODE] GET_ROWS node_1 64 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-0 19 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-0 18 us
+[CPUNODE] GLU ffn_moe_swiglu-0 1 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-0 37 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-1 4 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-1 6 us
+[CPUNODE] GLU ffn_moe_swiglu-1 1 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-1 12 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-2 117 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-2 154 us
+[CPUNODE] GLU ffn_moe_swiglu-2 1 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-2 233 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-3 8 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-3 5 us
+[CPUNODE] GLU ffn_moe_swiglu-3 1 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-3 11 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-4 60 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-4 72 us
+[CPUNODE] GLU ffn_moe_swiglu-4 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-4 99 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-5 324 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-5 87 us
+[CPUNODE] GLU ffn_moe_swiglu-5 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-5 192 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-6 6 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-6 6 us
+[CPUNODE] GLU ffn_moe_swiglu-6 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-6 11 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-7 6 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-7 4 us
+[CPUNODE] GLU ffn_moe_swiglu-7 0 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-7 10 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-8 57 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-8 125 us
+[CPUNODE] GLU ffn_moe_swiglu-8 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-8 60 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-9 5 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-9 4 us
+[CPUNODE] GLU ffn_moe_swiglu-9 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-9 8 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-10 6 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-10 5 us
+[CPUNODE] GLU ffn_moe_swiglu-10 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-10 8 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-11 20 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-11 20 us
+[CPUNODE] GLU ffn_moe_swiglu-11 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-11 37 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-12 21 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-12 20 us
+[CPUNODE] GLU ffn_moe_swiglu-12 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-12 40 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-13 5 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-13 3 us
+[CPUNODE] GLU ffn_moe_swiglu-13 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-13 8 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-14 6 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-14 4 us
+[CPUNODE] GLU ffn_moe_swiglu-14 1 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-14 7 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-15 148 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-15 125 us
+[CPUNODE] GLU ffn_moe_swiglu-15 1 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-15 236 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-16 7 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-16 7 us
+[CPUNODE] GLU ffn_moe_swiglu-16 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-16 11 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-17 6 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-17 6 us
+[CPUNODE] GLU ffn_moe_swiglu-17 1 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-17 10 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-18 226 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-18 230 us
+[CPUNODE] GLU ffn_moe_swiglu-18 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-18 244 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-19 6 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-19 5 us
+[CPUNODE] GLU ffn_moe_swiglu-19 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-19 12 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-20 160 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-20 159 us
+[CPUNODE] GLU ffn_moe_swiglu-20 1 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-20 267 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-21 289 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-21 292 us
+[CPUNODE] GLU ffn_moe_swiglu-21 3 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-21 440 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-22 108 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-22 118 us
+[CPUNODE] GLU ffn_moe_swiglu-22 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-22 198 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-23 6 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-23 24 us
+[CPUNODE] GLU ffn_moe_swiglu-23 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-23 13 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-24 212 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-24 78 us
+[CPUNODE] GLU ffn_moe_swiglu-24 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-24 158 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-25 6 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-25 5 us
+[CPUNODE] GLU ffn_moe_swiglu-25 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-25 13 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-26 6 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-26 5 us
+[CPUNODE] GLU ffn_moe_swiglu-26 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-26 10 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-27 130 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-27 128 us
+[CPUNODE] GLU ffn_moe_swiglu-27 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-27 206 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-28 27 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-28 27 us
+[CPUNODE] GLU ffn_moe_swiglu-28 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-28 41 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-29 93 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-29 115 us
+[CPUNODE] GLU ffn_moe_swiglu-29 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-29 74 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-30 148 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-30 157 us
+[CPUNODE] GLU ffn_moe_swiglu-30 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-30 257 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-31 7 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-31 5 us
+[CPUNODE] GLU ffn_moe_swiglu-31 1 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-31 14 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-32 11 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-32 5 us
+[CPUNODE] GLU ffn_moe_swiglu-32 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-32 12 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-33 163 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-33 90 us
+[CPUNODE] GLU ffn_moe_swiglu-33 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-33 67 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-34 183 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-34 95 us
+[CPUNODE] GLU ffn_moe_swiglu-34 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-34 515 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-35 6 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-35 5 us
+[CPUNODE] GLU ffn_moe_swiglu-35 1 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-35 12 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-36 119 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-36 140 us
+[CPUNODE] GLU ffn_moe_swiglu-36 1 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-36 183 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-37 157 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-37 114 us
+[CPUNODE] GLU ffn_moe_swiglu-37 1 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-37 129 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-38 175 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-38 245 us
+[CPUNODE] GLU ffn_moe_swiglu-38 1 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-38 319 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-39 142 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-39 166 us
+[CPUNODE] GLU ffn_moe_swiglu-39 1 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-39 191 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-40 98 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-40 102 us
+[CPUNODE] GLU ffn_moe_swiglu-40 1 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-40 178 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-41 93 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-41 75 us
+[CPUNODE] GLU ffn_moe_swiglu-41 1 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-41 96 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-42 124 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-42 82 us
+[CPUNODE] GLU ffn_moe_swiglu-42 1 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-42 109 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-43 18 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-43 18 us
+[CPUNODE] GLU ffn_moe_swiglu-43 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-43 33 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-44 4 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-44 6 us
+[CPUNODE] GLU ffn_moe_swiglu-44 1 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-44 10 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-45 55 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-45 19 us
+[CPUNODE] GLU ffn_moe_swiglu-45 1 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-45 32 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-46 89 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-46 97 us
+[CPUNODE] GLU ffn_moe_swiglu-46 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-46 156 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-47 293 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-47 228 us
+[CPUNODE] GLU ffn_moe_swiglu-47 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-47 305 us
+[CPUNODE] GET_ROWS model.input_embed 5 us
+[CPUNODE] GET_ROWS node_1 48 us
+ is[CPUNODE] MUL_MAT_ID ffn_moe_gate-0 121 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-0 117 us
+[CPUNODE] GLU ffn_moe_swiglu-0 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-0 210 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-1 166 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-1 111 us
+[CPUNODE] GLU ffn_moe_swiglu-1 1 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-1 79 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-2 56 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-2 28 us
+[CPUNODE] GLU ffn_moe_swiglu-2 1 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-2 41 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-3 208 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-3 130 us
+[CPUNODE] GLU ffn_moe_swiglu-3 1 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-3 327 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-4 13 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-4 6 us
+[CPUNODE] GLU ffn_moe_swiglu-4 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-4 10 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-5 155 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-5 144 us
+[CPUNODE] GLU ffn_moe_swiglu-5 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-5 301 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-6 81 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-6 162 us
+[CPUNODE] GLU ffn_moe_swiglu-6 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-6 236 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-7 160 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-7 133 us
+[CPUNODE] GLU ffn_moe_swiglu-7 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-7 155 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-8 48 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-8 22 us
+[CPUNODE] GLU ffn_moe_swiglu-8 1 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-8 34 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-9 148 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-9 121 us
+[CPUNODE] GLU ffn_moe_swiglu-9 1 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-9 243 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-10 30 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-10 5 us
+[CPUNODE] GLU ffn_moe_swiglu-10 1 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-10 8 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-11 30 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-11 5 us
+[CPUNODE] GLU ffn_moe_swiglu-11 1 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-11 8 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-12 49 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-12 25 us
+[CPUNODE] GLU ffn_moe_swiglu-12 1 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-12 37 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-13 5 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-13 4 us
+[CPUNODE] GLU ffn_moe_swiglu-13 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-13 9 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-14 31 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-14 7 us
+[CPUNODE] GLU ffn_moe_swiglu-14 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-14 11 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-15 148 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-15 153 us
+[CPUNODE] GLU ffn_moe_swiglu-15 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-15 93 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-16 15 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-16 15 us
+[CPUNODE] GLU ffn_moe_swiglu-16 1 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-16 13 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-17 5 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-17 6 us
+[CPUNODE] GLU ffn_moe_swiglu-17 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-17 8 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-18 22 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-18 21 us
+[CPUNODE] GLU ffn_moe_swiglu-18 1 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-18 36 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-19 6 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-19 5 us
+[CPUNODE] GLU ffn_moe_swiglu-19 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-19 11 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-20 36 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-20 38 us
+[CPUNODE] GLU ffn_moe_swiglu-20 3 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-20 67 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-21 41 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-21 41 us
+[CPUNODE] GLU ffn_moe_swiglu-21 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-21 67 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-22 73 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-22 76 us
+[CPUNODE] GLU ffn_moe_swiglu-22 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-22 118 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-23 132 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-23 111 us
+[CPUNODE] GLU ffn_moe_swiglu-23 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-23 218 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-24 21 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-24 23 us
+[CPUNODE] GLU ffn_moe_swiglu-24 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-24 37 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-25 182 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-25 289 us
+[CPUNODE] GLU ffn_moe_swiglu-25 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-25 133 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-26 22 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-26 25 us
+[CPUNODE] GLU ffn_moe_swiglu-26 1 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-26 37 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-27 22 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-27 23 us
+[CPUNODE] GLU ffn_moe_swiglu-27 1 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-27 43 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-28 140 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-28 77 us
+[CPUNODE] GLU ffn_moe_swiglu-28 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-28 164 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-29 164 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-29 152 us
+[CPUNODE] GLU ffn_moe_swiglu-29 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-29 228 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-30 5 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-30 5 us
+[CPUNODE] GLU ffn_moe_swiglu-30 1 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-30 10 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-31 6 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-31 5 us
+[CPUNODE] GLU ffn_moe_swiglu-31 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-31 8 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-32 5 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-32 4 us
+[CPUNODE] GLU ffn_moe_swiglu-32 1 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-32 9 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-33 5 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-33 5 us
+[CPUNODE] GLU ffn_moe_swiglu-33 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-33 7 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-34 6 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-34 5 us
+[CPUNODE] GLU ffn_moe_swiglu-34 1 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-34 9 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-35 127 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-35 132 us
+[CPUNODE] GLU ffn_moe_swiglu-35 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-35 233 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-36 78 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-36 126 us
+[CPUNODE] GLU ffn_moe_swiglu-36 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-36 177 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-37 19 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-37 22 us
+[CPUNODE] GLU ffn_moe_swiglu-37 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-37 37 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-38 108 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-38 77 us
+[CPUNODE] GLU ffn_moe_swiglu-38 3 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-38 132 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-39 56 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-39 65 us
+[CPUNODE] GLU ffn_moe_swiglu-39 3 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-39 103 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-40 113 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-40 164 us
+[CPUNODE] GLU ffn_moe_swiglu-40 3 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-40 232 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-41 43 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-41 44 us
+[CPUNODE] GLU ffn_moe_swiglu-41 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-41 68 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-42 73 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-42 71 us
+[CPUNODE] GLU ffn_moe_swiglu-42 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-42 96 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-43 44 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-43 160 us
+[CPUNODE] GLU ffn_moe_swiglu-43 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-43 185 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-44 146 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-44 115 us
+[CPUNODE] GLU ffn_moe_swiglu-44 3 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-44 220 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-45 43 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-45 46 us
+[CPUNODE] GLU ffn_moe_swiglu-45 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-45 70 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-46 162 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-46 275 us
+[CPUNODE] GLU ffn_moe_swiglu-46 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-46 278 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-47 57 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-47 57 us
+[CPUNODE] GLU ffn_moe_swiglu-47 1 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-47 140 us
+[CPUNODE] GET_ROWS model.input_embed 11 us
+ asking[CPUNODE] GET_ROWS node_1 58 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-0 61 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-0 58 us
+[CPUNODE] GLU ffn_moe_swiglu-0 3 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-0 102 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-1 45 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-1 40 us
+[CPUNODE] GLU ffn_moe_swiglu-1 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-1 68 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-2 5 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-2 5 us
+[CPUNODE] GLU ffn_moe_swiglu-2 1 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-2 13 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-3 6 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-3 5 us
+[CPUNODE] GLU ffn_moe_swiglu-3 1 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-3 9 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-4 23 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-4 26 us
+[CPUNODE] GLU ffn_moe_swiglu-4 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-4 36 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-5 25 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-5 25 us
+[CPUNODE] GLU ffn_moe_swiglu-5 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-5 43 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-6 5 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-6 22 us
+[CPUNODE] GLU ffn_moe_swiglu-6 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-6 10 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-7 171 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-7 143 us
+[CPUNODE] GLU ffn_moe_swiglu-7 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-7 238 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-8 28 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-8 27 us
+[CPUNODE] GLU ffn_moe_swiglu-8 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-8 38 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-9 6 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-9 5 us
+[CPUNODE] GLU ffn_moe_swiglu-9 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-9 9 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-10 4 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-10 19 us
+[CPUNODE] GLU ffn_moe_swiglu-10 0 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-10 10 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-11 135 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-11 104 us
+[CPUNODE] GLU ffn_moe_swiglu-11 1 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-11 229 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-12 37 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-12 38 us
+[CPUNODE] GLU ffn_moe_swiglu-12 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-12 62 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-13 27 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-13 7 us
+[CPUNODE] GLU ffn_moe_swiglu-13 1 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-13 12 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-14 7 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-14 19 us
+[CPUNODE] GLU ffn_moe_swiglu-14 1 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-14 100 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-15 7 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-15 20 us
+[CPUNODE] GLU ffn_moe_swiglu-15 1 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-15 9 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-16 7 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-16 22 us
+[CPUNODE] GLU ffn_moe_swiglu-16 1 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-16 11 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-17 6 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-17 20 us
+[CPUNODE] GLU ffn_moe_swiglu-17 1 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-17 10 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-18 6 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-18 21 us
+[CPUNODE] GLU ffn_moe_swiglu-18 1 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-18 11 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-19 7 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-19 20 us
+[CPUNODE] GLU ffn_moe_swiglu-19 1 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-19 11 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-20 42 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-20 47 us
+[CPUNODE] GLU ffn_moe_swiglu-20 1 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-20 72 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-21 26 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-21 27 us
+[CPUNODE] GLU ffn_moe_swiglu-21 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-21 40 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-22 149 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-22 79 us
+[CPUNODE] GLU ffn_moe_swiglu-22 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-22 193 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-23 6 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-23 5 us
+[CPUNODE] GLU ffn_moe_swiglu-23 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-23 12 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-24 23 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-24 24 us
+[CPUNODE] GLU ffn_moe_swiglu-24 1 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-24 37 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-25 21 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-25 25 us
+[CPUNODE] GLU ffn_moe_swiglu-25 1 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-25 38 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-26 6 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-26 5 us
+[CPUNODE] GLU ffn_moe_swiglu-26 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-26 10 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-27 26 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-27 18 us
+[CPUNODE] GLU ffn_moe_swiglu-27 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-27 35 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-28 5 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-28 7 us
+[CPUNODE] GLU ffn_moe_swiglu-28 1 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-28 8 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-29 7 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-29 7 us
+[CPUNODE] GLU ffn_moe_swiglu-29 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-29 11 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-30 165 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-30 160 us
+[CPUNODE] GLU ffn_moe_swiglu-30 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-30 252 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-31 126 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-31 133 us
+[CPUNODE] GLU ffn_moe_swiglu-31 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-31 248 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-32 144 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-32 149 us
+[CPUNODE] GLU ffn_moe_swiglu-32 1 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-32 229 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-33 31 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-33 21 us
+[CPUNODE] GLU ffn_moe_swiglu-33 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-33 40 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-34 4 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-34 6 us
+[CPUNODE] GLU ffn_moe_swiglu-34 1 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-34 10 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-35 45 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-35 46 us
+[CPUNODE] GLU ffn_moe_swiglu-35 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-35 70 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-36 20 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-36 20 us
+[CPUNODE] GLU ffn_moe_swiglu-36 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-36 44 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-37 130 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-37 126 us
+[CPUNODE] GLU ffn_moe_swiglu-37 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-37 118 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-38 38 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-38 39 us
+[CPUNODE] GLU ffn_moe_swiglu-38 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-38 67 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-39 54 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-39 49 us
+[CPUNODE] GLU ffn_moe_swiglu-39 3 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-39 79 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-40 153 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-40 112 us
+[CPUNODE] GLU ffn_moe_swiglu-40 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-40 228 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-41 6 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-41 5 us
+[CPUNODE] GLU ffn_moe_swiglu-41 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-41 10 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-42 174 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-42 157 us
+[CPUNODE] GLU ffn_moe_swiglu-42 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-42 192 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-43 46 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-43 47 us
+[CPUNODE] GLU ffn_moe_swiglu-43 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-43 74 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-44 45 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-44 45 us
+[CPUNODE] GLU ffn_moe_swiglu-44 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-44 71 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-45 45 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-45 45 us
+[CPUNODE] GLU ffn_moe_swiglu-45 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-45 68 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-46 67 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-46 63 us
+[CPUNODE] GLU ffn_moe_swiglu-46 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-46 99 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-47 387 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-47 249 us
+[CPUNODE] GLU ffn_moe_swiglu-47 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-47 522 us
+[CPUNODE] GET_ROWS model.input_embed 12 us
+ for[CPUNODE] GET_ROWS node_1 67 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-0 245 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-0 275 us
+[CPUNODE] GLU ffn_moe_swiglu-0 3 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-0 412 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-1 84 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-1 88 us
+[CPUNODE] GLU ffn_moe_swiglu-1 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-1 135 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-2 304 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-2 282 us
+[CPUNODE] GLU ffn_moe_swiglu-2 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-2 365 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-3 7 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-3 6 us
+[CPUNODE] GLU ffn_moe_swiglu-3 1 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-3 13 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-4 244 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-4 218 us
+[CPUNODE] GLU ffn_moe_swiglu-4 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-4 358 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-5 63 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-5 63 us
+[CPUNODE] GLU ffn_moe_swiglu-5 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-5 96 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-6 66 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-6 64 us
+[CPUNODE] GLU ffn_moe_swiglu-6 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-6 95 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-7 36 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-7 35 us
+[CPUNODE] GLU ffn_moe_swiglu-7 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-7 63 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-8 20 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-8 18 us
+[CPUNODE] GLU ffn_moe_swiglu-8 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-8 33 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-9 21 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-9 19 us
+[CPUNODE] GLU ffn_moe_swiglu-9 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-9 38 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-10 262 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-10 234 us
+[CPUNODE] GLU ffn_moe_swiglu-10 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-10 384 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-11 25 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-11 23 us
+[CPUNODE] GLU ffn_moe_swiglu-11 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-11 41 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-12 226 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-12 189 us
+[CPUNODE] GLU ffn_moe_swiglu-12 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-12 360 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-13 171 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-13 207 us
+[CPUNODE] GLU ffn_moe_swiglu-13 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-13 126 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-14 5 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-14 6 us
+[CPUNODE] GLU ffn_moe_swiglu-14 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-14 9 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-15 63 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-15 42 us
+[CPUNODE] GLU ffn_moe_swiglu-15 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-15 69 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-16 38 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-16 41 us
+[CPUNODE] GLU ffn_moe_swiglu-16 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-16 71 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-17 6 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-17 20 us
+[CPUNODE] GLU ffn_moe_swiglu-17 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-17 12 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-18 79 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-18 85 us
+[CPUNODE] GLU ffn_moe_swiglu-18 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-18 155 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-19 23 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-19 22 us
+[CPUNODE] GLU ffn_moe_swiglu-19 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-19 36 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-20 25 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-20 25 us
+[CPUNODE] GLU ffn_moe_swiglu-20 1 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-20 38 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-21 188 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-21 103 us
+[CPUNODE] GLU ffn_moe_swiglu-21 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-21 210 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-22 93 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-22 94 us
+[CPUNODE] GLU ffn_moe_swiglu-22 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-22 171 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-23 25 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-23 20 us
+[CPUNODE] GLU ffn_moe_swiglu-23 1 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-23 34 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-24 53 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-24 131 us
+[CPUNODE] GLU ffn_moe_swiglu-24 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-24 128 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-25 199 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-25 177 us
+[CPUNODE] GLU ffn_moe_swiglu-25 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-25 284 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-26 21 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-26 19 us
+[CPUNODE] GLU ffn_moe_swiglu-26 1 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-26 36 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-27 5 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-27 5 us
+[CPUNODE] GLU ffn_moe_swiglu-27 1 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-27 10 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-28 88 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-28 144 us
+[CPUNODE] GLU ffn_moe_swiglu-28 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-28 249 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-29 20 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-29 21 us
+[CPUNODE] GLU ffn_moe_swiglu-29 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-29 38 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-30 143 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-30 111 us
+[CPUNODE] GLU ffn_moe_swiglu-30 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-30 225 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-31 59 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-31 69 us
+[CPUNODE] GLU ffn_moe_swiglu-31 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-31 92 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-32 44 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-32 40 us
+[CPUNODE] GLU ffn_moe_swiglu-32 1 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-32 64 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-33 303 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-33 232 us
+[CPUNODE] GLU ffn_moe_swiglu-33 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-33 465 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-34 205 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-34 104 us
+[CPUNODE] GLU ffn_moe_swiglu-34 1 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-34 348 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-35 122 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-35 137 us
+[CPUNODE] GLU ffn_moe_swiglu-35 1 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-35 193 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-36 180 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-36 147 us
+[CPUNODE] GLU ffn_moe_swiglu-36 1 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-36 310 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-37 69 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-37 72 us
+[CPUNODE] GLU ffn_moe_swiglu-37 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-37 120 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-38 106 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-38 81 us
+[CPUNODE] GLU ffn_moe_swiglu-38 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-38 145 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-39 68 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-39 65 us
+[CPUNODE] GLU ffn_moe_swiglu-39 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-39 87 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-40 110 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-40 86 us
+[CPUNODE] GLU ffn_moe_swiglu-40 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-40 142 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-41 66 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-41 63 us
+[CPUNODE] GLU ffn_moe_swiglu-41 1 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-41 90 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-42 45 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-42 65 us
+[CPUNODE] GLU ffn_moe_swiglu-42 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-42 94 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-43 90 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-43 82 us
+[CPUNODE] GLU ffn_moe_swiglu-43 1 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-43 121 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-44 291 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-44 282 us
+[CPUNODE] GLU ffn_moe_swiglu-44 1 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-44 506 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-45 180 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-45 169 us
+[CPUNODE] GLU ffn_moe_swiglu-45 1 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-45 263 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-46 37 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-46 36 us
+[CPUNODE] GLU ffn_moe_swiglu-46 1 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-46 68 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-47 273 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-47 191 us
+[CPUNODE] GLU ffn_moe_swiglu-47 1 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-47 481 us
+[CPUNODE] GET_ROWS model.input_embed 6 us
+[CPUNODE] GET_ROWS node_1 51 us
+ the[CPUNODE] MUL_MAT_ID ffn_moe_gate-0 178 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-0 229 us
+[CPUNODE] GLU ffn_moe_swiglu-0 3 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-0 193 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-1 68 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-1 70 us
+[CPUNODE] GLU ffn_moe_swiglu-1 1 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-1 118 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-2 80 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-2 83 us
+[CPUNODE] GLU ffn_moe_swiglu-2 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-2 102 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-3 36 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-3 34 us
+[CPUNODE] GLU ffn_moe_swiglu-3 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-3 61 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-4 328 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-4 180 us
+[CPUNODE] GLU ffn_moe_swiglu-4 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-4 234 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-5 238 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-5 336 us
+[CPUNODE] GLU ffn_moe_swiglu-5 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-5 341 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-6 109 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-6 99 us
+[CPUNODE] GLU ffn_moe_swiglu-6 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-6 165 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-7 142 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-7 119 us
+[CPUNODE] GLU ffn_moe_swiglu-7 3 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-7 183 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-8 63 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-8 36 us
+[CPUNODE] GLU ffn_moe_swiglu-8 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-8 68 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-9 190 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-9 172 us
+[CPUNODE] GLU ffn_moe_swiglu-9 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-9 271 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-10 76 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-10 50 us
+[CPUNODE] GLU ffn_moe_swiglu-10 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-10 92 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-11 48 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-11 48 us
+[CPUNODE] GLU ffn_moe_swiglu-11 1 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-11 88 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-12 119 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-12 90 us
+[CPUNODE] GLU ffn_moe_swiglu-12 1 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-12 92 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-13 64 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-13 35 us
+[CPUNODE] GLU ffn_moe_swiglu-13 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-13 63 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-14 192 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-14 153 us
+[CPUNODE] GLU ffn_moe_swiglu-14 3 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-14 275 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-15 158 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-15 237 us
+[CPUNODE] GLU ffn_moe_swiglu-15 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-15 260 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-16 239 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-16 135 us
+[CPUNODE] GLU ffn_moe_swiglu-16 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-16 227 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-17 179 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-17 176 us
+[CPUNODE] GLU ffn_moe_swiglu-17 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-17 430 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-18 36 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-18 35 us
+[CPUNODE] GLU ffn_moe_swiglu-18 3 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-18 64 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-19 175 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-19 103 us
+[CPUNODE] GLU ffn_moe_swiglu-19 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-19 120 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-20 85 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-20 86 us
+[CPUNODE] GLU ffn_moe_swiglu-20 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-20 145 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-21 249 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-21 204 us
+[CPUNODE] GLU ffn_moe_swiglu-21 3 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-21 402 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-22 36 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-22 34 us
+[CPUNODE] GLU ffn_moe_swiglu-22 3 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-22 64 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-23 164 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-23 135 us
+[CPUNODE] GLU ffn_moe_swiglu-23 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-23 221 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-24 46 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-24 50 us
+[CPUNODE] GLU ffn_moe_swiglu-24 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-24 64 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-25 182 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-25 180 us
+[CPUNODE] GLU ffn_moe_swiglu-25 3 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-25 333 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-26 5 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-26 6 us
+[CPUNODE] GLU ffn_moe_swiglu-26 1 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-26 11 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-27 5 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-27 5 us
+[CPUNODE] GLU ffn_moe_swiglu-27 1 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-27 10 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-28 39 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-28 38 us
+[CPUNODE] GLU ffn_moe_swiglu-28 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-28 65 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-29 133 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-29 119 us
+[CPUNODE] GLU ffn_moe_swiglu-29 1 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-29 287 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-30 25 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-30 24 us
+[CPUNODE] GLU ffn_moe_swiglu-30 1 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-30 37 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-31 186 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-31 177 us
+[CPUNODE] GLU ffn_moe_swiglu-31 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-31 355 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-32 91 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-32 78 us
+[CPUNODE] GLU ffn_moe_swiglu-32 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-32 140 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-33 129 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-33 162 us
+[CPUNODE] GLU ffn_moe_swiglu-33 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-33 255 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-34 167 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-34 153 us
+[CPUNODE] GLU ffn_moe_swiglu-34 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-34 244 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-35 125 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-35 156 us
+[CPUNODE] GLU ffn_moe_swiglu-35 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-35 169 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-36 120 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-36 100 us
+[CPUNODE] GLU ffn_moe_swiglu-36 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-36 176 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-37 214 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-37 315 us
+[CPUNODE] GLU ffn_moe_swiglu-37 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-37 445 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-38 101 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-38 100 us
+[CPUNODE] GLU ffn_moe_swiglu-38 3 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-38 168 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-39 174 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-39 160 us
+[CPUNODE] GLU ffn_moe_swiglu-39 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-39 294 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-40 136 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-40 142 us
+[CPUNODE] GLU ffn_moe_swiglu-40 3 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-40 205 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-41 112 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-41 85 us
+[CPUNODE] GLU ffn_moe_swiglu-41 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-41 172 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-42 112 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-42 89 us
+[CPUNODE] GLU ffn_moe_swiglu-42 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-42 145 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-43 245 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-43 235 us
+[CPUNODE] GLU ffn_moe_swiglu-43 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-43 408 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-44 205 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-44 266 us
+[CPUNODE] GLU ffn_moe_swiglu-44 1 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-44 180 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-45 182 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-45 266 us
+[CPUNODE] GLU ffn_moe_swiglu-45 3 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-45 454 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-46 251 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-46 215 us
+[CPUNODE] GLU ffn_moe_swiglu-46 3 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-46 244 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-47 121 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-47 155 us
+[CPUNODE] GLU ffn_moe_swiglu-47 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-47 235 us
+[CPUNODE] GET_ROWS model.input_embed 4 us
+[CPUNODE] GET_ROWS node_1 61 us
+ capital[CPUNODE] MUL_MAT_ID ffn_moe_gate-0 185 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-0 136 us
+[CPUNODE] GLU ffn_moe_swiglu-0 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-0 305 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-1 217 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-1 94 us
+[CPUNODE] GLU ffn_moe_swiglu-1 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-1 241 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-2 162 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-2 150 us
+[CPUNODE] GLU ffn_moe_swiglu-2 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-2 202 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-3 210 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-3 111 us
+[CPUNODE] GLU ffn_moe_swiglu-3 1 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-3 316 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-4 144 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-4 214 us
+[CPUNODE] GLU ffn_moe_swiglu-4 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-4 434 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-5 136 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-5 129 us
+[CPUNODE] GLU ffn_moe_swiglu-5 1 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-5 225 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-6 259 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-6 298 us
+[CPUNODE] GLU ffn_moe_swiglu-6 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-6 524 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-7 223 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-7 235 us
+[CPUNODE] GLU ffn_moe_swiglu-7 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-7 321 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-8 80 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-8 60 us
+[CPUNODE] GLU ffn_moe_swiglu-8 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-8 90 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-9 196 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-9 202 us
+[CPUNODE] GLU ffn_moe_swiglu-9 3 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-9 333 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-10 127 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-10 147 us
+[CPUNODE] GLU ffn_moe_swiglu-10 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-10 211 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-11 287 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-11 225 us
+[CPUNODE] GLU ffn_moe_swiglu-11 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-11 310 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-12 149 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-12 90 us
+[CPUNODE] GLU ffn_moe_swiglu-12 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-12 153 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-13 296 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-13 198 us
+[CPUNODE] GLU ffn_moe_swiglu-13 3 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-13 476 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-14 157 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-14 136 us
+[CPUNODE] GLU ffn_moe_swiglu-14 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-14 74 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-15 261 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-15 236 us
+[CPUNODE] GLU ffn_moe_swiglu-15 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-15 308 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-16 124 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-16 122 us
+[CPUNODE] GLU ffn_moe_swiglu-16 3 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-16 246 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-17 277 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-17 216 us
+[CPUNODE] GLU ffn_moe_swiglu-17 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-17 272 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-18 243 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-18 287 us
+[CPUNODE] GLU ffn_moe_swiglu-18 3 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-18 414 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-19 192 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-19 171 us
+[CPUNODE] GLU ffn_moe_swiglu-19 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-19 257 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-20 218 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-20 175 us
+[CPUNODE] GLU ffn_moe_swiglu-20 3 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-20 352 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-21 298 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-21 250 us
+[CPUNODE] GLU ffn_moe_swiglu-21 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-21 352 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-22 270 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-22 252 us
+[CPUNODE] GLU ffn_moe_swiglu-22 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-22 384 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-23 188 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-23 185 us
+[CPUNODE] GLU ffn_moe_swiglu-23 3 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-23 273 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-24 81 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-24 62 us
+[CPUNODE] GLU ffn_moe_swiglu-24 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-24 96 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-25 145 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-25 140 us
+[CPUNODE] GLU ffn_moe_swiglu-25 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-25 211 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-26 176 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-26 142 us
+[CPUNODE] GLU ffn_moe_swiglu-26 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-26 188 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-27 154 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-27 64 us
+[CPUNODE] GLU ffn_moe_swiglu-27 3 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-27 259 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-28 210 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-28 180 us
+[CPUNODE] GLU ffn_moe_swiglu-28 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-28 309 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-29 43 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-29 40 us
+[CPUNODE] GLU ffn_moe_swiglu-29 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-29 68 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-30 234 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-30 262 us
+[CPUNODE] GLU ffn_moe_swiglu-30 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-30 377 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-31 141 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-31 244 us
+[CPUNODE] GLU ffn_moe_swiglu-31 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-31 357 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-32 197 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-32 204 us
+[CPUNODE] GLU ffn_moe_swiglu-32 3 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-32 294 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-33 170 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-33 100 us
+[CPUNODE] GLU ffn_moe_swiglu-33 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-33 228 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-34 219 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-34 311 us
+[CPUNODE] GLU ffn_moe_swiglu-34 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-34 460 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-35 242 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-35 224 us
+[CPUNODE] GLU ffn_moe_swiglu-35 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-35 404 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-36 348 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-36 395 us
+[CPUNODE] GLU ffn_moe_swiglu-36 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-36 258 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-37 112 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-37 112 us
+[CPUNODE] GLU ffn_moe_swiglu-37 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-37 202 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-38 157 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-38 122 us
+[CPUNODE] GLU ffn_moe_swiglu-38 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-38 214 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-39 80 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-39 65 us
+[CPUNODE] GLU ffn_moe_swiglu-39 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-39 109 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-40 214 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-40 209 us
+[CPUNODE] GLU ffn_moe_swiglu-40 3 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-40 281 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-41 199 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-41 225 us
+[CPUNODE] GLU ffn_moe_swiglu-41 3 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-41 308 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-42 254 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-42 211 us
+[CPUNODE] GLU ffn_moe_swiglu-42 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-42 356 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-43 233 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-43 216 us
+[CPUNODE] GLU ffn_moe_swiglu-43 1 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-43 365 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-44 213 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-44 200 us
+[CPUNODE] GLU ffn_moe_swiglu-44 3 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-44 146 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-45 295 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-45 242 us
+[CPUNODE] GLU ffn_moe_swiglu-45 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-45 364 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-46 175 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-46 179 us
+[CPUNODE] GLU ffn_moe_swiglu-46 2 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-46 267 us
+[CPUNODE] MUL_MAT_ID ffn_moe_gate-47 445 us
+[CPUNODE] MUL_MAT_ID ffn_moe_up-47 560 us
+[CPUNODE] GLU ffn_moe_swiglu-47 3 us
+[CPUNODE] MUL_MAT_ID ffn_moe_down-47 878 us
+ of
+[MOE-CACHE] per-tensor summary:
+[MOE-CACHE]   blk.0.ffn_gate_exps.weight               slots= 90 hits=      36 misses=      34 hit%= 51.43
+[MOE-CACHE]   blk.0.ffn_up_exps.weight                 slots= 90 hits=      36 misses=      34 hit%= 51.43
+[MOE-CACHE]   blk.0.ffn_down_exps.weight               slots= 90 hits=      36 misses=      34 hit%= 51.43
+[MOE-CACHE]   blk.1.ffn_gate_exps.weight               slots= 90 hits=      53 misses=      17 hit%= 75.71
+[MOE-CACHE]   blk.1.ffn_up_exps.weight                 slots= 90 hits=      53 misses=      17 hit%= 75.71
+[MOE-CACHE]   blk.1.ffn_down_exps.weight               slots= 90 hits=      53 misses=      17 hit%= 75.71
+[MOE-CACHE]   blk.2.ffn_gate_exps.weight               slots= 90 hits=      54 misses=      16 hit%= 77.14
+[MOE-CACHE]   blk.2.ffn_up_exps.weight                 slots= 90 hits=      54 misses=      16 hit%= 77.14
+[MOE-CACHE]   blk.2.ffn_down_exps.weight               slots= 90 hits=      54 misses=      16 hit%= 77.14
+[MOE-CACHE]   blk.3.ffn_gate_exps.weight               slots= 90 hits=      59 misses=      11 hit%= 84.29
+[MOE-CACHE]   blk.3.ffn_up_exps.weight                 slots= 90 hits=      59 misses=      11 hit%= 84.29
+[MOE-CACHE]   blk.3.ffn_down_exps.weight               slots= 90 hits=      59 misses=      11 hit%= 84.29
+[MOE-CACHE]   blk.4.ffn_gate_exps.weight               slots= 90 hits=      47 misses=      23 hit%= 67.14
+[MOE-CACHE]   blk.4.ffn_up_exps.weight                 slots= 90 hits=      47 misses=      23 hit%= 67.14
+[MOE-CACHE]   blk.4.ffn_down_exps.weight               slots= 90 hits=      47 misses=      23 hit%= 67.14
+[MOE-CACHE]   blk.5.ffn_gate_exps.weight               slots= 90 hits=      49 misses=      21 hit%= 70.00
+[MOE-CACHE]   blk.5.ffn_up_exps.weight                 slots= 90 hits=      49 misses=      21 hit%= 70.00
+[MOE-CACHE]   blk.5.ffn_down_exps.weight               slots= 90 hits=      49 misses=      21 hit%= 70.00
+[MOE-CACHE]   blk.6.ffn_gate_exps.weight               slots= 90 hits=      49 misses=      21 hit%= 70.00
+[MOE-CACHE]   blk.6.ffn_up_exps.weight                 slots= 90 hits=      49 misses=      21 hit%= 70.00
+[MOE-CACHE]   blk.6.ffn_down_exps.weight               slots= 90 hits=      49 misses=      21 hit%= 70.00
+[MOE-CACHE]   blk.7.ffn_gate_exps.weight               slots= 90 hits=      55 misses=      15 hit%= 78.57
+[MOE-CACHE]   blk.7.ffn_up_exps.weight                 slots= 90 hits=      55 misses=      15 hit%= 78.57
+[MOE-CACHE]   blk.7.ffn_down_exps.weight               slots= 90 hits=      55 misses=      15 hit%= 78.57
+[MOE-CACHE]   blk.8.ffn_gate_exps.weight               slots= 90 hits=      61 misses=       9 hit%= 87.14
+[MOE-CACHE]   blk.8.ffn_up_exps.weight                 slots= 90 hits=      61 misses=       9 hit%= 87.14
+[MOE-CACHE]   blk.8.ffn_down_exps.weight               slots= 90 hits=      61 misses=       9 hit%= 87.14
+[MOE-CACHE]   blk.9.ffn_gate_exps.weight               slots= 90 hits=      57 misses=      13 hit%= 81.43
+[MOE-CACHE]   blk.9.ffn_up_exps.weight                 slots= 90 hits=      57 misses=      13 hit%= 81.43
+[MOE-CACHE]   blk.9.ffn_down_exps.weight               slots= 90 hits=      57 misses=      13 hit%= 81.43
+[MOE-CACHE]   blk.10.ffn_gate_exps.weight              slots= 90 hits=      62 misses=       8 hit%= 88.57
+[MOE-CACHE]   blk.10.ffn_up_exps.weight                slots= 90 hits=      62 misses=       8 hit%= 88.57
+[MOE-CACHE]   blk.10.ffn_down_exps.weight              slots= 90 hits=      62 misses=       8 hit%= 88.57
+[MOE-CACHE]   blk.11.ffn_gate_exps.weight              slots= 90 hits=      58 misses=      12 hit%= 82.86
+[MOE-CACHE]   blk.11.ffn_up_exps.weight                slots= 90 hits=      58 misses=      12 hit%= 82.86
+[MOE-CACHE]   blk.11.ffn_down_exps.weight              slots= 90 hits=      58 misses=      12 hit%= 82.86
+[MOE-CACHE]   blk.12.ffn_gate_exps.weight              slots= 90 hits=      52 misses=      18 hit%= 74.29
+[MOE-CACHE]   blk.12.ffn_up_exps.weight                slots= 90 hits=      52 misses=      18 hit%= 74.29
+[MOE-CACHE]   blk.12.ffn_down_exps.weight              slots= 90 hits=      52 misses=      18 hit%= 74.29
+[MOE-CACHE]   blk.13.ffn_gate_exps.weight              slots= 90 hits=      61 misses=       9 hit%= 87.14
+[MOE-CACHE]   blk.13.ffn_up_exps.weight                slots= 90 hits=      61 misses=       9 hit%= 87.14
+[MOE-CACHE]   blk.13.ffn_down_exps.weight              slots= 90 hits=      61 misses=       9 hit%= 87.14
+[MOE-CACHE]   blk.14.ffn_gate_exps.weight              slots= 90 hits=      60 misses=      10 hit%= 85.71
+[MOE-CACHE]   blk.14.ffn_up_exps.weight                slots= 90 hits=      60 misses=      10 hit%= 85.71
+[MOE-CACHE]   blk.14.ffn_down_exps.weight              slots= 90 hits=      60 misses=      10 hit%= 85.71
+[MOE-CACHE]   blk.15.ffn_gate_exps.weight              slots= 90 hits=      45 misses=      25 hit%= 64.29
+[MOE-CACHE]   blk.15.ffn_up_exps.weight                slots= 90 hits=      45 misses=      25 hit%= 64.29
+[MOE-CACHE]   blk.15.ffn_down_exps.weight              slots= 90 hits=      45 misses=      25 hit%= 64.29
+[MOE-CACHE]   blk.16.ffn_gate_exps.weight              slots= 90 hits=      52 misses=      18 hit%= 74.29
+[MOE-CACHE]   blk.16.ffn_up_exps.weight                slots= 90 hits=      52 misses=      18 hit%= 74.29
+[MOE-CACHE]   blk.16.ffn_down_exps.weight              slots= 90 hits=      52 misses=      18 hit%= 74.29
+[MOE-CACHE]   blk.17.ffn_gate_exps.weight              slots= 90 hits=      53 misses=      17 hit%= 75.71
+[MOE-CACHE]   blk.17.ffn_up_exps.weight                slots= 90 hits=      53 misses=      17 hit%= 75.71
+[MOE-CACHE]   blk.17.ffn_down_exps.weight              slots= 90 hits=      53 misses=      17 hit%= 75.71
+[MOE-CACHE]   blk.18.ffn_gate_exps.weight              slots= 90 hits=      53 misses=      17 hit%= 75.71
+[MOE-CACHE]   blk.18.ffn_up_exps.weight                slots= 90 hits=      53 misses=      17 hit%= 75.71
+[MOE-CACHE]   blk.18.ffn_down_exps.weight              slots= 90 hits=      53 misses=      17 hit%= 75.71
+[MOE-CACHE]   blk.19.ffn_gate_exps.weight              slots= 90 hits=      62 misses=       8 hit%= 88.57
+[MOE-CACHE]   blk.19.ffn_up_exps.weight                slots= 90 hits=      62 misses=       8 hit%= 88.57
+[MOE-CACHE]   blk.19.ffn_down_exps.weight              slots= 90 hits=      62 misses=       8 hit%= 88.57
+[MOE-CACHE]   blk.20.ffn_gate_exps.weight              slots= 90 hits=      48 misses=      22 hit%= 68.57
+[MOE-CACHE]   blk.20.ffn_up_exps.weight                slots= 90 hits=      48 misses=      22 hit%= 68.57
+[MOE-CACHE]   blk.20.ffn_down_exps.weight              slots= 90 hits=      48 misses=      22 hit%= 68.57
+[MOE-CACHE]   blk.21.ffn_gate_exps.weight              slots= 90 hits=      45 misses=      25 hit%= 64.29
+[MOE-CACHE]   blk.21.ffn_up_exps.weight                slots= 90 hits=      45 misses=      25 hit%= 64.29
+[MOE-CACHE]   blk.21.ffn_down_exps.weight              slots= 90 hits=      45 misses=      25 hit%= 64.29
+[MOE-CACHE]   blk.22.ffn_gate_exps.weight              slots= 90 hits=      44 misses=      26 hit%= 62.86
+[MOE-CACHE]   blk.22.ffn_up_exps.weight                slots= 90 hits=      44 misses=      26 hit%= 62.86
+[MOE-CACHE]   blk.22.ffn_down_exps.weight              slots= 90 hits=      44 misses=      26 hit%= 62.86
+[MOE-CACHE]   blk.23.ffn_gate_exps.weight              slots= 90 hits=      49 misses=      21 hit%= 70.00
+[MOE-CACHE]   blk.23.ffn_up_exps.weight                slots= 90 hits=      49 misses=      21 hit%= 70.00
+[MOE-CACHE]   blk.23.ffn_down_exps.weight              slots= 90 hits=      49 misses=      21 hit%= 70.00
+[MOE-CACHE]   blk.24.ffn_gate_exps.weight              slots= 90 hits=      57 misses=      13 hit%= 81.43
+[MOE-CACHE]   blk.24.ffn_up_exps.weight                slots= 90 hits=      57 misses=      13 hit%= 81.43
+[MOE-CACHE]   blk.24.ffn_down_exps.weight              slots= 90 hits=      57 misses=      13 hit%= 81.43
+[MOE-CACHE]   blk.25.ffn_gate_exps.weight              slots= 90 hits=      51 misses=      19 hit%= 72.86
+[MOE-CACHE]   blk.25.ffn_up_exps.weight                slots= 90 hits=      51 misses=      19 hit%= 72.86
+[MOE-CACHE]   blk.25.ffn_down_exps.weight              slots= 90 hits=      51 misses=      19 hit%= 72.86
+[MOE-CACHE]   blk.26.ffn_gate_exps.weight              slots= 90 hits=      66 misses=       4 hit%= 94.29
+[MOE-CACHE]   blk.26.ffn_up_exps.weight                slots= 90 hits=      66 misses=       4 hit%= 94.29
+[MOE-CACHE]   blk.26.ffn_down_exps.weight              slots= 90 hits=      66 misses=       4 hit%= 94.29
+[MOE-CACHE]   blk.27.ffn_gate_exps.weight              slots= 90 hits=      66 misses=       4 hit%= 94.29
+[MOE-CACHE]   blk.27.ffn_up_exps.weight                slots= 90 hits=      66 misses=       4 hit%= 94.29
+[MOE-CACHE]   blk.27.ffn_down_exps.weight              slots= 90 hits=      66 misses=       4 hit%= 94.29
+[MOE-CACHE]   blk.28.ffn_gate_exps.weight              slots= 90 hits=      54 misses=      16 hit%= 77.14
+[MOE-CACHE]   blk.28.ffn_up_exps.weight                slots= 90 hits=      54 misses=      16 hit%= 77.14
+[MOE-CACHE]   blk.28.ffn_down_exps.weight              slots= 90 hits=      54 misses=      16 hit%= 77.14
+[MOE-CACHE]   blk.29.ffn_gate_exps.weight              slots= 90 hits=      61 misses=       9 hit%= 87.14
+[MOE-CACHE]   blk.29.ffn_up_exps.weight                slots= 90 hits=      61 misses=       9 hit%= 87.14
+[MOE-CACHE]   blk.29.ffn_down_exps.weight              slots= 90 hits=      61 misses=       9 hit%= 87.14
+[MOE-CACHE]   blk.30.ffn_gate_exps.weight              slots= 90 hits=      61 misses=       9 hit%= 87.14
+[MOE-CACHE]   blk.30.ffn_up_exps.weight                slots= 90 hits=      61 misses=       9 hit%= 87.14
+[MOE-CACHE]   blk.30.ffn_down_exps.weight              slots= 90 hits=      61 misses=       9 hit%= 87.14
+[MOE-CACHE]   blk.31.ffn_gate_exps.weight              slots= 90 hits=      51 misses=      19 hit%= 72.86
+[MOE-CACHE]   blk.31.ffn_up_exps.weight                slots= 90 hits=      51 misses=      19 hit%= 72.86
+[MOE-CACHE]   blk.31.ffn_down_exps.weight              slots= 90 hits=      51 misses=      19 hit%= 72.86
+[MOE-CACHE]   blk.32.ffn_gate_exps.weight              slots= 90 hits=      54 misses=      16 hit%= 77.14
+[MOE-CACHE]   blk.32.ffn_up_exps.weight                slots= 90 hits=      54 misses=      16 hit%= 77.14
+[MOE-CACHE]   blk.32.ffn_down_exps.weight              slots= 90 hits=      54 misses=      16 hit%= 77.14
+[MOE-CACHE]   blk.33.ffn_gate_exps.weight              slots= 90 hits=      56 misses=      14 hit%= 80.00
+[MOE-CACHE]   blk.33.ffn_up_exps.weight                slots= 90 hits=      56 misses=      14 hit%= 80.00
+[MOE-CACHE]   blk.33.ffn_down_exps.weight              slots= 90 hits=      56 misses=      14 hit%= 80.00
+[MOE-CACHE]   blk.34.ffn_gate_exps.weight              slots= 90 hits=      53 misses=      17 hit%= 75.71
+[MOE-CACHE]   blk.34.ffn_up_exps.weight                slots= 90 hits=      53 misses=      17 hit%= 75.71
+[MOE-CACHE]   blk.34.ffn_down_exps.weight              slots= 90 hits=      53 misses=      17 hit%= 75.71
+[MOE-CACHE]   blk.35.ffn_gate_exps.weight              slots= 90 hits=      56 misses=      14 hit%= 80.00
+[MOE-CACHE]   blk.35.ffn_up_exps.weight                slots= 90 hits=      56 misses=      14 hit%= 80.00
+[MOE-CACHE]   blk.35.ffn_down_exps.weight              slots= 90 hits=      56 misses=      14 hit%= 80.00
+[MOE-CACHE]   blk.36.ffn_gate_exps.weight              slots= 90 hits=      47 misses=      23 hit%= 67.14
+[MOE-CACHE]   blk.36.ffn_up_exps.weight                slots= 90 hits=      47 misses=      23 hit%= 67.14
+[MOE-CACHE]   blk.36.ffn_down_exps.weight              slots= 90 hits=      47 misses=      23 hit%= 67.14
+[MOE-CACHE]   blk.37.ffn_gate_exps.weight              slots= 90 hits=      45 misses=      25 hit%= 64.29
+[MOE-CACHE]   blk.37.ffn_up_exps.weight                slots= 90 hits=      45 misses=      25 hit%= 64.29
+[MOE-CACHE]   blk.37.ffn_down_exps.weight              slots= 90 hits=      45 misses=      25 hit%= 64.29
+[MOE-CACHE]   blk.38.ffn_gate_exps.weight              slots= 90 hits=      36 misses=      34 hit%= 51.43
+[MOE-CACHE]   blk.38.ffn_up_exps.weight                slots= 90 hits=      36 misses=      34 hit%= 51.43
+[MOE-CACHE]   blk.38.ffn_down_exps.weight              slots= 90 hits=      36 misses=      34 hit%= 51.43
+[MOE-CACHE]   blk.39.ffn_gate_exps.weight              slots= 90 hits=      50 misses=      20 hit%= 71.43
+[MOE-CACHE]   blk.39.ffn_up_exps.weight                slots= 90 hits=      50 misses=      20 hit%= 71.43
+[MOE-CACHE]   blk.39.ffn_down_exps.weight              slots= 90 hits=      50 misses=      20 hit%= 71.43
+[MOE-CACHE]   blk.40.ffn_gate_exps.weight              slots= 90 hits=      45 misses=      25 hit%= 64.29
+[MOE-CACHE]   blk.40.ffn_up_exps.weight                slots= 90 hits=      45 misses=      25 hit%= 64.29
+[MOE-CACHE]   blk.40.ffn_down_exps.weight              slots= 90 hits=      45 misses=      25 hit%= 64.29
+[MOE-CACHE]   blk.41.ffn_gate_exps.weight              slots= 90 hits=      48 misses=      22 hit%= 68.57
+[MOE-CACHE]   blk.41.ffn_up_exps.weight                slots= 90 hits=      48 misses=      22 hit%= 68.57
+[MOE-CACHE]   blk.41.ffn_down_exps.weight              slots= 90 hits=      48 misses=      22 hit%= 68.57
+[MOE-CACHE]   blk.42.ffn_gate_exps.weight              slots= 90 hits=      42 misses=      28 hit%= 60.00
+[MOE-CACHE]   blk.42.ffn_up_exps.weight                slots= 90 hits=      42 misses=      28 hit%= 60.00
+[MOE-CACHE]   blk.42.ffn_down_exps.weight              slots= 90 hits=      42 misses=      28 hit%= 60.00
+[MOE-CACHE]   blk.43.ffn_gate_exps.weight              slots= 90 hits=      44 misses=      26 hit%= 62.86
+[MOE-CACHE]   blk.43.ffn_up_exps.weight                slots= 90 hits=      44 misses=      26 hit%= 62.86
+[MOE-CACHE]   blk.43.ffn_down_exps.weight              slots= 90 hits=      44 misses=      26 hit%= 62.86
+[MOE-CACHE]   blk.44.ffn_gate_exps.weight              slots= 90 hits=      42 misses=      28 hit%= 60.00
+[MOE-CACHE]   blk.44.ffn_up_exps.weight                slots= 90 hits=      42 misses=      28 hit%= 60.00
+[MOE-CACHE]   blk.44.ffn_down_exps.weight              slots= 90 hits=      42 misses=      28 hit%= 60.00
+[MOE-CACHE]   blk.45.ffn_gate_exps.weight              slots= 90 hits=      43 misses=      27 hit%= 61.43
+[MOE-CACHE]   blk.45.ffn_up_exps.weight                slots= 90 hits=      43 misses=      27 hit%= 61.43
+[MOE-CACHE]   blk.45.ffn_down_exps.weight              slots= 90 hits=      43 misses=      27 hit%= 61.43
+[MOE-CACHE]   blk.46.ffn_gate_exps.weight              slots= 90 hits=      32 misses=      38 hit%= 45.71
+[MOE-CACHE]   blk.46.ffn_up_exps.weight                slots= 90 hits=      32 misses=      38 hit%= 45.71
+[MOE-CACHE]   blk.46.ffn_down_exps.weight              slots= 90 hits=      32 misses=      38 hit%= 45.71
+[MOE-CACHE]   blk.47.ffn_gate_exps.weight              slots= 90 hits=      56 misses=      24 hit%= 70.00
+[MOE-CACHE]   blk.47.ffn_up_exps.weight                slots= 90 hits=      56 misses=      24 hit%= 70.00
+[MOE-CACHE]   blk.47.ffn_down_exps.weight              slots= 90 hits=      56 misses=      24 hit%= 70.00
+
+[ Prompt: 11.9 t/s | Generation: 11.9 t/s ]
+
+
+Exiting...

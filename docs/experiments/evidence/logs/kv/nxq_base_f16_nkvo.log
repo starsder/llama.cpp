@@ -1,0 +1,4 @@
+0.01.080.014 W llama_model_loader: tensor overrides to CPU are used with mmap enabled - consider using --load-mode none for better performance
+0.06.052.874 I cmn          init: llama threadpool init, n_threads = 16
+[MOE-CACHE] enabled: budget=0 MiB predictor=0 fate=0 smoe=1 prefetch=1 topk=32 static=32 pred_mrs=0.00 fallback=2 join=1 gate=1 split=1 mrs=1 alpha=0.750 topp=0 window_layers=0 vram_limit=15667 MiB guard=512 MiB devpart=0
+SOURCE_TREE\ggml\src\ggml-backend.cpp:6785: GGML_ASSERT(id >= 0 && id < n_expert) failed

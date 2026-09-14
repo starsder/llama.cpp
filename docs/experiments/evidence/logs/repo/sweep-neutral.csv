@@ -1,0 +1,4 @@
+tag,prompt_tps,gen_tps,cache_mib,slots,hit_pct,hits,misses,crash,vram_peak_mib,secs
+off-a,28.7,9.2,,,,,,,6078,47.2
+off-b,28.7,9.2,,,,,,,6078,48.1
+on-a,28.9,22.0,9306,97,89.6,328959,38271,,15463,31.8

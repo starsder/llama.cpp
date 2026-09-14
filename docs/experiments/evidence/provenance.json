@@ -1,0 +1,1371 @@
+{
+  "schema": "research-provenance/1",
+  "native_code_base": "7e01451b2d7aab6a4ff58ecfdd2f3b13fcaeb0bf",
+  "documentation_parent": "0862af564b48b898f7d84a57a895420b86c23824",
+  "source_workspace_head": "17ca0de85150180f99053b85cb183dc4a6fc6bbb",
+  "source_workspace_has_uncommitted_research": true,
+  "source_snapshots": [
+    {
+      "source": "handoff.md",
+      "archived": "sources/handoff.md",
+      "original_sha256": "fd1794c5a8e84420b69ca521cade6f78253ea823b7b49ef46aea5a94510bd6e6",
+      "original_lines": 1703,
+      "archived_sha256": "e56b85e1f50fda2315e720a9a120620b6ca6d0edb193adee7d2a11f96deb5911",
+      "transformation": "Machine-path pseudonymization and explicit historical-status header; historical statements not corrected in-place.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "docs/smoe-nk-degradation-plan.md",
+      "archived": "sources/smoe-nk-degradation-plan.md",
+      "original_sha256": "31f0d2018fedc234c8568959ab452c80ce183f7c15bcd9905e9575afc94c0592",
+      "original_lines": 227,
+      "archived_sha256": "1389d1f4c137d705cfdbb6e86dd7f3c439abd0d4731e9f505c70afc6f2e5ee00",
+      "transformation": "Machine-path pseudonymization and explicit historical-status header; historical statements not corrected in-place.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "docs/rebuild-spec.md",
+      "archived": "sources/rebuild-spec.md",
+      "original_sha256": "bf8cd4a9a710ef47e7d55220888593ca831d3f1442c0274cf07fba42b6d0bc12",
+      "original_lines": 546,
+      "archived_sha256": "3e39edf462826a7d7d78e728ac3b1ca3434e7634dc70dc6600430b3a4eecf864",
+      "transformation": "Machine-path pseudonymization and explicit historical-status header; historical statements not corrected in-place.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "docs/moe-decode-perf-plan.md",
+      "archived": "sources/moe-decode-perf-plan.md",
+      "original_sha256": "89eda1b24485a05a01b1eda6dc7bd0996b549d4ad18c519d02e2dd59713dda40",
+      "original_lines": 293,
+      "archived_sha256": "1f68bbe055ee06009ec501a70d286c1329a52488ed365ac44b813e05ccc1824e",
+      "transformation": "Machine-path pseudonymization and explicit historical-status header; historical statements not corrected in-place.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "docs/moe-cache-score-aware-prd.md",
+      "archived": "sources/moe-cache-score-aware-prd.md",
+      "original_sha256": "70f6d7d302257d276b39c0541953b533e5c8a96d2315a5390b0af8a95db19cac",
+      "original_lines": 286,
+      "archived_sha256": "a94c6870e0caaa0d5963a68035d347d22f6bb03cbcc4574079ac0bf7d72011bb",
+      "transformation": "Machine-path pseudonymization and explicit historical-status header; historical statements not corrected in-place.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    }
+  ],
+  "measurement_summary_sources": [
+    {
+      "id": "optimization400/lifetime-before.json",
+      "original_sha256": "1b8e0afaf553f12bb828c920ca19d2bfc1b0a0df0b63006adfa0db0bd02bfd6f",
+      "original_bytes": 8285,
+      "kind": "measurement-json"
+    },
+    {
+      "id": "optimization400/lifetime-after.json",
+      "original_sha256": "d442d0f6825014a9a0645e6c43239fc796ff6e45572eecf6d8934b93013d31ab",
+      "original_bytes": 8284,
+      "kind": "measurement-json"
+    },
+    {
+      "id": "optimization400/final-r1.json",
+      "original_sha256": "9527fd0c73cf39ff03bdef0fe01352642777b3e552127a01c440f1932e849452",
+      "original_bytes": 8300,
+      "kind": "measurement-json"
+    },
+    {
+      "id": "optimization400/final-r2.json",
+      "original_sha256": "a92732cca99e9a1d3f6ece667a66f72beffa58f0f380521b946cf217736809a7",
+      "original_bytes": 3595,
+      "kind": "measurement-json"
+    },
+    {
+      "id": "optimization400/baseline-paired-r2.json",
+      "original_sha256": "1a0f33a5918174dbc0d0dfe2960a3b76b24c407346b62e28c0f47beebb34f3b8",
+      "original_bytes": 5623,
+      "kind": "measurement-json"
+    },
+    {
+      "id": "optimization400/baseline-paired.json",
+      "original_sha256": "dd3ef589e3cfbb151a6a8903f3e82d1279ec200e451044da3bfd0dadc7dd592a",
+      "original_bytes": 3541,
+      "kind": "measurement-json"
+    },
+    {
+      "id": "optimization400/timeout-smoke.json",
+      "original_sha256": "14ccab7022e8848a360ba9b0b9dba4ce95d39c6e9659c75456240523840136ba",
+      "original_bytes": 3512,
+      "kind": "measurement-json"
+    },
+    {
+      "id": "optimization400/lock-smoke.json",
+      "original_sha256": "b57c2726c1967e5c702943ad4ad41470b826a962222c94bfea22ba23ed570017",
+      "original_bytes": 788,
+      "kind": "measurement-json"
+    },
+    {
+      "id": "global-auto128.summary.json",
+      "original_sha256": "83ef398b61515ad583c573c9cdcaf1c0e51133d94cbb391e61af490a3d85c3ab",
+      "original_bytes": 973628,
+      "kind": "measurement-json"
+    },
+    {
+      "id": "layer-auto128.summary.json",
+      "original_sha256": "ac9d6c6dde61ed623bd2337493edcc999d59de191a55cef7c3dc22010e16078b",
+      "original_bytes": 505563,
+      "kind": "measurement-json"
+    },
+    {
+      "id": "global-pressure128-v2.summary.json",
+      "original_sha256": "7f46ffdc95f7b93370083ad40fa3777f466c4998385d4f92e8afb4bd8e6d4fc9",
+      "original_bytes": 1059328,
+      "kind": "measurement-json"
+    },
+    {
+      "id": "optimization400/fixed400/experiment.json",
+      "original_sha256": "a5fe325fe68ad77edcbba063cf52650c1c0ad1b6fe4b82147fc2f99050c5300c",
+      "original_bytes": 1607168,
+      "kind": "measurement-json"
+    },
+    {
+      "id": "optimization400/fixed400-final/experiment.json",
+      "original_sha256": "d97b4c2bc0f0a1a22e2749a7efd5d39d9b3aa7ba79aaeea07b4782dd1b1645ac",
+      "original_bytes": 1638363,
+      "kind": "measurement-json"
+    },
+    {
+      "id": "baseline400-6g.summary.json",
+      "original_sha256": "1b983f429ffdcf4c52c9185ab579e39f2a5fbe55a19375b6a9c07ad06125b4a9",
+      "original_bytes": 4503,
+      "kind": "measurement-json"
+    }
+  ],
+  "selected_logs": [
+    {
+      "source": "SOURCE_TREE\\dsh-r8.txt",
+      "archived": "evidence/logs/repo/dsh-r8.txt",
+      "original_sha256": "9db21aea7b385a14b454ed09c2caa69461f8d5b70b9052b4c3cea4e72f82cd7c",
+      "original_bytes": 772,
+      "archived_sha256": "6278e0bb5722b5739a5d87811c4ebe932f27fdd17484140a6d58a4b942139235",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "SOURCE_TREE\\dsh-r9.txt",
+      "archived": "evidence/logs/repo/dsh-r9.txt",
+      "original_sha256": "c10ae8a7d773a1e3f730781e3a01504da4b9df0bfe6896b13c46814b2402c4bb",
+      "original_bytes": 656,
+      "archived_sha256": "8fd1164a3b0415b50d1f706e98364f332b224950802ba78b3c1ff1f626aef25f",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "SOURCE_TREE\\sweep-fix.csv",
+      "archived": "evidence/logs/repo/sweep-fix.csv",
+      "original_sha256": "e666e102f3cc41efe77f3458c39a3d0a12697cb4c6b39eb309a9fe1d82116ea6",
+      "original_bytes": 195,
+      "archived_sha256": "7d53d19beea11e81ba08b8dc200262502f4a64af21743a7251b1614274e208b4",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "SOURCE_TREE\\sweep-corrupt.csv",
+      "archived": "evidence/logs/repo/sweep-corrupt.csv",
+      "original_sha256": "219dcc9adb5d166fcf502f24a68db036e16656abb406c6930e48b22ad6d6d06a",
+      "original_bytes": 332,
+      "archived_sha256": "8c40c0363bb97f5def0df7e0ab651c8f01c949caba79b9f4dfe1e71219963a71",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "SOURCE_TREE\\sweep-ahead.csv",
+      "archived": "evidence/logs/repo/sweep-ahead.csv",
+      "original_sha256": "5adb465ca49db27e1e0acdf32d3a5c1151e27a740c9e92b7a0e628cfd915de9d",
+      "original_bytes": 210,
+      "archived_sha256": "23d4673942e2775f79d4d979c135dc43c4ddf2f7da68268a721c3f63577fb75b",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "SOURCE_TREE\\sweep-neutral.csv",
+      "archived": "evidence/logs/repo/sweep-neutral.csv",
+      "original_sha256": "df14c7cba14f787614f614a966b3abbcd8cc010ac6bb139ef48fda099cb6cba6",
+      "original_bytes": 203,
+      "archived_sha256": "13dc28eb039350064489e0522cfde4ca828f7b500ce23c779a0c0106bfb6877d",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "SOURCE_TREE\\sweep-reg.csv",
+      "archived": "evidence/logs/repo/sweep-reg.csv",
+      "original_sha256": "52379d1ba4e83f1dd690a15d9f69bf1977341fb039170ceae584d069960e6bb9",
+      "original_bytes": 297,
+      "archived_sha256": "9471bb6131dbd727f788ce5f7aefb18940e313fbda66275993fd586cc14c0e7f",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "SOURCE_TREE\\sweep-kv.csv",
+      "archived": "evidence/logs/repo/sweep-kv.csv",
+      "original_sha256": "511bbfc0ca7a1b822aac825bc8260f9265a5329455405d86fadabedd633b766c",
+      "original_bytes": 144,
+      "archived_sha256": "a62abe0b1abd0663eb2818a95fcd1f419c018f5373d6c959c11e0ec3fedc22ca",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "SOURCE_TREE\\ppl-matrix.log",
+      "archived": "evidence/logs/repo/ppl-matrix.log",
+      "original_sha256": "c19656d11dfe8d2387a660b63f2816ff43ef760f5dc5ca99bea2e34c4ac6a7cf",
+      "original_bytes": 280,
+      "archived_sha256": "251d795876d3ede9cbdbd148b7ff149290bb94dfa86a6760b87535d5b8ab93ca",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "SOURCE_TREE\\ppl-tbq4_0.log",
+      "archived": "evidence/logs/repo/ppl-tbq4_0.log",
+      "original_sha256": "11712d5ba23108aed4be4a537a2030a57b4625e2ac2347d7ec5b3eb19a45ad1f",
+      "original_bytes": 671,
+      "archived_sha256": "4310f6e581cfd23938006b18aabfb90c8a936a9c8df430f9d9794f665701a33d",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "SOURCE_TREE\\ppl-8ch-tbq4-retry.log",
+      "archived": "evidence/logs/repo/ppl-8ch-tbq4-retry.log",
+      "original_sha256": "dbab1e7874eb6e9bf26c7b732ec577c8f7547baca35bb14ac378b1b006bac1dd",
+      "original_bytes": 1178,
+      "archived_sha256": "ceb1c009a17c130d86b0328565454196b44a82a8be405dd7627b9a7a14bebd8b",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "SOURCE_TREE\\ppl-nb-tbq4_0.log",
+      "archived": "evidence/logs/repo/ppl-nb-tbq4_0.log",
+      "original_sha256": "e063a6cf6457be76240e4301f3a488332c88284387b776213013e577804954ed",
+      "original_bytes": 18047,
+      "archived_sha256": "3e077fe0c63579412e4b1b1bfa7dc17746459f92c5fbe61351a5870b59a2d748",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "SOURCE_TREE\\ppl-rot-tbq4_0-rot_off.log",
+      "archived": "evidence/logs/repo/ppl-rot-tbq4_0-rot_off.log",
+      "original_sha256": "6ec1621abfd09875e05fe5308dad96bee0a715c2c2f70bd0cb8cf1f63eb96c0a",
+      "original_bytes": 18108,
+      "archived_sha256": "4ef15b8adbb6548799434c064485976887122cd92500d24436c83a93d11e24ab",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "SOURCE_TREE\\ppl-rot-tbq3_0-rot_on.log",
+      "archived": "evidence/logs/repo/ppl-rot-tbq3_0-rot_on.log",
+      "original_sha256": "5f03247dad472b2b266e333931ebfb8909491296bcb23301ed080ad9855d9e37",
+      "original_bytes": 17924,
+      "archived_sha256": "3420f609b2c8acd553224a4767af391fc59dc4e05033831e1194432ccd977a48",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "SOURCE_TREE\\ppl-rot-tbq3_0-rot_off.log",
+      "archived": "evidence/logs/repo/ppl-rot-tbq3_0-rot_off.log",
+      "original_sha256": "65a75a018ba5c9d3a4cdc3fd29553633b7319f29eff8fec9a047a3d60e5f4086",
+      "original_bytes": 18106,
+      "archived_sha256": "4b7cec65c298140702863046fafe5386ef823127f7b5e7dbb95e8e7f67187ea4",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "SOURCE_TREE\\ppl-nofa-tbq4.log",
+      "archived": "evidence/logs/repo/ppl-nofa-tbq4.log",
+      "original_sha256": "f98ffb669ac0a81d89a43f52fbedbf52a1e6ca64769ee9b72fe4d5a9c82966d5",
+      "original_bytes": 867,
+      "archived_sha256": "52159259478770aec7793d35fbe24e4000f6f453daa27f5a45a4edf7127903ba",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "SOURCE_TREE\\kld-matrix.log",
+      "archived": "evidence/logs/repo/kld-matrix.log",
+      "original_sha256": "018d4c9aaf0c275d4f25f1b993ef82a738a9d8200fd9401f77f254c41fcf7b67",
+      "original_bytes": 2035,
+      "archived_sha256": "1886190448352ec4710685a9ed190e420dc47d2b4d93215f091f62b0ac7b708e",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "SOURCE_TREE\\kld-tbq4_0.log",
+      "archived": "evidence/logs/repo/kld-tbq4_0.log",
+      "original_sha256": "fe1cf042562b366143cd2b9ac5dbf51a29389f70dc3856f5e023b80a7cec5f7c",
+      "original_bytes": 552,
+      "archived_sha256": "a8a09d7c32a62f8306bae1beb51ded8a474d702b318c5cda9034cb795286588a",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "SOURCE_TREE\\t-auto-err.txt",
+      "archived": "evidence/logs/repo/t-auto-err.txt",
+      "original_sha256": "5caa40feeb905713bdcf94183ada1d94326ce2a3809c8abe18fdd77b15ee1bf3",
+      "original_bytes": 35365,
+      "archived_sha256": "d9474d670dbe761e7f7cc6ecd8b1e049f332bd276e9bb32efcadf0be9555aeef",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "SOURCE_TREE\\t-auto-out.txt",
+      "archived": "evidence/logs/repo/t-auto-out.txt",
+      "original_sha256": "b46133a55675018486eae423d0be474b004397d1ec0fdbdc84efc37f3f35e25c",
+      "original_bytes": 1714,
+      "archived_sha256": "5dfff24ae31241ad2f30acb95e523bd3176e9282d63c2e72529f04460d77c845",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "SOURCE_TREE\\t-4096-err.txt",
+      "archived": "evidence/logs/repo/t-4096-err.txt",
+      "original_sha256": "8d0bec82941da69bcfee43f9b61ec8f3f0b047532d4963a13386cf633884a382",
+      "original_bytes": 35283,
+      "archived_sha256": "e34172b75c641911c78946f77d80598a36e1ad810c1c1123a0cb49c088d637b4",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "SOURCE_TREE\\t-4096-out.txt",
+      "archived": "evidence/logs/repo/t-4096-out.txt",
+      "original_sha256": "d304846c0cf9b5b3176038cb891a03b48f34233e6f344c353de6e88f5ce85d2a",
+      "original_bytes": 1517,
+      "archived_sha256": "2902162ff2d7ceb1fbb3ac33ad5cf93393cfaed0df868804869923faec4bdc62",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "SOURCE_TREE\\c1-3-err.txt",
+      "archived": "evidence/logs/repo/c1-3-err.txt",
+      "original_sha256": "9bb5ec54a4f77475cad07605a4f1c3e7960ed1310675b5a1c4b49646ebed2abc",
+      "original_bytes": 35396,
+      "archived_sha256": "0c994ec20364502d541baaa9fe6a67a83a2a7dab7d41491d0aaca2eb98a4fff3",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "SOURCE_TREE\\guard-1-out.txt",
+      "archived": "evidence/logs/repo/guard-1-out.txt",
+      "original_sha256": "7c456170f88d7a9f1e8f2e44ac46023cfee6e24b840da1a6a9fd01f63837b24f",
+      "original_bytes": 1571,
+      "archived_sha256": "18567f004608ebfd79b223d18e61ce562fb5dd08809f17d2ca1f46439d45d069",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "SOURCE_TREE\\auto-256k-novis-err.txt",
+      "archived": "evidence/logs/repo/auto-256k-novis-err.txt",
+      "original_sha256": "41e102561d0f4e9a1a37ed9c0f845b39232c44d971b74a832e8df45962d7d47a",
+      "original_bytes": 35810,
+      "archived_sha256": "11cfae1a1a218a020a333cbd02892f005c066e5cfad886e50ddc18cabad75f5b",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "SOURCE_TREE\\auto-256k-vis-err.txt",
+      "archived": "evidence/logs/repo/auto-256k-vis-err.txt",
+      "original_sha256": "8937a7603141d14510c491e9a74db519ad55a7a4452cacefb9b3f3257d97c4c5",
+      "original_bytes": 35837,
+      "archived_sha256": "e233ab0b2a221496413f3b5dff63a541b64bcc59b062d3c29f2c9d3f270102a6",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "SOURCE_TREE\\cap27-a-err.txt",
+      "archived": "evidence/logs/repo/cap27-a-err.txt",
+      "original_sha256": "959fcf1293fe1d8cdc881c313c1db416e4c8d60dbd0647c3b74e1f48cc19cbf8",
+      "original_bytes": 35726,
+      "archived_sha256": "b4112ce49cbb8b7bb365515dde640ab6bbf14f491bd4af54977a2ad37bbbe6a9",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "SOURCE_TREE\\x-tiny-err.txt",
+      "archived": "evidence/logs/repo/x-tiny-err.txt",
+      "original_sha256": "d4b6659e3a391b4208a8c516b9ac156f6f0678cb26411f2ce4ef13c07589e7ea",
+      "original_bytes": 3369,
+      "archived_sha256": "c2308313b20cc3f94f742731980703bfad17dc9b08b1ec2dc403046d89190a4c",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "SOURCE_TREE\\kv-f16-out.txt",
+      "archived": "evidence/logs/repo/kv-f16-out.txt",
+      "original_sha256": "1a4c8900d2b4bcd8be1664109c44a6b5a5e9bfbc6b29cb568a0b3153bfe96fb0",
+      "original_bytes": 1442,
+      "archived_sha256": "3885a4a16f0b262eca011f8733a6d18b44e5b6173efa5c93e3ce5fb2fa859080",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "SOURCE_TREE\\kv-f16-err.txt",
+      "archived": "evidence/logs/repo/kv-f16-err.txt",
+      "original_sha256": "9be9dbcd85a65c70a7d5c82873d1495f71c860131f223db9617d23e20b0fb9a7",
+      "original_bytes": 3483,
+      "archived_sha256": "bce5144527275ed8bb24884e386118db69373ee21d23814da6f39ba649bb66bb",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "SOURCE_TREE\\ppl-single-f16.log",
+      "archived": "evidence/logs/repo/ppl-single-f16.log",
+      "original_sha256": "a4e6f1f22301550fde5012fbb029f789e538bc99d84e6d4233ebedbcf62a66ca",
+      "original_bytes": 17924,
+      "archived_sha256": "a22ec038eab5d433f0bb3d8dfe7d7bc7880a9772705e14f19a0f14edea8eee17",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "SOURCE_TREE\\kv-q8_0-out.txt",
+      "archived": "evidence/logs/repo/kv-q8_0-out.txt",
+      "original_sha256": "996311329715eb76b0589ef176068e8b9966c3c811b334998251f798f9c688d0",
+      "original_bytes": 1496,
+      "archived_sha256": "c4c998f99b0f3438ceabcc45d3cbaf042af5bff3fcb0acc4247c7c984cfadc8b",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "SOURCE_TREE\\kv-q8_0-err.txt",
+      "archived": "evidence/logs/repo/kv-q8_0-err.txt",
+      "original_sha256": "4e32148c74d8fcc021ed274135c8259bebd89556dfb0f0fa8ece8856daefa853",
+      "original_bytes": 35407,
+      "archived_sha256": "2718e30c401f96483c9b02d70c1960730f52eca2cbcf6843d345d35727bddf3b",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "SOURCE_TREE\\ppl-single-q8_0.log",
+      "archived": "evidence/logs/repo/ppl-single-q8_0.log",
+      "original_sha256": "a64c25e9a441f74c562d7fffaf81e803b52895cb149b4f160d222b6834b8efeb",
+      "original_bytes": 17924,
+      "archived_sha256": "b0aacbd308aaf8c865b930b08be372fc830dc5358012838c249feb0c48abe36e",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "SOURCE_TREE\\kv-q4_0-out.txt",
+      "archived": "evidence/logs/repo/kv-q4_0-out.txt",
+      "original_sha256": "9967823600a2de6373e73412bbb4cc013dbff602ed040cf76397c7912dc318de",
+      "original_bytes": 1737,
+      "archived_sha256": "a1186cf827185645455b9d4a5c52f85e583eeadb78c419e108659755fa9117df",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "SOURCE_TREE\\kv-q4_0-err.txt",
+      "archived": "evidence/logs/repo/kv-q4_0-err.txt",
+      "original_sha256": "f6fbeea4c888d57680182dec6b6b925291a4fe4b7e8e56ee46790cca641e793c",
+      "original_bytes": 35406,
+      "archived_sha256": "3f19f7817d9bf70aff949f0a31c8bd61ada74ab62d630731c03363b97249e802",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "SOURCE_TREE\\ppl-single-q4_0.log",
+      "archived": "evidence/logs/repo/ppl-single-q4_0.log",
+      "original_sha256": "97cc4a57066984956aac670e8364e7f4f83298c4f52847ce1a4c21948db56315",
+      "original_bytes": 17924,
+      "archived_sha256": "17336230c86957a3a6ac12188de4f1998a275a397a04fc24e4cbee18ab8d821f",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "SOURCE_TREE\\kv-tbq3_0-out.txt",
+      "archived": "evidence/logs/repo/kv-tbq3_0-out.txt",
+      "original_sha256": "626988b11da225563edb2ed6222842a1d51de90148c8f9b7c952c66e4be71fc3",
+      "original_bytes": 1484,
+      "archived_sha256": "1a89ddba0de9cfa2aac493e1c7b1af14729d6c6ad2b33912d26fa86b06f3d2cc",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "SOURCE_TREE\\kv-tbq3_0-err.txt",
+      "archived": "evidence/logs/repo/kv-tbq3_0-err.txt",
+      "original_sha256": "766631130a86998723e803473d2912ebe5c8a88f6794b53996dde9bfe82d75f4",
+      "original_bytes": 35407,
+      "archived_sha256": "a443f4389e183966ff0660d5b6ea298959190b88e2db833c3d9cb0e5aaab5e18",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "SOURCE_TREE\\ppl-single-tbq3_0.log",
+      "archived": "evidence/logs/repo/ppl-single-tbq3_0.log",
+      "original_sha256": "142a550a1fe17295faedfaceb047fe8778e7a49592978aeba9bfdf003c89a725",
+      "original_bytes": 17924,
+      "archived_sha256": "92035e8c7556db19d9c8f23d32c410372aaac035d8c55837ebccd03e3a0c6d0d",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "SOURCE_TREE\\kv-tbq4_0-out.txt",
+      "archived": "evidence/logs/repo/kv-tbq4_0-out.txt",
+      "original_sha256": "fa8a33b8c1f6948ea46f823a7ac9de69cc54dbb85c859d7e02d69d7687f01320",
+      "original_bytes": 1824,
+      "archived_sha256": "6be9d96470234ab5dd37b86ac17795b9f7840063f9ec04064586ad857ba8d29d",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "SOURCE_TREE\\kv-tbq4_0-err.txt",
+      "archived": "evidence/logs/repo/kv-tbq4_0-err.txt",
+      "original_sha256": "625c565eaf211d20fb622da88f12999e322d14b4734dd822410a7094d59be944",
+      "original_bytes": 35407,
+      "archived_sha256": "db076dc03828906254d728200f2fbbcddd32589b9dd20f42b2efbc9f571cd8f7",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "SOURCE_TREE\\ppl-single-tbq4_0.log",
+      "archived": "evidence/logs/repo/ppl-single-tbq4_0.log",
+      "original_sha256": "74898ef908b578e93ebe8e4a656aae8183284d084936af5e714c7c9147b31144",
+      "original_bytes": 17926,
+      "archived_sha256": "c0bc617e2437f50a0cd1f0e973b8ce962d2e5f3b2037f0b6d8e36ca0fb5e72a2",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "SOURCE_TREE\\opt400-lifetime-before-out.txt",
+      "archived": "evidence/logs/cli/opt400-lifetime-before-out.txt",
+      "original_sha256": "f76c7a0d04822ab270647d784ee37543f131ef89df224dc235b2f1adf5cad191",
+      "original_bytes": 1784,
+      "archived_sha256": "fbc951643c76e8b1d24d480dabbd65ec15d5df3a98c143bae3288135f77a400f",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "SOURCE_TREE\\opt400-lifetime-before-err.txt",
+      "archived": "evidence/logs/cli/opt400-lifetime-before-err.txt",
+      "original_sha256": "cd7b93ee63a775690ef28a4d0ad4883a91f73f883fae9f1237761df6479da1e2",
+      "original_bytes": 36518,
+      "archived_sha256": "52f19d964511f9fcf6fe6754269858add86b5b9dc13512168e6bdeff8ff69bba",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "SOURCE_TREE\\opt400-lifetime-after-out.txt",
+      "archived": "evidence/logs/cli/opt400-lifetime-after-out.txt",
+      "original_sha256": "ddc62760147cb4affcf9429dfafbc8cae2605264c0b0e42ca654e7c2b32c556a",
+      "original_bytes": 1751,
+      "archived_sha256": "73d8a1ee434690549f0aa1747f059695bd130cc990ba7981388c914c1051507c",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "SOURCE_TREE\\opt400-lifetime-after-err.txt",
+      "archived": "evidence/logs/cli/opt400-lifetime-after-err.txt",
+      "original_sha256": "642d83d5d0f2c5f9de46e1d39f49f697796080a8c9ce396ab581254f54684d0c",
+      "original_bytes": 36524,
+      "archived_sha256": "3b4086418b469c90139b34e7e6f56481c162f71537c843522633f3da8248d238",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "SOURCE_TREE\\opt400-final-r1-out.txt",
+      "archived": "evidence/logs/cli/opt400-final-r1-out.txt",
+      "original_sha256": "a1d8c1b51bc930a49c66f066c510df9acad740bd2b936ca563c9fe71a7c58adb",
+      "original_bytes": 2226,
+      "archived_sha256": "035fc99c1367a42c4a8c3b654a24ad8608b587eb02856e9d7a7b7772f6cd26ba",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "SOURCE_TREE\\opt400-final-r1-err.txt",
+      "archived": "evidence/logs/cli/opt400-final-r1-err.txt",
+      "original_sha256": "0622536fc642efbe3d60698ad49acfd4cc68a16763b7256438d54a761f6dcd0d",
+      "original_bytes": 37179,
+      "archived_sha256": "91dc9bc6ad28014ebb7652ed2e0a976c1404ebd06c3214aede8653055828bec3",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "SOURCE_TREE\\opt400-final-r2-out.txt",
+      "archived": "evidence/logs/cli/opt400-final-r2-out.txt",
+      "original_sha256": "df83faeff42529369b7b2e7cd4433405fd106c6a68234bdc791946102acb8cd7",
+      "original_bytes": 2163,
+      "archived_sha256": "49381426a88820d4bf1c0b19395e596b801783722827d15007bc4c4e3f12c6a1",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "SOURCE_TREE\\opt400-final-r2-err.txt",
+      "archived": "evidence/logs/cli/opt400-final-r2-err.txt",
+      "original_sha256": "75543c2ba73db148cf4a0e65cef4214caa3f5af85149616cfa52ceb5e4f15df3",
+      "original_bytes": 16699,
+      "archived_sha256": "a0288eea3745dd5ecb3203640b61a69f3cc9f665165c2314562dc20891b0751e",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "SOURCE_TREE\\opt400-baseline-paired-r2-out.txt",
+      "archived": "evidence/logs/cli/opt400-baseline-paired-r2-out.txt",
+      "original_sha256": "0cc2839add2b2ccc10ce2cad0f4117720e125912ee91093a67118835f4869db4",
+      "original_bytes": 1784,
+      "archived_sha256": "4b83e62ace0620c86f3b0280c879deefc9407d6e53707409dc9a3916da58f367",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "SOURCE_TREE\\opt400-baseline-paired-r2-err.txt",
+      "archived": "evidence/logs/cli/opt400-baseline-paired-r2-err.txt",
+      "original_sha256": "bffe8b7e80fd1b89a5185c7f69ca8aec0cbf876fad5aeda435b1604154c65375",
+      "original_bytes": 35428,
+      "archived_sha256": "3ea9e0057f362daa19435bcd044a969d4fb7635548f66fda5c28a1452382399f",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "SOURCE_TREE\\opt400-baseline-paired-out.txt",
+      "archived": "evidence/logs/cli/opt400-baseline-paired-out.txt",
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "original_bytes": 0,
+      "archived_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "SOURCE_TREE\\opt400-baseline-paired-err.txt",
+      "archived": "evidence/logs/cli/opt400-baseline-paired-err.txt",
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "original_bytes": 0,
+      "archived_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "SOURCE_TREE\\opt400-timeout-smoke-out.txt",
+      "archived": "evidence/logs/cli/opt400-timeout-smoke-out.txt",
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "original_bytes": 0,
+      "archived_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "SOURCE_TREE\\opt400-timeout-smoke-err.txt",
+      "archived": "evidence/logs/cli/opt400-timeout-smoke-err.txt",
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "original_bytes": 0,
+      "archived_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "LOCAL_EVIDENCE\\moe-cache\\optimization400\\logic-final.log",
+      "archived": "evidence/logs/logic/logic-final.log",
+      "original_sha256": "74eea319bef8a4942828430e1954e7316941873a8cc53b0a80eb96f641a43fd6",
+      "original_bytes": 967,
+      "archived_sha256": "74eea319bef8a4942828430e1954e7316941873a8cc53b0a80eb96f641a43fd6",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "LOCAL_EVIDENCE\\moe-cache\\optimization400\\logic-empty-before.log",
+      "archived": "evidence/logs/logic/logic-empty-before.log",
+      "original_sha256": "6477f84dbf60f2376b58dc9b5f1026b1dbfdd8a29bc0fc382704ec7adbb725aa",
+      "original_bytes": 933,
+      "archived_sha256": "6477f84dbf60f2376b58dc9b5f1026b1dbfdd8a29bc0fc382704ec7adbb725aa",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "LOCAL_EVIDENCE\\moe-cache\\optimization400\\logic-round-robin-before.log",
+      "archived": "evidence/logs/logic/logic-round-robin-before.log",
+      "original_sha256": "48cba3f9ec6aaad4778321b32d80319bd71e7d768fa4031de9b5d4246e0834a4",
+      "original_bytes": 671,
+      "archived_sha256": "48cba3f9ec6aaad4778321b32d80319bd71e7d768fa4031de9b5d4246e0834a4",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "LOCAL_EVIDENCE\\moe-cache\\stride-memcheck.log",
+      "archived": "evidence/logs/logic/stride-memcheck.log",
+      "original_sha256": "adba10db853bd67fe9009b776eefe7b61210d2cbe3eee029ba6fa188978b5832",
+      "original_bytes": 64,
+      "archived_sha256": "a9d061cee538182f762e132abeea7bac7bddb844338f25751bbbb043f242c425",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "LOCAL_MODELS\\qwen38\\traces\\ablation-ple-only.csv",
+      "archived": "evidence/logs/early/ablation-ple-only.csv",
+      "original_sha256": "29bea39b91033d214e390d03358b976b445144cb96af03928ae9132235b9a164",
+      "original_bytes": 3155,
+      "archived_sha256": "29bea39b91033d214e390d03358b976b445144cb96af03928ae9132235b9a164",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "LOCAL_MODELS\\qwen38\\traces\\ple-gpu-overlap-stats.csv",
+      "archived": "evidence/logs/early/ple-gpu-overlap-stats.csv",
+      "original_sha256": "c76a1973fc1c7012d4f23de3f173bcc94201d783c6bcc33d15217ff797966d94",
+      "original_bytes": 5424,
+      "archived_sha256": "c76a1973fc1c7012d4f23de3f173bcc94201d783c6bcc33d15217ff797966d94",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "LOCAL_MODELS\\qwen38\\traces\\ple-lru-1g-no-prefetch.csv",
+      "archived": "evidence/logs/early/ple-lru-1g-no-prefetch.csv",
+      "original_sha256": "bf04bfa2a32086f8a1e1c4bc72ddd556e100c9cd78f23e44689e37c5c6cdf8f9",
+      "original_bytes": 340,
+      "archived_sha256": "bf04bfa2a32086f8a1e1c4bc72ddd556e100c9cd78f23e44689e37c5c6cdf8f9",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "LOCAL_MODELS\\qwen38\\traces\\ple-cpu-l2-with-gpu-l1.csv",
+      "archived": "evidence/logs/early/ple-cpu-l2-with-gpu-l1.csv",
+      "original_sha256": "e6d1ad0981438adf91ce1932bf755a7c8c734e8fde6325f7381c36b3967abd91",
+      "original_bytes": 13446,
+      "archived_sha256": "e6d1ad0981438adf91ce1932bf755a7c8c734e8fde6325f7381c36b3967abd91",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "LOCAL_MODELS\\qwen38\\traces\\ple-gpu-l1-rawpages-1g.csv",
+      "archived": "evidence/logs/early/ple-gpu-l1-rawpages-1g.csv",
+      "original_sha256": "3f9cf689be8c0dfdcc6e163a328052c2b315eeeeae1b4dcedb2e7ebe3ceb3f0e",
+      "original_bytes": 10465,
+      "archived_sha256": "3f9cf689be8c0dfdcc6e163a328052c2b315eeeeae1b4dcedb2e7ebe3ceb3f0e",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "LOCAL_MODELS\\qwen38\\traces\\ple-gpu-l1-rawpages-1g-async.csv",
+      "archived": "evidence/logs/early/ple-gpu-l1-rawpages-1g-async.csv",
+      "original_sha256": "01766c33f5c01f335a7654ae74f8e66c5ea3f3fb902acf6dd792c7597fd7c69a",
+      "original_bytes": 13214,
+      "archived_sha256": "01766c33f5c01f335a7654ae74f8e66c5ea3f3fb902acf6dd792c7597fd7c69a",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "LOCAL_MODELS\\qwen38\\traces\\moe-static90-8192.csv",
+      "archived": "evidence/logs/early/moe-static90-8192.csv",
+      "original_sha256": "e08c88d751254851387f3b26a70d1d4d7175ba0113f77ee37ec6b10ea4ee9230",
+      "original_bytes": 33748,
+      "archived_sha256": "d11a05515df49f5259b36e7cb1da29953cd610b76e51315da1506a4460c135e8",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "LOCAL_MODELS\\qwen38\\traces\\moe-xt-12288.csv",
+      "archived": "evidence/logs/early/moe-xt-12288.csv",
+      "original_sha256": "c18809e5514448abbf654bdc1bbc35727a56142ceb4fd000ed38ac8bfb08b336",
+      "original_bytes": 33730,
+      "archived_sha256": "388a9926bf9f7c44e916c0b413cf43d656c632dd696a2748eaaf2af6ee4fd43f",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "LOCAL_MODELS\\qwen38\\traces\\ablation-lazy-moe2-xt.log",
+      "archived": "evidence/logs/early/ablation-lazy-moe2-xt.log",
+      "original_sha256": "890e702c94c218672f0898f8cfe12151706efe513d0de4f02a75e3490fe17ac2",
+      "original_bytes": 16632,
+      "archived_sha256": "b9003b944f0c196a7d90d08f1ec94c1d6264ae0ae53e3a8f128998c619a65dc2",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "LOCAL_MODELS\\qwen38\\traces\\ablation-lazy-moe4.log",
+      "archived": "evidence/logs/early/ablation-lazy-moe4.log",
+      "original_sha256": "2607032ecb7ae2d12ab5f9d05d7e235476edca04702b077af70e22f2ca778174",
+      "original_bytes": 32493,
+      "archived_sha256": "e622f2bccdbcbecb400d78207d38e77de8dcd0bbf9d916af2bfa24fba05e6037",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "LOCAL_MODELS\\qwen38\\traces\\ablation-lazy-moe6.log",
+      "archived": "evidence/logs/early/ablation-lazy-moe6.log",
+      "original_sha256": "d30c7a3c6afd7fcb3eb5a3d3a4f897f3ce588936f90c808fc487f9ee91bef32f",
+      "original_bytes": 32493,
+      "archived_sha256": "e1ff7e7b901964abef13529a4928054b44f753a5e0ded54248f2f28d05047ca9",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "LOCAL_MODELS\\qwen38\\traces\\ablation-lazy-moe8.log",
+      "archived": "evidence/logs/early/ablation-lazy-moe8.log",
+      "original_sha256": "bc45cdc75b75968beee66a8dd67f0fdede8db337477fe0b09bf36e1c28022339",
+      "original_bytes": 32494,
+      "archived_sha256": "7a1a95a253525860938a25b80dbd11f9cbbf76487edd57b2307a6c54e2192129",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "LOCAL_MODELS\\qwen38\\traces\\ablation-lazy-moe8-gpuple.log",
+      "archived": "evidence/logs/early/ablation-lazy-moe8-gpuple.log",
+      "original_sha256": "18424b12184f67d33e363dd3ba2a20ce985ef83c1ad525e53bf83727a0e9af96",
+      "original_bytes": 32896,
+      "archived_sha256": "56ad837f04bba77fa62525a4a85e6982d9ac61dfdf8d2dccf584eb7a36777e2a",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "LOCAL_EVIDENCE\\e8-m1b.log",
+      "archived": "evidence/logs/kv/e8-m1b.log",
+      "original_sha256": "1756661ec572764ce8c3609a4ec3525c9c6605b888090ab1f594fc5a1d6ab64b",
+      "original_bytes": 20377,
+      "archived_sha256": "18eff22840671476245db0d3982c9e1616751e9f0664fe4e8c9984095c9b47b9",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "LOCAL_EVIDENCE\\e8-m2b.log",
+      "archived": "evidence/logs/kv/e8-m2b.log",
+      "original_sha256": "b05a90b6c64220216baf1dcd09c192fda23dc9d2b03cf4d2e9e763008c16c323",
+      "original_bytes": 20377,
+      "archived_sha256": "767ba3c6e4d50722f0036f5e04c05fd12042060acea20515b865f4193e914b28",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "LOCAL_EVIDENCE\\e8-kld-all.log",
+      "archived": "evidence/logs/kv/e8-kld-all.log",
+      "original_sha256": "b40c938f55d45fccf1cf9c083e241ac57e1316f568816a77acd44f85df01afaf",
+      "original_bytes": 1551,
+      "archived_sha256": "8a65a633d75b6a1f563167710ae495e5f041837311018b50441c8716da31844d",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "LOCAL_EVIDENCE\\e8-protect.log",
+      "archived": "evidence/logs/kv/e8-protect.log",
+      "original_sha256": "e47b7df391f462531bf6d19a628329c440ac7a2aa171d90b35a2e4696ae8c28d",
+      "original_bytes": 660,
+      "archived_sha256": "b69a063cef1026252795b2e986ded8a84f2107acd51a28dd6a8fbff907ba77b8",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "LOCAL_EVIDENCE\\e8-m2-direct.log",
+      "archived": "evidence/logs/kv/e8-m2-direct.log",
+      "original_sha256": "82f7e2ee0c246df4a0f780769b80d673feb8c177e361e1ffa4567d36e9de4c2c",
+      "original_bytes": 640,
+      "archived_sha256": "fdd4b3a451cc50867d260296dab5cea1d07ce6662f2d4c8ba2cc82b12ad3622b",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "LOCAL_EVIDENCE\\nxq-align-kld.log",
+      "archived": "evidence/logs/kv/nxq-align-kld.log",
+      "original_sha256": "853057956b06f71c822ec5b1429b5af6dd5efe06b9f92b2553a65654f825cfe4",
+      "original_bytes": 1309,
+      "archived_sha256": "5240a3f289edf2c55d3b5c796f810955242566dc95b27d55556dc26dc71da0f9",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "LOCAL_EVIDENCE\\nxq-align-kld-v64.log",
+      "archived": "evidence/logs/kv/nxq-align-kld-v64.log",
+      "original_sha256": "406c6c142a5e097a8f1930a8e446a30e05347a98f426936f168fc0e9bbedb440",
+      "original_bytes": 894,
+      "archived_sha256": "c7de5fb38bca8529d13d7e3e5b510ec5224e5d02d908b9fb3fa1299a9f9dc969",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "LOCAL_EVIDENCE\\nxq-quality-q8.log",
+      "archived": "evidence/logs/kv/nxq-quality-q8.log",
+      "original_sha256": "51d6f02807042cab156ee0aee25a5d24e895e0b2d3607c94c80d1bcf29307672",
+      "original_bytes": 37467,
+      "archived_sha256": "2f4a2d79b25183b33bdba98b05962b03d55452c9aafb58d9e83522fc281125e7",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "LOCAL_EVIDENCE\\nxq-quality-nxq32.log",
+      "archived": "evidence/logs/kv/nxq-quality-nxq32.log",
+      "original_sha256": "ce1438b81b69793cb0a0917320ba7352b009b2c2660497d82b07fc1199ef8a8d",
+      "original_bytes": 37472,
+      "archived_sha256": "b09328dd3fe2ab5e35dd802195e95b22782f45e7124f225340d464ccbad6af86",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "LOCAL_EVIDENCE\\nxq-quality-nxq22.log",
+      "archived": "evidence/logs/kv/nxq-quality-nxq22.log",
+      "original_sha256": "b2e2e5d9ddbf0a2424ad3f4032e1c16206fd29d9f2b1ad5511a5c7993a13b3d1",
+      "original_bytes": 37473,
+      "archived_sha256": "3be62385c4a3c7176ed7919a781682390188f0afe969203bc998d99a1acfef43",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "LOCAL_EVIDENCE\\nxq-align-test.log",
+      "archived": "evidence/logs/kv/nxq-align-test.log",
+      "original_sha256": "fac730671970252fe62ef6882c5f5d40cd4c56a3de340ab86eb289955b985826",
+      "original_bytes": 718,
+      "archived_sha256": "0693e5c72fadd28d328724a507a7f425a5e3092c6c1315cf4f9b68bc4676c830",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "LOCAL_EVIDENCE\\nxq-tbo-cpy.log",
+      "archived": "evidence/logs/kv/nxq-tbo-cpy.log",
+      "original_sha256": "f43cebf6bf6e1aec74a013bed58dabe1062a3f8a2740a1b32c87edb3968e09f0",
+      "original_bytes": 2070,
+      "archived_sha256": "35b0eefcd6659425a1006e2dd82de43030c8329fba66f70b7943ea42312fb0f8",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "LOCAL_EVIDENCE\\nxq-tbo-sr.log",
+      "archived": "evidence/logs/kv/nxq-tbo-sr.log",
+      "original_sha256": "3c793a61cc8161cc8a2aca5a30891db8f2fa633db9ebbb087fa650de36ad85e6",
+      "original_bytes": 79658,
+      "archived_sha256": "a4404cc88fa88627429f4ccdf14252d683f72125efa1cd050ef51eaa67556c71",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "LOCAL_EVIDENCE\\nxq_ppl.log",
+      "archived": "evidence/logs/kv/nxq_ppl.log",
+      "original_sha256": "5535792d2bfb902775b55f4f851c87359c897fe90ef3961c6e370ed92589f719",
+      "original_bytes": 179,
+      "archived_sha256": "a971e5dd56c00e05ffeb30c113099619b32eb8503066ed8afea511f609b0767c",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "LOCAL_EVIDENCE\\nxq_ppl_nkvo.log",
+      "archived": "evidence/logs/kv/nxq_ppl_nkvo.log",
+      "original_sha256": "542a0244b74fdcc3daded3db9e4c05b96d48bbf2900e7bf60461178e91f51750",
+      "original_bytes": 552,
+      "archived_sha256": "3c0b3fc4f4c25c141ce5989cfec0ecee6bdac9f35926864c8ff6f91172d5051a",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "LOCAL_EVIDENCE\\nxq_base_f16_nkvo.log",
+      "archived": "evidence/logs/kv/nxq_base_f16_nkvo.log",
+      "original_sha256": "b1f7283708a05c51161f91c9472d732c1a140f2ab84cc3ae55abdf587cc6db73",
+      "original_bytes": 552,
+      "archived_sha256": "4ce2376d37ac948c76fe7718b7519da27cd6bee4c6296d65146fb92d2af6e39a",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "SOURCE_TREE/a400a-err.txt",
+      "archived": "evidence/logs/repo/a400a-err.txt",
+      "original_sha256": "1a156f437553c1b4829f5fe3d0f45adb0bfbda73fc6181262b4037048a3b410a",
+      "original_bytes": 37407,
+      "archived_sha256": "9db4a5211d249987c2d6d1775d7aca23af568ddd0bc30566abc6522e4c624781",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "SOURCE_TREE/a400b-err.txt",
+      "archived": "evidence/logs/repo/a400b-err.txt",
+      "original_sha256": "af124d11d967e04a8054a77c5e095031e7be7add6ccf4568d04c5bb6d43a61f3",
+      "original_bytes": 37415,
+      "archived_sha256": "575f1df6643d0d2c4828003b9772a1ad59a3ca8c606163b006ea2355adf06c7f",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "SOURCE_TREE/cur-ref-err.txt",
+      "archived": "evidence/logs/repo/cur-ref-err.txt",
+      "original_sha256": "da741fb4c7e380b951f043cb3d969e53804b8a107f167e69e4d5cb3c85bfdead",
+      "original_bytes": 72910,
+      "archived_sha256": "1870903d2548b33b05dcbcd63d1831cf1c7b1a81b448d212720f4fd4012cc186",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "SOURCE_TREE/cur-ref-out.txt",
+      "archived": "evidence/logs/repo/cur-ref-out.txt",
+      "original_sha256": "bd03779ad09a42df0950adf2d40d7faec641fd36459f583796775410c309548d",
+      "original_bytes": 2166,
+      "archived_sha256": "de4a2b6e266bf078199c52a3b6d18e100b041cba6cbca6f1e047e7bb9586c0c2",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "SOURCE_TREE/dsh-G2-err.txt",
+      "archived": "evidence/logs/repo/dsh-G2-err.txt",
+      "original_sha256": "90007c499811d9032f76d8d3d5c5d3c0e699531e4440fa7b6e5631a63f1bdc5e",
+      "original_bytes": 4100,
+      "archived_sha256": "e183633730b4116c2bc2aebec216237f30f1739489959c9d4a49eb906fd91434",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "SOURCE_TREE/dsh-G2-out.txt",
+      "archived": "evidence/logs/repo/dsh-G2-out.txt",
+      "original_sha256": "de6a7b2be74a599f0b163318b4a5468dfeebed66c732be6c7edf37301f5c87d3",
+      "original_bytes": 1932,
+      "archived_sha256": "f0584cae7aee7b67e3c8c22bb3e21d91f4a4d127c8e6b6bc56982df7d0a1d616",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "SOURCE_TREE/cpunode-run.log",
+      "archived": "evidence/logs/repo/cpunode-run.log",
+      "original_sha256": "8f3f86f2fa7c8c77c31cf9ae8beaffdfc0a484ac27148469ca9fb9f3e498bb6e",
+      "original_bytes": 75057,
+      "archived_sha256": "43d28e0f6ec0f55b503ee69f3282baecec472bcdf9565df7d18a9df8da086e7f",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "SOURCE_TREE/long-run.log",
+      "archived": "evidence/logs/repo/long-run.log",
+      "original_sha256": "a356937b9e484c4052cbff00840bddfa10087b55c1d2335b5703b6e7bb853927",
+      "original_bytes": 27109,
+      "archived_sha256": "233c736fbe686e413632e6a5d366cbe498f9134cc3f6d58502ebe02890888131",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "SOURCE_TREE/phase-run.log",
+      "archived": "evidence/logs/repo/phase-run.log",
+      "original_sha256": "eb684b45dad5acd1228af6c232863feca8e65da8cd7fc07985c975e8c0b888a6",
+      "original_bytes": 17615,
+      "archived_sha256": "4517882b29f3820141b4191d0cb9b1566f51f5b6d8bb1d5fd695a31acd729549",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "SOURCE_TREE/fused-final.log",
+      "archived": "evidence/logs/repo/fused-final.log",
+      "original_sha256": "6ac2dc2c6159cb6886f45fd235d3509351ecca33a832b07cfd0ab5edd3dff0ff",
+      "original_bytes": 17375,
+      "archived_sha256": "ef71e49708bcc50ffc884fe4428a31c91e3c093f96d030986bc90aacd90acb93",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "SOURCE_TREE/L2048-err.txt",
+      "archived": "evidence/logs/repo/L2048-err.txt",
+      "original_sha256": "514f56357622c87683d2db31bf13084f1fd9fa4abe41090e4c55dd36f5e84725",
+      "original_bytes": 34698,
+      "archived_sha256": "93c90a525ddb6aa578e3154f5e675c08a3027cb7307d97b404fbfe9b1558e55a",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "SOURCE_TREE/L6144-err.txt",
+      "archived": "evidence/logs/repo/L6144-err.txt",
+      "original_sha256": "80996fde5185e7552d30250dc3c929feb1e20e3ab0d96fca189f22c89125bf1d",
+      "original_bytes": 34694,
+      "archived_sha256": "40990a92bfa8973ac33439611b97ab29dd967fdcee969ec9fc2747a7f5a8ea4e",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "SOURCE_TREE/sweep-ahead2.csv",
+      "archived": "evidence/logs/repo/sweep-ahead2.csv",
+      "original_sha256": "e44b434e96f2907fd7542dd082ddd8b4399804cdbc83a5f3cfedc474b1033e8d",
+      "original_bytes": 298,
+      "archived_sha256": "2c1e26edef6ee69b5bfb00d4d174bc109460b2ef50a12318c6138c4e07fc1915",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "SOURCE_TREE/sweep-c1.csv",
+      "archived": "evidence/logs/repo/sweep-c1.csv",
+      "original_sha256": "b94b697885d1daab4a491c18a5ebda13e7e613481976b24db865e386ca0a8d44",
+      "original_bytes": 301,
+      "archived_sha256": "2801e7490b6d276b930ebfb0342386dd6c115dfe627b645b2c302118464f899f",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "SOURCE_TREE/sweep-c1nb.csv",
+      "archived": "evidence/logs/repo/sweep-c1nb.csv",
+      "original_sha256": "afed2af37eada1e36631ab2437d64eeb74a8ea7c1a4efea895205183b8b85cc8",
+      "original_bytes": 197,
+      "archived_sha256": "15dcda2eb2b9b9ad046a53e4c0f797edfcca9123bc10218b51934bcf4ba00378",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "SOURCE_TREE/sweep-hd.csv",
+      "archived": "evidence/logs/repo/sweep-hd.csv",
+      "original_sha256": "73a2bd7c9db06d2bae425f7487c6f15b92f2d221603163e770b3761e73c2b7ac",
+      "original_bytes": 433,
+      "archived_sha256": "e81872148248519fcf1af0ff7c7eb8defbbded8ff8960f1276d311d648876c59",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "SOURCE_TREE/sweep-t2.csv",
+      "archived": "evidence/logs/repo/sweep-t2.csv",
+      "original_sha256": "5962fe20f90aa528c9694abf88737de7d2cfcf439d3499f551847069679ed710",
+      "original_bytes": 196,
+      "archived_sha256": "0c2d8957f5cac79957f8d09ca1e040f8b88293ef0b8da229e6cfcf6497c639a5",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "SOURCE_TREE/sweep-v.csv",
+      "archived": "evidence/logs/repo/sweep-v.csv",
+      "original_sha256": "acf9ec8f1b40d576752e88f9c8ac78c6a05b44d2cd59afcefaa776a2d8e57952",
+      "original_bytes": 196,
+      "archived_sha256": "06704263554b5f5efefe15728a37747a449ab23b031eea74a13f86fb93e725ee",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "SOURCE_TREE/sweep-x.csv",
+      "archived": "evidence/logs/repo/sweep-x.csv",
+      "original_sha256": "c3d9ecd8e0ed40e5d5cccda701e13561043064c28c60e31b1317f9b4c88ecc5a",
+      "original_bytes": 174,
+      "archived_sha256": "6cf3490a84cba7066e527db4349dc3d3abbc6baae8762b27ee92925009d40231",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "SOURCE_TREE/sweep-smoke.csv",
+      "archived": "evidence/logs/repo/sweep-smoke.csv",
+      "original_sha256": "fa3bfe8f1252493b1a7ae8b192138f273b81d1c4ae0cc9582c87fdcf028f158f",
+      "original_bytes": 124,
+      "archived_sha256": "9cc4a5cbb4675adc9a1af68688c8bbcd7a6da1a38cc6dd121aac0d01f6ad38e9",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "SOURCE_TREE/sweep-u.csv",
+      "archived": "evidence/logs/repo/sweep-u.csv",
+      "original_sha256": "6267fabc2c04b6d631489349713636948c5a6bc88c317553c932c96e1c4468b1",
+      "original_bytes": 141,
+      "archived_sha256": "56ee63b654e2f9016ded90583c27de212619287bd22bbebdbcdec4e3f03afa02",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "SOURCE_TREE/sweep-press.csv",
+      "archived": "evidence/logs/repo/sweep-press.csv",
+      "original_sha256": "67bb0ea9ee94e9af4a27b9e60bef350e5a4eec5a2c08a36edd99f193303e3e3a",
+      "original_bytes": 306,
+      "archived_sha256": "e6bfcdc05fe8c4aa14dc312dd1befb7916f8d39ec370526c6e7fbaba728f5a7e",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "SOURCE_TREE/sweep-budget.csv",
+      "archived": "evidence/logs/repo/sweep-budget.csv",
+      "original_sha256": "d268014907ccb6fa0327515a22acb3571ea1f707f4fd588de58134f3d6af60a8",
+      "original_bytes": 247,
+      "archived_sha256": "bf37e5e9226f52d79f3b9af12638287eacb54e3b6ece04211a3296ee1db6bb3e",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "SOURCE_TREE/sweep-auto.csv",
+      "archived": "evidence/logs/repo/sweep-auto.csv",
+      "original_sha256": "671766666bbac71c0dbd9a5db08c51dcdeb8aeb8943b4956f5ed1055e557d68b",
+      "original_bytes": 157,
+      "archived_sha256": "fd745e71d06544101000b77363ad30a8915cc90dfdca4fe1b49b3cf5a9f41769",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "SOURCE_TREE/sweep-auto8k.csv",
+      "archived": "evidence/logs/repo/sweep-auto8k.csv",
+      "original_sha256": "a340d8215d05ce535bcba18839b76548c06a3bc29b8bd88d9368e8acb547b3e3",
+      "original_bytes": 128,
+      "archived_sha256": "01d1580b7452ecb9a59303f17f7f73b6ad2e06bf82e36a4963f58bf6d8681fbe",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "SOURCE_TREE/sweep-limit.csv",
+      "archived": "evidence/logs/repo/sweep-limit.csv",
+      "original_sha256": "687bdc9d4a27ca4d32a7a83b8e902ea8b5dae43fcf0e616cb6aaed0196fcf6ad",
+      "original_bytes": 427,
+      "archived_sha256": "8f399db74c5430826c94cd53816d65cd2ee9fabc65e010bde6be5d496fcc856a",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "SOURCE_TREE/sweep-tune.csv",
+      "archived": "evidence/logs/repo/sweep-tune.csv",
+      "original_sha256": "71feee1ac68802b6bc3eb497d382c9df5615f4cc69f355aeacdb71beb4d2d390",
+      "original_bytes": 195,
+      "archived_sha256": "780373bdf55a1ce75783a70ff1df34b9086a204e48c42b701f6b5517cae09c48",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "SOURCE_TREE/sweep-ab.csv",
+      "archived": "evidence/logs/repo/sweep-ab.csv",
+      "original_sha256": "8e5f3b030ed06a5b1725ee1cded0de7ffc0356dcbb7cb653697a4f74a21da77b",
+      "original_bytes": 281,
+      "archived_sha256": "6533f84a254f339157a60cfd50017cd97cdd89d04a0367a1d134aadafaf0a438",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "SOURCE_TREE/sweep-2x2.log",
+      "archived": "evidence/logs/repo/sweep-2x2.log",
+      "original_sha256": "2d97c5d42d68f86e384040c32c112705d68c076216bf11727aeaea9d93cfdedb",
+      "original_bytes": 180,
+      "archived_sha256": "2d97c5d42d68f86e384040c32c112705d68c076216bf11727aeaea9d93cfdedb",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "SOURCE_TREE/dsh-r3-timing.txt",
+      "archived": "evidence/logs/repo/dsh-r3-timing.txt",
+      "original_sha256": "c6bf4b2a7e29d871bce3d95b11bf098ef44225afeb606664beee7dfaa65e4434",
+      "original_bytes": 1103,
+      "archived_sha256": "4d2b60cf6a9a0bf55cb296cb755e83f15f47584fee21daeeb37ea9ba45b1bb05",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "SOURCE_TREE/dsh-r4-timing.txt",
+      "archived": "evidence/logs/repo/dsh-r4-timing.txt",
+      "original_sha256": "abe2b646aaf532acd645295a51a224d1aadb275ebaaa7dd2ee1c62937df5e86f",
+      "original_bytes": 1378,
+      "archived_sha256": "63fa31253aae9d202fa632d681696f3dcfa920a70835f0a9589d6d64a97d060d",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "SOURCE_TREE/dsh-r5-timing.txt",
+      "archived": "evidence/logs/repo/dsh-r5-timing.txt",
+      "original_sha256": "4be53d8219815680ba75eb39d1e2bc31e977c75f8d9018674b0b1ca0cc0f5ac7",
+      "original_bytes": 3037,
+      "archived_sha256": "72c1935c6e24cf8e38e8b3a5ee26959e511d68b5e39f364a702e9f418c47fb35",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization only; full selected log retained.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved."
+    },
+    {
+      "source": "SOURCE_TREE/auto-256k-vis-out.txt",
+      "archived": "evidence/logs/repo/auto-256k-vis-out.txt",
+      "original_sha256": "70054c67e550cf71a8f4a27d30a28b637767b8d241085ae178aaab438a4bc454",
+      "original_bytes": 2061,
+      "archived_sha256": "b08e78071801a1ba294c0f56846091fed871c3da83df632118aad80a53a079a6",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization; CRLF normalized to LF; full selected log retained."
+    },
+    {
+      "source": "SOURCE_TREE/cap27-a-out.txt",
+      "archived": "evidence/logs/repo/cap27-a-out.txt",
+      "original_sha256": "234113091d9ba6a75208acbbe4535084bc00fedd2c91db75c769ed3507a3f681",
+      "original_bytes": 1870,
+      "archived_sha256": "a5b72fb41232510af4a9646e7931e8e03421f0ac24ed9e6dbe4c5ae0f272e997",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization; CRLF normalized to LF; full selected log retained."
+    },
+    {
+      "source": "SOURCE_TREE/cap27-b-out.txt",
+      "archived": "evidence/logs/repo/cap27-b-out.txt",
+      "original_sha256": "29afd9790d97b27b6c0e80074cd08fd4c51901319f282ee47fa79946e322462c",
+      "original_bytes": 1970,
+      "archived_sha256": "2a2f14e53b145c78bbfb967a1fd8f3d2ffc77a7d72bec26b909731d6eae1c9df",
+      "transformation": "Decoded text to UTF-8; machine-path pseudonymization; CRLF normalized to LF; full selected log retained."
+    }
+  ],
+  "read_only_inspections": [
+    {
+      "archived": "evidence/scans/gguf-shard2-types.txt",
+      "command": "python tools-gguf-types.py LOCAL_MODELS\\qwen38\\unsloth-iq3-xxs\\UD-IQ3_XXS\\Qwen3.8-Flash-Next-UD-IQ3_XXS-00002-of-00003.gguf",
+      "script_sha256": "081c8cf9e9cc94798480e16a4e3a15e97ba3407177af45dc567c1bf6c1d8a907",
+      "archived_sha256": "d48547d9f1ccc2efad4c3303a4a16df5f1333329c447ea2008f74ecf57ee30a8",
+      "scope": "GGUF headers only or parsing existing logs; no tensor data or model execution.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved.",
+      "input": "LOCAL_MODELS\\qwen38\\unsloth-iq3-xxs\\UD-IQ3_XXS\\Qwen3.8-Flash-Next-UD-IQ3_XXS-00002-of-00003.gguf",
+      "input_bytes": 49567921344,
+      "input_sha256": null,
+      "input_hash_limitation": "Full GGUF hash not computed; only metadata was read, no tensor payload."
+    },
+    {
+      "archived": "evidence/scans/gguf-shard3-types.txt",
+      "command": "python tools-gguf-types.py LOCAL_MODELS\\qwen38\\unsloth-iq3-xxs\\UD-IQ3_XXS\\Qwen3.8-Flash-Next-UD-IQ3_XXS-00003-of-00003.gguf",
+      "script_sha256": "081c8cf9e9cc94798480e16a4e3a15e97ba3407177af45dc567c1bf6c1d8a907",
+      "archived_sha256": "fa0caab3632158b7cdfb7dd57a51938a37485a0947b8ad9e941f6bbe581a73a7",
+      "scope": "GGUF headers only or parsing existing logs; no tensor data or model execution.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved.",
+      "input": "LOCAL_MODELS\\qwen38\\unsloth-iq3-xxs\\UD-IQ3_XXS\\Qwen3.8-Flash-Next-UD-IQ3_XXS-00003-of-00003.gguf",
+      "input_bytes": 32382955968,
+      "input_sha256": null,
+      "input_hash_limitation": "Full GGUF hash not computed; only metadata was read, no tensor payload."
+    },
+    {
+      "archived": "evidence/scans/gguf-shard2-geometry.txt",
+      "command": "python tools-gguf-types.py LOCAL_MODELS\\qwen38\\unsloth-iq3-xxs\\UD-IQ3_XXS\\Qwen3.8-Flash-Next-UD-IQ3_XXS-00002-of-00003.gguf --check",
+      "script_sha256": "081c8cf9e9cc94798480e16a4e3a15e97ba3407177af45dc567c1bf6c1d8a907",
+      "archived_sha256": "6d4eee21139f3c64e5c74560072354a8ac5ad6729f19393dd3086fc15794f91e",
+      "scope": "GGUF headers only or parsing existing logs; no tensor data or model execution.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved.",
+      "input": "LOCAL_MODELS\\qwen38\\unsloth-iq3-xxs\\UD-IQ3_XXS\\Qwen3.8-Flash-Next-UD-IQ3_XXS-00002-of-00003.gguf",
+      "input_bytes": 49567921344,
+      "input_sha256": null,
+      "input_hash_limitation": "Full GGUF hash not computed; only metadata was read, no tensor payload."
+    },
+    {
+      "archived": "evidence/scans/gguf-shard3-geometry.txt",
+      "command": "python tools-gguf-types.py LOCAL_MODELS\\qwen38\\unsloth-iq3-xxs\\UD-IQ3_XXS\\Qwen3.8-Flash-Next-UD-IQ3_XXS-00003-of-00003.gguf --check",
+      "script_sha256": "081c8cf9e9cc94798480e16a4e3a15e97ba3407177af45dc567c1bf6c1d8a907",
+      "archived_sha256": "44d43ce411e833682168bc839ea251090040480249cc117e37007715c5adf7ac",
+      "scope": "GGUF headers only or parsing existing logs; no tensor data or model execution.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved.",
+      "input": "LOCAL_MODELS\\qwen38\\unsloth-iq3-xxs\\UD-IQ3_XXS\\Qwen3.8-Flash-Next-UD-IQ3_XXS-00003-of-00003.gguf",
+      "input_bytes": 32382955968,
+      "input_sha256": null,
+      "input_hash_limitation": "Full GGUF hash not computed; only metadata was read, no tensor payload."
+    },
+    {
+      "archived": "evidence/scans/scheduler-text.txt",
+      "command": "python tools-op-backend-scan.py sched-text-err.txt",
+      "script_sha256": "8ac618cbbfbae2c3b81470ba0078f562677e20af4f5d519803b79fb53d8b471b",
+      "archived_sha256": "6872f9c2ab0607305d54867ac3168223a129484532b299d7d8e1bf0e150cd9c7",
+      "scope": "GGUF headers only or parsing existing logs; no tensor data or model execution.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved.",
+      "input": "SOURCE_TREE\\sched-text-err.txt",
+      "input_bytes": 20548013,
+      "input_sha256": "141f02a0dea294525912263cce876f1ae6c784b7bf7f3f140c8d487068066e80"
+    },
+    {
+      "archived": "evidence/scans/scheduler-vision.txt",
+      "command": "python tools-op-backend-scan.py sched-vis-err.txt",
+      "script_sha256": "8ac618cbbfbae2c3b81470ba0078f562677e20af4f5d519803b79fb53d8b471b",
+      "archived_sha256": "0c1de5ffd9d870da472f31f5abf176cb953b6edd463e4dc9ae474a087dcfaa32",
+      "scope": "GGUF headers only or parsing existing logs; no tensor data or model execution.",
+      "line_ending_policy": "CRLF normalized to LF; lone terminal carriage returns preserved.",
+      "input": "SOURCE_TREE\\sched-vis-err.txt",
+      "input_bytes": 24247155,
+      "input_sha256": "fcfd8f70a04c781fcecfca893f8cca492514934cc91cf6ed1ead73f691a8e1d5"
+    }
+  ],
+  "missing_requested_files": [
+    {
+      "requested": "SOURCE_TREE/dsh-r6-timing.txt",
+      "status": "not-found-at-archive-time"
+    },
+    {
+      "requested": "SOURCE_TREE/dsh-r7-timing.txt",
+      "status": "not-found-at-archive-time"
+    }
+  ],
+  "not_uploaded": [
+    "Model weights and tensor dumps",
+    "Full-vocabulary logits arrays",
+    "Native executables, DLLs, PDBs, crash dumps",
+    "Experimental source changes",
+    "Large build logs and full scheduler debug logs"
+  ],
+  "publication_transformations": [
+    "Historical sources get an explicit status header.",
+    "Machine paths are replaced by documented placeholders.",
+    "Text is UTF-8 and CRLF is normalized to LF.",
+    "measurements.json omits large per-row arrays, preserving top-1 differing rows and aggregate comparisons.",
+    "Obsolete noise-tolerance acceptance heuristics are excluded; measured differences are retained."
+  ],
+  "runtime_activity": "No new inference, model benchmark, build, or optimization. Read-only GGUF-header and existing-log parsing only.",
+  "gguf_shard1_header_check": {
+    "input": "LOCAL_MODELS\\qwen38\\unsloth-iq3-xxs\\UD-IQ3_XXS\\Qwen3.8-Flash-Next-UD-IQ3_XXS-00001-of-00003.gguf",
+    "file_bytes": 10946624,
+    "header_bytes_read": 24,
+    "header_sha256": "83a61059d57108dd54429038f55e588df026b5135a87d36c2940d64d38a2a68c",
+    "version": 3,
+    "tensor_count": 0,
+    "metadata_key_count": 67,
+    "limitation": "Header-only check. No full-file hash and no tensor payload read."
+  }
+}

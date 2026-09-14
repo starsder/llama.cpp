@@ -1,0 +1,2 @@
+tag,prompt_tps,gen_tps,cache_mib,slots,hit_pct,hits,misses,crash,vram_peak_mib,secs
+kv-tbq3_0,28.1,16.2,4883,51,78.9,226005,60585,,14496,33.5

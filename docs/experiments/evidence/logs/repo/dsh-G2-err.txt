@@ -1,0 +1,25 @@
+llama-cli.exe : [PLE-LRU] enabled 2048 MiB: 32776 pages x 63 KiB, 728 rows/page, tensor=per_layer_token_embd.weight (iq
+4_nl)
+At SOURCE_TREE\dsh-probe-07.ps1:36 char:1
++ & $exe -m $model @flags > dsh-G2-out.txt 2> dsh-G2-err.txt
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ([PLE-LRU] enabl...weight (iq4_nl):String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+[PLE-GPU-L1] enabled 1024 MiB: 16388 raw iq4_nl pages x 63 KiB, 728 rows/page, device=CUDA0
+[PLE-LRU] enabled 2048 MiB: 32776 pages x 63 KiB, 728 rows/page, tensor=per_layer_token_embd.weight (iq4_nl)
+[PLE-GPU-L1] enabled 1024 MiB: 16388 raw iq4_nl pages x 63 KiB, 728 rows/page, device=CUDA0
+[MOE-CACHE] enabled: budget=2048 MiB predictor=0 fate=0 smoe=1 prefetch=1 topk=26 static=32 pred_mrs=0.00 fallback=0 jo
+in=0 gate=1 split=1 mrs=1 alpha=0.750 topp=20 window_layers=0 vram_limit=15360 MiB guard=1024 MiB devpart=1
+[MOE-CACHE] ids readback #1: tensor='ffn_moe_topk-0' type=i32 ne=[10,2] bytes=2088 decode=0
+[MOE-CACHE] ids readback #2: tensor='ffn_moe_topk-1' type=i32 ne=[10,2] bytes=2088 decode=0
+[MOE-CACHE] ids readback #3: tensor='ffn_moe_topk-2' type=i32 ne=[10,2] bytes=2088 decode=0
+[MOE-CACHE] ids readback #4: tensor='ffn_moe_topk-3' type=i32 ne=[10,2] bytes=2088 decode=0
+[MOE-CACHE] ids readback #5: tensor='ffn_moe_topk-4' type=i32 ne=[10,2] bytes=2088 decode=0
+[MOE-CACHE] ids readback #6: tensor='ffn_moe_topk-5' type=i32 ne=[10,2] bytes=2088 decode=0
+[MOE-CACHE] ids readback #7: tensor='ffn_moe_topk-6' type=i32 ne=[10,2] bytes=2088 decode=0
+[MOE-CACHE] ids readback #8: tensor='ffn_moe_topk-7' type=i32 ne=[10,2] bytes=2088 decode=0
+[MOE-CACHE] 144 weight tensors grouped into 48 persistent layer bundles, 100210176 bytes per layer-slot round, 21 slots
+/layer, 2006.9 MiB physical cache (requested=2048 MiB effective=2048 MiB)
+[MOE-CACHE] SMoE backend: topk=CUDA0
+[MOE-CACHE] pinned 1 weight buffers (72.6 GiB) in 0.0 s, 0 failed

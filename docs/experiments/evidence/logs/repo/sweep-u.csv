@@ -1,0 +1,2 @@
+tag,prompt_tps,gen_tps,cache_mib,slots,hit_pct,hits,misses,crash,vram_peak_mib,secs
+u-auto,28.6,18.2,9306,97,87.3,320502,46728,,15701,34.2

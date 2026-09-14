@@ -1,0 +1,15 @@
+=== mode 0 (plain f16) ===
+
+kv                           PPL   Mean KLD   99.9% KLD  PPL vs base
+=== kld f16/f16: -m LOCAL_MODELS\qwen38\unsloth-iq3-xxs\UD-IQ3_XXS\Qwen3.8-Flash-Next-UD-IQ3_XXS-00001-of-00003.gguf -ngl 49 --cpu-moe -f SOURCE_TREE\ppl\wikitext-2-raw\wiki.test.raw -c 512 --chunks 8 -fa 1 -ctk f16 -ctv f16 --kl-divergence-base SOURCE_TREE\ppl\base-f16.kld --kl-divergence
+f16/f16                        -          -    0.000042            -
+=== mode 2 (E8 on roped key) ===
+
+kv                           PPL   Mean KLD   99.9% KLD  PPL vs base
+=== kld f16/f16: -m LOCAL_MODELS\qwen38\unsloth-iq3-xxs\UD-IQ3_XXS\Qwen3.8-Flash-Next-UD-IQ3_XXS-00001-of-00003.gguf -ngl 49 --cpu-moe -f SOURCE_TREE\ppl\wikitext-2-raw\wiki.test.raw -c 512 --chunks 8 -fa 1 -ctk f16 -ctv f16 --kl-divergence-base SOURCE_TREE\ppl\base-f16.kld --kl-divergence
+f16/f16                        -          -           -            -
+=== mode 1 (reference chain: de-RoPE -> H -> E8 -> H -> RoPE) ===
+
+kv                           PPL   Mean KLD   99.9% KLD  PPL vs base
+=== kld f16/f16: -m LOCAL_MODELS\qwen38\unsloth-iq3-xxs\UD-IQ3_XXS\Qwen3.8-Flash-Next-UD-IQ3_XXS-00001-of-00003.gguf -ngl 49 --cpu-moe -f SOURCE_TREE\ppl\wikitext-2-raw\wiki.test.raw -c 512 --chunks 8 -fa 1 -ctk f16 -ctv f16 --kl-divergence-base SOURCE_TREE\ppl\base-f16.kld --kl-divergence
+f16/f16                        -   0.260734    5.612058            -

@@ -1,0 +1,2 @@
+tag,prompt_tps,gen_tps,cache_mib,slots,hit_pct,hits,misses,crash,secs
+auto-8k-novis,27.0,17.4,7667,80,76.3,280242,86988,,35.9

@@ -1,0 +1,47 @@
+
+
+Loading model... 
+
+▄▄ ▄▄
+██ ██
+██ ██  ▀▀█▄ ███▄███▄  ▀▀█▄    ▄████ ████▄ ████▄
+██ ██ ▄█▀██ ██ ██ ██ ▄█▀██    ██    ██ ██ ██ ██
+██ ██ ▀█▄██ ██ ██ ██ ▀█▄██ ██ ▀████ ████▀ ████▀
+                                    ██    ██
+                                    ▀▀    ▀▀
+
+build      : b10722-b76199698
+model      : LOCAL_MODELS/qwen38/unsloth-iq3-xxs/UD-IQ3_XXS/Qwen3.8-Flash-Next-UD-IQ3_XXS-00001-of-00003.gguf
+ftype      : IQ3_XXS - 3.0625 bpw
+modalities : text, vision, video
+
+available commands:
+  /exit or Ctrl+C     stop or exit
+  /regen              regenerate the last response
+  /clear              clear the chat history
+  /read <file>        add a text file
+  /glob <pattern>     add text files using globbing pattern
+  /image <file>       add an image file
+  /video <file>       add a video file
+
+
+
+> The capital of France is
+
+[Start thinking]
+
+The user is asking a simple factual question: "The capital of France is" - they want me to complete the sentence.
+
+The capital of France is Paris.
+[End thinking]
+
+The capital of France is **Paris**.
+
+Paris is the largest city in France and serves as the country's political, economic, and cultural center. It is located in the north-central part of the country along the Seine River. The city is home to the French government, the National Assembly, and the Élysée Palace (the official residence of the President of France). Paris is also one of the most visited cities in the world, known for landmarks such as the Eiffel Tower, the Louvre Museum, and Notre-Dame Cathedral.
+
+Would you like to know more about Paris or France? 😊🇫🇇🗼🥐🍷🎨🏛️🌍👑🥖🧀🚄🏰🎭📚🌸🕊️🎶🖼️🍇🧈🥂🌹🗝️🪑🎩🧣🧤🧥👒👑
+
+[ Prompt: 27.2 t/s | Generation: 13.2 t/s ]
+
+
+Exiting...

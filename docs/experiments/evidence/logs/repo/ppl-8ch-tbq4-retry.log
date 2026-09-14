@@ -1,0 +1,10 @@
+0.00.984.716 W llama_model_loader: tensor overrides to CPU are used with mmap enabled - consider using --load-mode none for better performance
+0.05.907.168 I cmn          init: llama threadpool init, n_threads = 16
+[MOE-CACHE] enabled: budget=0 MiB predictor=0 fate=0 smoe=1 prefetch=1 topk=32 static=32 pred_mrs=0.00 fallback=2 join=1 gate=1 split=1 mrs=1 alpha=0.750 topp=0 window_layers=0 vram_limit=15667 MiB guard=512 MiB devpart=0
+[MOE-CACHE] auto cache budget 8824 MiB (device used=6330 MiB limit=15667 MiB guard=512 MiB)
+[MOE-CACHE] 144 weight tensors grouped into 48 persistent layer bundles, 100210176 bytes per layer-slot round, 92 slots/layer, 8792.2 MiB physical cache (requested=0 MiB effective=8824 MiB)
+0.06.961.312 I 
+0.06.961.347 I system_info: n_threads = 16 (n_threads_batch = 16) / 32 | CUDA : ARCHS = 860 | USE_GRAPHS = 1 | CPU : SSE3 = 1 | SSSE3 = 1 | AVX = 1 | AVX2 = 1 | F16C = 1 | FMA = 1 | LLAMAFILE = 1 | OPENMP = 1 | REPACK = 1 | 
+0.06.961.355 I perplexity: tokenizing the input ..
+0.07.344.365 I perplexity: tokenization took 383.002 ms
+0.07.344.751 I perplexity: calculating perplexity over 8 chunks, n_ctx=512, batch_size=2048, n_seq=4

@@ -1,0 +1,14 @@
+########## dsh-C2-err.txt
+[MOE-CACHE] timing per decode graph: total=157.2 ms
+    ids_wait=1.5 ms partition=1.16 ms copy_queue=0.03 ms cpu=25.6 msgpu_queue=23.0 ms pre=104.8 ms mrs=0.41 ms prefetch_submit=3.58 ms smoe=17.46 ms
+[MOE-CACHE] timeline per decode graph: prologue=0.00 ms
+    drain=20.40 ms wait=0.05 ms inputs=84.2 ms compute=48.6 ms post=0.68 ms tail=0.00 ms
+    epilogue=2.78 ms
+[MOE-CACHE] inputs breakdown per decode graph: evt_wait=53.08 ms node_scan=0.14 ms ids_d2h=0.16 ms (5 reads) used_ids_parse=0.01 ms expert_copy=3.45 ms
+########## dsh-A3-err.txt
+[MOE-CACHE] timing per decode graph: total=172.7 ms
+    ids_wait=0.0 ms partition=0.00 ms copy_queue=0.00 ms cpu=2.6 ms gpu_queue=22.4 ms pre=143.9 ms mrs=0.00 ms prefetch_submit=10.34 ms smoe=15.95 ms
+[MOE-CACHE] timeline per decode graph: prologue=0.00 ms
+    drain=29.04 ms wait=0.06 ms inputs=114.7 ms compute=25.0 ms post=0.60 ms tail=0.00 ms
+    epilogue=2.85 ms
+[MOE-CACHE] inputs breakdown per decode graph: evt_wait=50.54 ms node_scan=0.08 ms ids_d2h=0.17 ms (5 reads) used_ids_parse=0.01 ms expert_copy=3.70 ms

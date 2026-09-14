@@ -1,0 +1,7 @@
+0.00.511.373 E llama_init_from_model: quantized V cache requires flash_attn to be enabled
+0.00.560.636 E common_fit_params: encountered an error while trying to fit params to free device memory: failed to create llama_context from model
+0.00.981.238 W llama_model_loader: tensor overrides to CPU are used with mmap enabled - consider using --load-mode none for better performance
+0.05.829.318 E llama_init_from_model: quantized V cache requires flash_attn to be enabled
+0.05.829.325 E cmn  common_init_: failed to create context with model 'LOCAL_MODELS/qwen38/unsloth-iq3-xxs/UD-IQ3_XXS/Qwen3.8-Flash-Next-UD-IQ3_XXS-00001-of-00003.gguf'
+0.05.829.326 E cmn  common_init_: failed to create context with model 'LOCAL_MODELS/qwen38/unsloth-iq3-xxs/UD-IQ3_XXS/Qwen3.8-Flash-Next-UD-IQ3_XXS-00001-of-00003.gguf'
+0.05.829.329 E llama_perplexity: failed to create context

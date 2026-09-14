@@ -1,0 +1,272 @@
+历史提交说明摘录；其中的判断可能后来被纠正或撤回，请与专题复盘一起读。
+这些提交覆盖已发布与WIP历史，不代表本次合入代码。
+
+commit 17ca0de85150180f99053b85cb183dc4a6fc6bbb
+qwen4exp: TBQ diagnosis - 3-bit is missing from the FATTN whitelist, 4-bit's FA path is the broken one
+Read the source paper (arXiv:2504.19874): TurboQuant = random rotation, then per-coordinate
+Lloyd-Max; for inner products use TurboQuant_prod = (b-1)-bit MSE + 1-bit QJL on the residual,
+and the paper's KV claim is quality neutrality at 3.5 bits/channel.  So tbq4 must beat q4_0;
+PPL 65 is a bug, as suspected.
+
+Verified correct by reading (so the defect is NOT in the numerics):
+ - host ggml-turboq.c quantize/dequantize (norm -> codebook -> norm, sqrt(QK_K) scaling)
+ - codebooks in ggml-turboq-tables.h: monotone, boundaries are exact midpoints, +-2.152/+-2.733
+   (the standard Lloyd-Max values for a unit Gaussian at 3/4 bits)
+ - device quantize_f32_tbq4_0_block (nibble order is consistent: even index assigns, odd ORs
+   into the byte just written)
+ - FA vec_dot_fattn_vec_KQ_tbq4_0, dequantize_V_tbq4_0, and dequantize_tbq4_0 in dequantize.cuh
+   (all use d/16 and the same nibble convention)
+Measured round-trip error (new 'test-quantize-perf --op roundtrip'): tbq4 mse/var = 0.00836,
+which matches the paper's 0.009 for 4 bits; tbq3 0.021 vs 0.03.  So the format round-trips fine.
+
+Confirmed defect #1: ggml_cuda_fattn_kv_type_supported() in ggml-cuda/fattn.cu lists Q4_0, Q8_0,
+BF16 and TBQ4_0 but NOT TBQ3_0, so tbq3_0 silently fails the FA check and falls back to the
+non-FA path.  That is why tbq3 measures a sane PPL (2.72) but gets no speed benefit, while tbq4
+takes FA and degrades to PPL 65 (and crashes with exit=5 over 8 chunks).  The asymmetry is the
+smoking gun: the FA path for TBQ4 is the defective one, not the TBQ format.
+
+Also checked and ruled out: the attention rotation is wired up (llama-graph.cpp calls
+set_input_k_rot/set_input_v_rot in a dozen places; attn_rot_k is enabled for any quantized KV
+with head_dim % 64 == 0).  Forcing LLAMA_ATTN_ROT_DISABLE=1 makes tbq4 WORSE (73.3 vs 63.7), so
+the rotation is not the cause.
+
+Next: audit the FA-specific rotation handling (Q-side rotation and the un-rotation of the
+attention output) for tbq4 KV, then fix ggml_cuda_fattn_kv_type_supported to include TBQ3_0.
+
+commit fa05f8637a3119d5a036771b7134aa84e6e6e700
+qwen4exp: KV type evaluation at 256k - slots, speed, PPL, KLD; tbq4_0 KV is broken
+Measured with the user's real configuration (-c 262144) plus wikitext-2 perplexity.
+This model has only 12/48 full-attention layers, so KV is 12,288 elements/token.
+
+  KV      256k KV   MoE slots   gen t/s   PPL(8ch)  PPL(1ch)  Mean KLD
+  f16     6.0 GiB   0 (dead)    n/a       2.0120    2.4566    (base)
+  q8_0    3.19 GiB  29          15.7      2.0128    2.3458    0.0308
+  q4_0    1.69 GiB  45          16.1      2.0234    2.5026    0.0569
+  tbq4_0  1.52 GiB  47          15.3      crash     65.00     crash
+  tbq3_0  1.15 GiB  51          16.2      2.0728    2.7151    0.1164
+
+The KV type barely moves t/s directly; what it moves is how many MoE cache slots fit:
+0 / 29 / 45 / 47 / 51, i.e. hit rate 0% .. 79%.  f16 at 256k squeezes the cache to zero
+(policy=MRS requested=6144 MiB effective=0 MiB), so it silently runs every expert on the CPU -
+it is not a quality reference, it is a disabled cache.
+
+tbq4_0 as a KV type is broken: exit=5 crash on 8 chunks (reproduced twice) and PPL 65.0 versus
+2.4566 for f16 at one chunk with -b 512, so it is not a batching artefact.  Short greedy
+llama-cli output still looks plausible, which is why this needs PPL/KLD to see.
+run-256k-tbq.ps1 and run-8k-tbq.ps1 use tbq4_0 - recommend tbq3_0 or q4_0.
+
+commit 0d3d6c9d9d86043184be676d304afb67c52630f9
+qwen4exp: iq4_xs 8x8 repack type and AVX2 kernels (verified)
+iq4_xs was the only 4-bit non-linear (16-entry LUT) type without an 8x8 repack, so it
+could never use the vpshufb path that makes iq4_nl_8x8 fast.  Added GGML_TYPE_IQ4_XS_8_8
+(45), block_iq4_xsx8 (1088 B = 8 x block_iq4_xs), the repack, generic and AVX2 gemv/gemm
+for Q8_K activations, the gemv/gemm specialisations, tensor_traits and the AVX2 selection
+branch, plus a --repack-check self test in test-quantize-perf.
+
+Verified here: REPACK-CHECK PASS, per-row rel.err <= 8.03e-06 from random block_iq4_xs
+against the scalar ggml_vec_dot_iq4_xs_q8_K, gemm path included.  Speed 12.91 -> 15.13 GB/s
+at 64k values (11.78 -> 15.24 at 2560), i.e. +17..29% - modest, as predicted for a codebook
+type, but real and layout-compatible.  Note the Q8_K path has no min/bsums term (checked
+against the scalar kernel).  arch/x86/quants.c untouched.
+
+commit 4aaef90b93859c914d894384a48665a708ef24ee
+qwen4exp: AVX2 i-quant experiments - gather is slower on Zen 3, ceiling is the codebook
+Both experiments run and measured, both reverted:
+ - in-register index assembly + _mm256_i32gather_epi64: correct (test-backend-ops 11/11 OK)
+   but 1.8x SLOWER (1.29 vs 2.30 GB/s) - Zen 3's gather is microcoded;
+ - _mm_loadl_epi64 + punpcklqdq + vinserti128 instead of _mm256_set_epi64x: 0% (2.30 vs 2.30),
+   the compiler already emits the optimal sequence.
+
+Structural reason, verified from the tables: the i-quant grids are learned codebooks.  Their
+output bytes take only 3 values {8,25,43}, but the index->byte map is not a positional function
+(no 1/2/3-bit field explains any output byte), so it cannot be computed with shifts + vpshufb -
+a table lookup is required.  AVX2 has no byte gather and its 32-bit gather is slower than scalar
+on this CPU.  The q2_K comparison (48.6 G weights/s at 2.625 bpw vs 7.2 for iq2_s at 2.56) is
+therefore a property of codebook vs plain bit-packing, not of missing optimisation.
+
+Correction to 6.35: the repack buffer IS registered and considered (llama-model.cpp:1073-1078
+calls ggml_backend_dev_get_extra_bufts; the string 'repack' never appears because the mechanism
+is generic).  What is true is that the loader allocates nothing in it - no CPU_REPACK buffer line
+appears - because our host tensors land in CUDA_Host (experts, for the cache) and CPU_Mapped.
+
+commit c8a581cc04c0e3fd40f95b1506d84278692b421c
+qwen4exp: AVX2 repack feasibility boundary and what the kernel work would buy
+Read the source: the AVX2 template gemv_q4_b32_8x8_q8_0_lut_avx is static_assert-restricted to
+block_q4_0x8/block_iq4_nlx8/block_mxfp4x8, i.e. 4-bit 16-entry-LUT types only.  IQ4_NL has an
+AVX2 8x8 kernel; Q2_K is AVX512, Q5_K/Q6_K are NEON; iq2_s/iq3_s have nothing on AVX2 and their
+grid-LUT + Q8_K bsums algorithm cannot reuse that template, so supporting them means writing new
+AVX2 kernels (days, correctness risk).  Neither test tool can measure the repack path directly,
+so the speedup is only measurable once the CPU half actually reads a repacked buffer.
+
+Value: in the cached configuration the CPU half is 1.5-1.7 ms of 63.3 ms (2.4-2.7%), so a 3x
+kernel buys ~2.5%.  In the CPU-only / cache-off configuration (9.2 t/s) the token is ~900 MB of
+expert weights in 109 ms = 8.3 GB/s, exactly the mix of the measured kernel rates, so there the
+kernels are the entire bottleneck and 3x means ~9.2 -> ~20 t/s.  Even then iq2_s at ~7 GB/s would
+still lose to the 13.8 GB/s prefetch equivalent, so the V/P trade would not flip without ~6x.
+
+commit 79ff528837561a9ee999610810031432be0f0d12
+qwen4exp: CPU kernel efficiency measured; the bottleneck is the host prefetch, not the dot
+test-quantize-perf skipped every i-quant (no from_float), so they were never benchmarked.
+Patched it to fill raw bytes for types without from_float - the i-quant vec_dot kernels are
+table driven and branch free, so throughput is valid.  build-cli.bat now takes an optional
+target (local build helper, gitignored).
+
+Measured single core vec_dot (GB/s of quantized bytes): iq2_s 2.30 (7.2 G weights/s),
+iq3_s 2.00, iq4_nl 14.88 (26 G/s), q6_K 24.93, q8_0 36.43 (34 G/s).  The i-quant kernels are
+6-15x slower than the other 4-bit types and purely kernel bound (DRAM has 10x headroom);
+upstream ships repack variants only for AVX512 (q2_K) or NEON (q5_K/q6_K), and on x86 AVX2
+only IQ4_NL, so a repacked iq2_s/iq3_s would have to be written.
+
+But that is not our bottleneck: at 97 slots and at 42 slots the CPU half is 1.5-1.7 ms of a
+63 ms token (2.4-2.7%).  The wall is the host prefetch: pre=49.3 ms (78%), moving ~630 MB/token
+- 3.5x the true miss volume (~180 MB) - at ~13 GB/s of host copy, while smoe readback takes
+17.5 ms.  Bonus: 42 slots still gives 78.0% hit vs 80.2% at 97, so the cache needs far less
+VRAM than assumed (relevant to 256k + vision).
+
+commit 8a0bb3b7f8bbd6ff82201ac4591e21ff7f397f08
+qwen4exp: kernel coverage matrix for our formats and compute paths
+GPU: MMVQ (decode) and MMQ (prefill) both cover every type we use - iq2_s, iq3_s,
+iq4_nl, q6_K, q8_0 - so there is no dequant-to-f16 fallback anywhere in the hot path.
+CPU: type_traits_cpu binds a vec_dot for every one of those types, and the runtime log
+confirms AVX=1 AVX2=1 F16C=1 FMA=1 (GGML_NATIVE=ON; the OFF entries in CMakeCache are
+just unused explicit switches).  The only acceleration that exists but cannot be used is
+the CPU repack path (iq4_nl_4x4/8x8), which is structurally inapplicable because the MoE
+weights are pinned in a CUDA_Host buffer - and the CPU half is only 1.3% of the token.
+
+Scheduler scan (GGML_SCHED_DEBUG=2 + --verbose, new tools-op-backend-scan.py): text path
+has 498/97726 CPU nodes: MOE_CPU (by design), GET_ROWS on the host-resident embeddings
+(get_op_batch_size == 0 keeps it on the CPU on purpose), and the last layer's MoE going
+through the unfused CPU path because the side-graph prediction stops at il + ahead < n_layer.
+Vision path uses none of the CUDA-less ops (no POOL_*/WIN_*), everything on CUDA0.
+
+commit 7e01451b2d7aab6a4ff58ecfdd2f3b13fcaeb0bf
+qwen4exp: mixed-type (UD) cache addressing audit, runtime guard, compression eval
+Addressing audit: the slot geometry is per-tensor (expert_size = nb[2], type_size =
+ggml_type_size, per-component alignment, LCM bundle stride), so mixing iq2_s / iq4_nl /
+iq3_s in one file is safe; no hardcoded type constants anywhere.  Measured bundle stride
+2078208 B = 11 * lcm(512,82,18), i.e. 0.47% alignment waste.  tools-gguf-types.py --check
+validates all 1224 tensors (ne[0] % block == 0, expert is a block multiple, dense layout).
+Added a runtime guard that disables the cache instead of silently mis-addressing if a
+future quant's block size does not divide the expert size; verified no misfire (slots= 97,
+20.1 t/s, 89.7%).
+
+Compression: lossless is a dead end (zlib 98.3% on iq4_nl, 99.8% on iq2_s - the quantized
+payload is entropy-saturated, scales included).  Metadata is 5.5-12.2% of a block; shrinking
+it means a different format (iq4_xs -5.6%, iq2_xxs -9.8%) worth only 2.6-5.2% of the prefetch
+bytes.  The one real lever is the recipe: down is 46.8% of the bytes at 4.5 bpw, so a
+down=iq2_s variant would cut prefetch bytes by ~20% and fit ~121 slots instead of 97.
+
+commit 7baae92dceb021e674f485a7abcdc4ea254dbe2f
+qwen4exp: real GGUF type map (UD quant is mixed) and correct 6.34
+tools-gguf-types.py walks the GGUF header and prints the per-type histogram.
+Measured: iq4_nl is 63% of all weight bytes (47.9 GiB), iq2_s 31%, and the file name's
+IQ3_XXS appears on no tensor at all.  per_layer_token_embd.weight is iq4_nl, 26.8 GiB -
+which is what the PLE-cache IQ4_NL dots were written for; both PLE caches are off, so
+those kernels are currently idle rather than dead.  Expert matrices: gate/up = iq2_s
+(256.25 MiB), down = iq4_nl (450 MiB), i.e. 1.88 MiB per expert with down at 46.8%.
+
+6.34 is corrected: the reason the repack kernels cannot help the MoE is not a type
+mismatch - they do match ffn_down_exps - but that the repack buffer is registered
+(GGML_CPU_REPACK=ON) and never selected (zero repack references in src/llama-model.cpp,
+no ggml_backend_cpu_repack_buffer_type() call anywhere in src/), and the expert weights
+are pinned into a CUDA_Host buffer for the SMoE cache.  Verdict unchanged for the MoE
+(CPU half is 0.7 ms of 55.4 ms); the kernel is the right tool if the PLE caches return.
+
+commit 297b60792dfb86589f3be009397c253c31c01638
+qwen4exp: IQ4_NL AVX2 dot kernels do not help - measured profile
+The repack kernels (iq4_nl_4x4/8x8/16x1) gate on GGML_TYPE_IQ4_NL while our experts
+are IQ3_XXS, and a whole-model requant would add 47% bytes.  Measured per-decode-graph
+profile: prefetch 43 ms (78%), ids_wait 17.8 ms (32%), gpu_queue 7.6 ms, partition 2.7 ms,
+CPU half 0.7 ms (1.3%).  Generic AVX2 dot throughput: iq4_nl 12.62 GB/s vs PCIe feed ~5 GB/s,
+so the dot has 2.5x headroom.  The wall is PCIe contention from cache fills (0.073 ms/MB),
+not kernel arithmetic.
+
+commit 0f853bb6b2a603bfb718f3c0f2dd0ff782c526ee
+qwen4exp: fix the crop-corrupting split, restore 20.8 t/s correctly, add lookahead autotune
+Root cause of the silent corruption: the GPU half's ids_gpu/wgt_gpu are host
+leaves that are also inputs of the same split, and the partition hook wrote them
+mid-loop - the scheduler could already have queued their copies, so the MoE
+GEMMs consumed the *previous* layer's routing.  The hook now re-issues those two
+copies right after filling them (a few hundred bytes).
+
+Verified with the Eiffel reproduction (27 corrupt chars before, 3/3): 4/4 runs
+now produce the same correct answer as the SPLIT=0 reference.  The safety guard
+is lifted and the tooling scripts are back to SPLIT=1.
+
+Measured after the fix (8k, q8_0, auto budget = 97 slots):
+  SPLIT=1 + AHEAD=3 (new default)  90.9% hit  20.8 t/s  correct
+  cache off                                  9.2 t/s
+i.e. +126% over no cache, and this time honestly.
+
+SMOE_AHEAD default 1 -> 3 (measured optimum; the model now reads it per graph
+build via ggml_moe_smoe_ahead()).  Added LLAMA_MOE_AHEAD_AUTO, an extremum
+seeker in the same family as the yield tuner: it must use *window* hit-rate
+deltas (cumulative counts are skewed by cache warm-up and walk the probe to the
+clamp), after which it oscillates around 3-4.  The fixed default is still
+slightly better (20.8 vs 19.1 t/s), so the tuner stays opt-in.
+
+commit d78c8bd42a9f9a75268945c364808ea93e133f51
+qwen4exp: hot-region expert cache — true-usage eviction, backfill, adaptive admission
+- eviction score is now the ground-truth routing frequency; the previous gate-softmax
+  history (mrs_score) ranked by it covers 0.3% of the true routing while the achievable
+  top-C covers 51.6%.  Sliding-window decay (HOT_HALFLIFE) so a changed distribution can
+  displace the old hot set instead of freezing it.
+- hot-region backfill at graph end: self-terminating (only candidates hotter than the
+  coldest resident), no waits, poll-only side-stream events; two-phase budget
+  (HOT_FILL_BOOT -> HOT_BACKFILL) and an idle-thread fill (HOT_IDLE).
+- cold-start seed from the manifest hot list (PIN_STATIC, previously dead code); prompt
+  (prefill) routing is recorded separately and only used as a prior (PREFILL_WEIGHT).
+- adaptive admission: per-rank accuracy + measured byte yield; TREND_AUTO fits
+  ms ~= a - V*hits + P*MB per graph and derives both the admission threshold and the
+  transfer budget from it (hits/MiB and MiB per token, no magic numbers).
+- MoE CPU half now runs on its own worker by default (scheduler thread cpu 12.4 -> 6.2 ms).
+- diagnostics: hot-set oracle (oracle/resident/mrs coverage), per-rank accuracy and yield,
+  prefill/decode tendency, dedup counters (dup_resident/pending/list/admit/readmit),
+  single-instance lock + free-memory precheck and VRAM/GPU sampling in tools-run.py.
+- measured (400-1024 token runs, 6 GiB cache): routing hit 30.5% -> 63-81%, steady decode
+  8.4 -> 20.8-23.3 t/s; split-merge and weight compression were investigated and rejected
+  with measurements (VRAM cost / 1-2% compressibility).
+
+handoff.md documents the measurement campaigns and the dead ends.
+
+commit 2f1a363c83d72720f582cf063c6f8e03084d0dbe
+qwen4exp: add TBQ KV quantization and the runtime MoE expert cache
+Checkpoint of the working tree. Two feature lines are in progress.
+
+TBQ (TurboQuant codebook blocks, 3.0625 and 4.0625 bpw) is a KV cache
+type: GGML_TYPE_TBQ3_0/TBQ4_0 with CPU reference dequant, a CUDA device
+path, a flash attention instance and quantization entry points. Model
+weights stay IQ3_XXS.
+
+The MoE expert cache keeps a layer-local bundle of gate/up/down weights
+resident on the GPU under a byte budget, and adds GPU/CPU split
+execution for one-token decode, direct read of the device copy, MRS
+route-score eviction, and Fate/SMoE/XT next-layer prefetch candidates.
+The cache runs inside the scheduler path in ggml-backend.cpp. The CPU
+half consumes device-produced views, and a device-side partition kernel
+(devpart) replaces the per-layer host ids roundtrip.
+
+Known broken: with devpart enabled the output degenerates to a repeated
+token from the second token on, because selected_experts and weights are
+reclaimed before the partition kernels read them. Keeping them alive
+restores correct output but drops throughput from 20.7 to 8.4 t/s. Both
+are unresolved; handoff.md has the evidence and the excluded hypotheses.
+
+Not verified: the last build predates the keep-alive views in
+src/llama-graph.cpp, so this tree has not been built as-is.
+
+Assisted-by: DeepSeek Harness
+
+commit 4e1865e34ec5f6ca39403215c89129c13731be70
+llama: batched readahead for lazily read gather tables
+TENSOR_READ_LAZY skips the eager pull-in for a large embedding table and
+marks its range MADV_RANDOM. That also turns off the kernel readahead, so
+a sparse gather over the table costs one synchronous fault per row.
+
+Issue the reads for the rows a batch is about to gather, as one batch of
+MADV_WILLNEED (PrefetchVirtualMemory on Windows), from set_input. Rows are
+merged to whole pages first, so 16 gathers become a couple of hints.
+
+Wired into the two TENSOR_READ_LAZY users, qwen4exp and gemma4. Hints only,
+so results are unchanged.
+

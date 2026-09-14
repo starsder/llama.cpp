@@ -1,0 +1,12 @@
+########## stats-I1-ref.csv  (decode n=31)
+  total=85,990  cpu=27,676  gpu=7,391  pre=49,727   [ids_wait=1,312 partition=1,249]
+  inputs=29,115  drain=20,457
+  split_partition=23,233 (n=144.0)   ->  activation_D2H=509 (n=48.0)   ->  host_CPU_loops=22,724
+  flag_input=4,267 (n=108.0)  generic=1,054 (n=51.0)  cpu_half=69 (n=48.0)
+
+########## stats-I2-devpart.csv  (decode n=31)
+  total=122,912  cpu=3,247  gpu=7,182  pre=111,370   [ids_wait=0 partition=0]
+  inputs=78,760  drain=32,431
+  split_partition=0 (n=0.0)   ->  activation_D2H=0 (n=0.0)   ->  host_CPU_loops=0
+  flag_input=170 (n=12.0)  generic=78,151 (n=195.0)  cpu_half=0 (n=0.0)
+

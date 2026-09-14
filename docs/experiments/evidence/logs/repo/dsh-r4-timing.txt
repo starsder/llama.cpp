@@ -1,0 +1,20 @@
+########## dsh-C4-err.txt
+[MOE-CACHE] timing per decode graph: total=149.0 ms
+    ids_wait=1.5 ms partition=1.14 ms copy_queue=0.03 ms cpu=25.1 msgpu_queue=23.1 ms pre=96.8 ms mrs=0.38 ms prefetch_submit=3.24 ms smoe=16.19 ms
+[MOE-CACHE] timeline per decode graph: prologue=0.00 ms
+    drain=18.82 ms wait=0.05 ms inputs=77.8 ms compute=48.3 ms post=0.65 ms tail=0.00 ms
+    epilogue=2.92 ms
+[MOE-CACHE] inputs breakdown per decode graph: evt_wait=48.20 ms node_scan=0.23 ms ids_d2h=0.17 ms (5 reads) used_ids_parse=0.01 ms expert_copy=3.48 ms
+[MOE-CACHE] inputs branch counts per graph: iterations=286.7 host_weights=16.1
+    evt_path n=0.0 0.00 ms
+    sync_path n=189.6 48.19 ms
+########## dsh-A4-err.txt
+[MOE-CACHE] timing per decode graph: total=172.5 ms
+    ids_wait=0.0 ms partition=0.00 ms copy_queue=0.00 ms cpu=2.8 ms gpu_queue=23.2 ms pre=142.8 ms mrs=0.00 ms prefetch_submit=10.52 ms smoe=16.08 ms
+[MOE-CACHE] timeline per decode graph: prologue=0.00 ms
+    drain=29.61 ms wait=0.06 ms inputs=113.0 ms compute=26.0 ms post=0.60 ms tail=0.00 ms
+    epilogue=2.73 ms
+[MOE-CACHE] inputs breakdown per decode graph: evt_wait=50.76 ms node_scan=0.17 ms ids_d2h=0.17 ms (5 reads) used_ids_parse=0.01 ms expert_copy=3.41 ms
+[MOE-CACHE] inputs branch counts per graph: iterations=329.3 host_weights=16.1
+    evt_path n=0.0 0.00 ms
+    sync_path n=317.3 50.74 ms

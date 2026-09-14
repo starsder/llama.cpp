@@ -1,0 +1,25 @@
+[MOE-CACHE] enabled: budget=6144 MiB predictor=0 fate=0 smoe=1 prefetch=1 topk=32 static=32 pred_mrs=0.00 fallback=2 join=1 gate=1 split=1 mrs=1 alpha=0.750 topp=20 window_layers=0 vram_limit=15360 MiB guard=1024 MiB devpart=0
+[MOE-CACHE] ids readback #1: tensor='ffn_moe_topk-0' type=i32 ne=[10,2] bytes=2088 decode=0
+[MOE-CACHE] ids readback #2: tensor='ffn_moe_topk-1' type=i32 ne=[10,2] bytes=2088 decode=0
+[MOE-CACHE] ids readback #3: tensor='ffn_moe_topk-2' type=i32 ne=[10,2] bytes=2088 decode=0
+[MOE-CACHE] ids readback #4: tensor='ffn_moe_topk-3' type=i32 ne=[10,2] bytes=2088 decode=0
+[MOE-CACHE] ids readback #5: tensor='ffn_moe_topk-4' type=i32 ne=[10,2] bytes=2088 decode=0
+[MOE-CACHE] ids readback #6: tensor='ffn_moe_topk-5' type=i32 ne=[10,2] bytes=2088 decode=0
+[MOE-CACHE] ids readback #7: tensor='ffn_moe_topk-6' type=i32 ne=[10,2] bytes=2088 decode=0
+[MOE-CACHE] ids readback #8: tensor='ffn_moe_topk-7' type=i32 ne=[10,2] bytes=2088 decode=0
+[MOE-CACHE] clamp cache budget from 6144 MiB to 0 MiB (device used=14788 MiB limit=15360 MiB guard=1024 MiB)
+[MOE-CACHE] 144 weight tensors grouped into 48 persistent layer bundles, 100210176 bytes per layer-slot round, 0 slots/layer, 0.0 MiB physical cache (requested=6144 MiB effective=0 MiB)
+[MOE-CACHE] budget is smaller than one persistent layer slot; cache remains empty
+[MOE-CACHE] SMoE backend: topk=CUDA0
+[MOE-CACHE] pinned 1 weight buffers (45.8 GiB) in 0.0 s, 0 failed
+[MOE-CACHE] timing per decode graph: total=85.3 ms | ids_wait=18.5 ms partition=2.74 ms copy_queue=0.00 ms cpu=16.9 ms gpu_queue=12.8 ms pre=54.1 ms mrs=0.43 ms prefetch_submit=0.02 ms smoe=1.50 ms
+[MOE-CACHE] timeline per decode graph: prologue=0.00 ms | drain=0.74 ms wait=0.09 ms inputs=53.2 ms compute=29.7 ms post=0.86 ms tail=0.16 ms | epilogue=0.00 ms
+[MOE-CACHE] inputs breakdown per DECODE graph (n_dec=0 of 203 graphs): evt_wait=0.19 ms node_scan=0.06 ms | ids_d2h=0.00 ms in 0 reads (enq=0.00 sync=0.00) total_bytes=5301600 | parse=0.00 expert_copy=0.58
+[MOE-CACHE] inputs branch counts per graph: iterations=299.2 host_weights=2.8 | evt_path n=195.0 0.18 ms | sync_path n=0.0 0.00 ms
+[MOE-CACHE] split_partition per graph: total=24.44 ms (n=141.2) | drain+flush=0.03 ms (n=47.1, 0.1% of split_partition) | act_d2h=0.38 ms
+[MOE-CACHE] split_partition split per graph: prologue=1.45 ids_wait=18.46 tail=4.42 mrs=18.46 body=0.43 (activate=2.74 on_ids=0.00) ms
+[MOE-CACHE] prologue split per graph: assign=0.02 find=0.85 mrs_queue=0.42 (of prologue=1.45) ms
+[MOE-CACHE] split_partition calls per graph: early=94.1 (0.02 ms) real=47.1 | accounted=22.05 ms of total=24.44 ms
+[MOE-CACHE] smoe per DECODE graph: total=304.50 ms (event_wait=51.41 ms process=73.71 ms) nonblock=1 deferred=8939 ahead=3
+[MOE-CACHE] cpu half: dispatched=9554 devpart_cpu_async=0 cpu_half_async=1 leaf_fills=0
+[MOE-CACHE] policy=MRS requested=6144 MiB effective=0 MiB hits=0 misses=0 mrs_reads=9554 mrs_fallbacks=0 mrs_updates=9554 mrs_victims=0 protected_evictions=0 prefetch_requests=0 prefetch_experts=0 prefetch_bytes=0 prefetch_dropped=0 window_layers=0 window_recycles=0 prefetch_required=89550 prefetch_predicted=13273 prefetch_ready=0 fallback_prefetch=0 fate=0 fate_predictions=0 fate_gate_inputs=0 fate_gate_ms=0.00 smoe=1 smoe_predictions=8955 smoe_logits=4584960 dup_resident=0 dup_pending=0 dup_list=0 dup_admit=0 readmit=0 no_victim=0 halvings=0 hot_fill=0 hot_idle=203 seeded=0 clipped=0 phase_fills=0 phase_experts=0

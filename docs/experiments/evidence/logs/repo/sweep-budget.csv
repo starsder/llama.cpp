@@ -1,0 +1,4 @@
+tag,prompt_tps,gen_tps,cache_mib,slots,hit_pct,hits,misses,crash,secs
+ple0-guard512,27.5,17.9,2601,27,75.7,277815,89415,,34.6
+ple0-guard1024,27.4,14.7,2601,27,55.5,203829,163401,,38.3
+ple256-guard512,27.3,15.2,2601,27,55.8,205068,162162,,38.3

@@ -1,0 +1,2 @@
+# Keep UTF-8 research evidence byte-stable on Windows checkouts.
+* text eol=lf

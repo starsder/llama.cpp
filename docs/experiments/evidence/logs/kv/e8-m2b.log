@@ -1,0 +1,212 @@
+0.01.002.943 W configure: LLAMA_PLE_CACHE_MIB must be a positive integer; PLE cache disabled
+0.01.003.108 W llama_model_loader: tensor overrides to CPU are used with mmap enabled - consider using --load-mode none for better performance
+0.04.890.807 W llama_kv_cache: E8 fake-quant mode 2: rotation applied in-graph, KV cache must be f16
+0.04.907.036 W llama_kv_cache: E8 fake-quant mode 2: rotation applied in-graph, KV cache must be f16
+0.04.946.904 I cmn          init: llama threadpool init, n_threads = 16
+[MOE-CACHE] enabled: budget=0 MiB predictor=0 fate=0 smoe=1 prefetch=1 topk=32 static=32 pred_mrs=0.00 fallback=2 join=1 gate=1 split=1 mrs=1 alpha=0.750 topp=0 window_layers=0 vram_limit=15667 MiB guard=512 MiB devpart=0
+[MOE-CACHE] auto cache budget 8790 MiB (device used=6364 MiB limit=15667 MiB guard=512 MiB)
+[MOE-CACHE] 144 weight tensors grouped into 48 persistent layer bundles, 100210176 bytes per layer-slot round, 91 slots/layer, 8696.7 MiB physical cache (requested=0 MiB effective=8790 MiB)
+0.05.937.081 I 
+0.05.937.116 I system_info: n_threads = 16 (n_threads_batch = 16) / 32 | CUDA : ARCHS = 860 | USE_GRAPHS = 1 | CPU : SSE3 = 1 | SSSE3 = 1 | AVX = 1 | AVX2 = 1 | F16C = 1 | FMA = 1 | LLAMAFILE = 1 | OPENMP = 1 | REPACK = 1 | 
+0.05.952.006 I kl_divergence: computing over 8 chunks, n_ctx=512, batch_size=2048, n_seq=4
+0.30.014.286 I kl_divergence: 24.06 seconds per pass - ETA 0.80 minutes
+
+chunk             PPL               ln(PPL(Q)/PPL(base))          KL Divergence              Δp RMS            Same top p
+   1       2.7881 ±    0.3498       0.14133 ±    0.06919       0.36681 ±    0.05232    17.144 ±  1.739 %    83.137 ±  2.349 %
+   2       4.2644 ±    0.4545       0.14456 ±    0.04693       0.34237 ±    0.03165    15.986 ±  1.176 %    82.745 ±  1.675 %
+   3       3.2911 ±    0.2721       0.12685 ±    0.03358       0.27238 ±    0.02246    14.899 ±  0.943 %    85.621 ±  1.269 %
+   4       2.7013 ±    0.1795       0.11087 ±    0.03014       0.24962 ±    0.01907    15.901 ±  0.889 %    87.451 ±  1.038 %
+   5       2.4297 ±    0.1352       0.09331 ±    0.02647       0.23626 ±    0.01653    16.314 ±  0.814 %    88.078 ±  0.908 %
+   6       2.3434 ±    0.1155       0.08994 ±    0.02532       0.25128 ±    0.01665    16.975 ±  0.768 %    88.039 ±  0.830 %
+   7       2.2344 ±    0.0995       0.09694 ±    0.02353       0.24989 ±    0.01574    17.706 ±  0.712 %    87.843 ±  0.774 %
+   8       2.2256 ±    0.0924       0.10089 ±    0.02188       0.25612 ±    0.01466    18.028 ±  0.670 %    87.745 ±  0.726 %
+
+====== Perplexity statistics ======
+Mean PPL(Q)                   :   2.225629 ±   0.092401
+Mean PPL(base)                :   2.012041 ±   0.079036
+Cor(ln(PPL(Q)), ln(PPL(base))):  85.48%
+Mean ln(PPL(Q)/PPL(base))     :   0.100890 ±   0.021879
+Mean PPL(Q)/PPL(base)         :   1.106155 ±   0.024202
+Mean PPL(Q)-PPL(base)         :   0.213588 ±   0.047957
+
+====== KL divergence statistics ======
+Mean    KLD:   0.256116 ±   0.014663
+Maximum KLD:   8.576522
+99.9%   KLD:   7.917815
+99.0%   KLD:   3.125568
+95.0%   KLD:   1.432143
+90.0%   KLD:   0.777828
+Median  KLD:   0.014556
+10.0%   KLD:   0.000236
+ 5.0%   KLD:   0.000083
+ 1.0%   KLD:   0.000009
+ 0.1%   KLD:   0.000002
+Minimum KLD:   0.000001
+
+====== Token probability statistics ======
+Mean    Δp: -2.657 ± 0.395 %
+Maximum Δp: 93.655%
+99.9%   Δp: 88.570%
+99.0%   Δp: 50.149%
+95.0%   Δp: 17.455%
+90.0%   Δp:  6.592%
+75.0%   Δp:  0.157%
+Median  Δp: -0.071%
+25.0%   Δp: -2.057%
+10.0%   Δp: -16.417%
+ 5.0%   Δp: -36.934%
+ 1.0%   Δp: -69.835%
+ 0.1%   Δp: -99.057%
+Minimum Δp: -99.494%
+RMS Δp    : 18.028 ± 0.670 %
+Same top p: 87.745 ± 0.726 %
+
+[MOE-CACHE] cpu half: dispatched=1 devpart_cpu_async=0 cpu_half_async=1 leaf_fills=0
+[MOE-CACHE] policy=MRS requested=0 MiB effective=8790 MiB hits=0 misses=0 mrs_reads=1 mrs_fallbacks=0 mrs_updates=1 mrs_victims=0 protected_evictions=0 prefetch_requests=0 prefetch_experts=0 prefetch_bytes=0 prefetch_dropped=0 window_layers=0 window_recycles=0 prefetch_required=0 prefetch_predicted=0 prefetch_ready=0 fallback_prefetch=0 fate=0 fate_predictions=0 fate_gate_inputs=0 fate_gate_ms=0.00 smoe=1 smoe_predictions=0 smoe_logits=0 dup_resident=0 dup_pending=0 dup_list=0 dup_admit=0 readmit=0 no_victim=0 halvings=0 hot_fill=0 hot_idle=0 seeded=0 clipped=0 phase_fills=0 phase_experts=0
+[MOE-CACHE] hot-set oracle: routed=2560 layers=1 slots/layer=91 | oracle_topC=100.0% resident_set=0.0% mrs_topC=0.0% actual_hit=0.0%
+[MOE-CACHE] prefill/decode tendency: graphs pre=8 dec=1 | decode topC=100.0%  seeded-by-prompt-topC=10.0%  topC-overlap=90.1% | touched experts/layer pre=382.0 dec=10.0 of 0
+[MOE-CACHE] per-weight view summary (shared layer slots):
+[MOE-CACHE]   blk.0.ffn_gate_exps.weight               slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.0.ffn_up_exps.weight                 slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.0.ffn_down_exps.weight               slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.1.ffn_gate_exps.weight               slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.1.ffn_up_exps.weight                 slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.1.ffn_down_exps.weight               slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.2.ffn_gate_exps.weight               slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.2.ffn_up_exps.weight                 slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.2.ffn_down_exps.weight               slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.3.ffn_gate_exps.weight               slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.3.ffn_up_exps.weight                 slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.3.ffn_down_exps.weight               slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.4.ffn_gate_exps.weight               slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.4.ffn_up_exps.weight                 slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.4.ffn_down_exps.weight               slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.5.ffn_gate_exps.weight               slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.5.ffn_up_exps.weight                 slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.5.ffn_down_exps.weight               slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.6.ffn_gate_exps.weight               slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.6.ffn_up_exps.weight                 slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.6.ffn_down_exps.weight               slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.7.ffn_gate_exps.weight               slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.7.ffn_up_exps.weight                 slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.7.ffn_down_exps.weight               slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.8.ffn_gate_exps.weight               slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.8.ffn_up_exps.weight                 slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.8.ffn_down_exps.weight               slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.9.ffn_gate_exps.weight               slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.9.ffn_up_exps.weight                 slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.9.ffn_down_exps.weight               slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.10.ffn_gate_exps.weight              slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.10.ffn_up_exps.weight                slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.10.ffn_down_exps.weight              slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.11.ffn_gate_exps.weight              slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.11.ffn_up_exps.weight                slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.11.ffn_down_exps.weight              slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.12.ffn_gate_exps.weight              slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.12.ffn_up_exps.weight                slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.12.ffn_down_exps.weight              slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.13.ffn_gate_exps.weight              slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.13.ffn_up_exps.weight                slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.13.ffn_down_exps.weight              slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.14.ffn_gate_exps.weight              slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.14.ffn_up_exps.weight                slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.14.ffn_down_exps.weight              slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.15.ffn_gate_exps.weight              slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.15.ffn_up_exps.weight                slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.15.ffn_down_exps.weight              slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.16.ffn_gate_exps.weight              slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.16.ffn_up_exps.weight                slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.16.ffn_down_exps.weight              slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.17.ffn_gate_exps.weight              slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.17.ffn_up_exps.weight                slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.17.ffn_down_exps.weight              slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.18.ffn_gate_exps.weight              slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.18.ffn_up_exps.weight                slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.18.ffn_down_exps.weight              slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.19.ffn_gate_exps.weight              slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.19.ffn_up_exps.weight                slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.19.ffn_down_exps.weight              slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.20.ffn_gate_exps.weight              slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.20.ffn_up_exps.weight                slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.20.ffn_down_exps.weight              slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.21.ffn_gate_exps.weight              slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.21.ffn_up_exps.weight                slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.21.ffn_down_exps.weight              slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.22.ffn_gate_exps.weight              slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.22.ffn_up_exps.weight                slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.22.ffn_down_exps.weight              slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.23.ffn_gate_exps.weight              slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.23.ffn_up_exps.weight                slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.23.ffn_down_exps.weight              slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.24.ffn_gate_exps.weight              slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.24.ffn_up_exps.weight                slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.24.ffn_down_exps.weight              slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.25.ffn_gate_exps.weight              slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.25.ffn_up_exps.weight                slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.25.ffn_down_exps.weight              slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.26.ffn_gate_exps.weight              slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.26.ffn_up_exps.weight                slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.26.ffn_down_exps.weight              slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.27.ffn_gate_exps.weight              slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.27.ffn_up_exps.weight                slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.27.ffn_down_exps.weight              slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.28.ffn_gate_exps.weight              slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.28.ffn_up_exps.weight                slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.28.ffn_down_exps.weight              slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.29.ffn_gate_exps.weight              slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.29.ffn_up_exps.weight                slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.29.ffn_down_exps.weight              slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.30.ffn_gate_exps.weight              slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.30.ffn_up_exps.weight                slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.30.ffn_down_exps.weight              slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.31.ffn_gate_exps.weight              slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.31.ffn_up_exps.weight                slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.31.ffn_down_exps.weight              slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.32.ffn_gate_exps.weight              slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.32.ffn_up_exps.weight                slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.32.ffn_down_exps.weight              slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.33.ffn_gate_exps.weight              slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.33.ffn_up_exps.weight                slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.33.ffn_down_exps.weight              slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.34.ffn_gate_exps.weight              slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.34.ffn_up_exps.weight                slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.34.ffn_down_exps.weight              slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.35.ffn_gate_exps.weight              slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.35.ffn_up_exps.weight                slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.35.ffn_down_exps.weight              slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.36.ffn_gate_exps.weight              slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.36.ffn_up_exps.weight                slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.36.ffn_down_exps.weight              slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.37.ffn_gate_exps.weight              slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.37.ffn_up_exps.weight                slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.37.ffn_down_exps.weight              slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.38.ffn_gate_exps.weight              slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.38.ffn_up_exps.weight                slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.38.ffn_down_exps.weight              slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.39.ffn_gate_exps.weight              slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.39.ffn_up_exps.weight                slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.39.ffn_down_exps.weight              slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.40.ffn_gate_exps.weight              slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.40.ffn_up_exps.weight                slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.40.ffn_down_exps.weight              slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.41.ffn_gate_exps.weight              slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.41.ffn_up_exps.weight                slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.41.ffn_down_exps.weight              slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.42.ffn_gate_exps.weight              slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.42.ffn_up_exps.weight                slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.42.ffn_down_exps.weight              slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.43.ffn_gate_exps.weight              slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.43.ffn_up_exps.weight                slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.43.ffn_down_exps.weight              slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.44.ffn_gate_exps.weight              slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.44.ffn_up_exps.weight                slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.44.ffn_down_exps.weight              slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.45.ffn_gate_exps.weight              slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.45.ffn_up_exps.weight                slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.45.ffn_down_exps.weight              slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.46.ffn_gate_exps.weight              slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.46.ffn_up_exps.weight                slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.46.ffn_down_exps.weight              slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.47.ffn_gate_exps.weight              slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.47.ffn_up_exps.weight                slots= 91 hits=       0 misses=       0 hit%=  0.00
+[MOE-CACHE]   blk.47.ffn_down_exps.weight              slots= 91 hits=       0 misses=       0 hit%=  0.00

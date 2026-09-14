@@ -1,0 +1,12 @@
+=== mode 1, protect=2 ===
+chunk             PPL               ln(PPL(Q)/PPL(base))          KL Divergence              Δp RMS            Same top p
+Mean ln(PPL(Q)/PPL(base))     :   0.099093 ±   0.022540
+Mean PPL(Q)/PPL(base)         :   1.104169 ±   0.024887
+Mean    KLD:   0.252590 ±   0.013904
+99.9%   KLD:   5.998749
+=== mode 1, protect=4 ===
+chunk             PPL               ln(PPL(Q)/PPL(base))          KL Divergence              Δp RMS            Same top p
+Mean ln(PPL(Q)/PPL(base))     :   0.084855 ±   0.020312
+Mean PPL(Q)/PPL(base)         :   1.088559 ±   0.022110
+Mean    KLD:   0.240551 ±   0.013238
+99.9%   KLD:   6.260358

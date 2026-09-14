@@ -1,0 +1,14 @@
+########## stats-H1-ref.csv  (decode graphs n=31)
+  total=87,067  cpu=28,232  gpu=7,334  pre=50,303
+  [-2] in_wait=53 scan=2 d2h=0 parse=0 expert=0 | drain=20,510 inputs=29,638
+  [-3] flag_input=4,396 (n=108.0)  generic=1,051 (n=51.0)  loop_n=303.0  hostw_n=0.0
+  [-4] cpu_half=73 (evt_wait=4, n=48.0)  split_partition=23,619 (n=144.0)
+  inputs accounted=55  unaccounted=29,583
+
+########## stats-H2-devpart.csv  (decode graphs n=31)
+  total=117,079  cpu=3,082  gpu=8,351  pre=104,409
+  [-2] in_wait=95 scan=63 d2h=0 parse=0 expert=0 | drain=33,745 inputs=70,466
+  [-3] flag_input=219 (n=12.0)  generic=69,567 (n=195.0)  loop_n=351.0  hostw_n=0.0
+  [-4] cpu_half=0 (evt_wait=0, n=0.0)  split_partition=0 (n=0.0)
+  inputs accounted=158  unaccounted=70,308
+

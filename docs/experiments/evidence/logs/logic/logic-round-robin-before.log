@@ -1,0 +1,17 @@
+PASS: compare against eligible victim, not protected cold resident
+PASS: equal-frequency admission preserves tie behavior
+PASS: resident dedup remains intact
+PASS: zero-frequency cold start uses empty slot
+PASS: missing routed-use history retains fallback admission
+PASS: FIFO is not changed into frequency admission
+PASS: global pool compares actual victim owner
+PASS: position-weighted admission favors next layer and preserves zero slot
+hot backfill covered 28/48 layers in six eight-expert budgets
+FAIL: round-robin backfill does not starve eligible layers
+FAIL: backfill visits sparse actual layer ids
+failures=2
+
+
+Wall time: 0.10 seconds
+
+Command exited with code 1

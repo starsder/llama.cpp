@@ -1,0 +1,30 @@
+########## dsh-E1-err.txt
+[MOE-CACHE] timing per decode graph: total=164.0 ms
+    ids_wait=1.4 ms partition=1.17 ms copy_queue=0.03 ms cpu=27.3 msgpu_queue=24.9 ms pre=107.8 ms mrs=0.40 ms prefetch_submit=3.76 ms smoe=19.36 ms
+[MOE-CACHE] timeline per decode graph: prologue=0.00 ms
+    drain=22.45 ms wait=0.06 ms inputs=85.2 ms compute=52.3 ms post=0.71 ms tail=0.02 ms
+    epilogue=2.80 ms
+[MOE-CACHE] inputs branch counts per graph: iterations=286.7 host_weights=16.1
+    evt_path n=189.5 0.07 ms
+    sync_path n=0.1 0.00 ms
+[MOE-CACHE] policy=MRS requested=2048 MiB effective=2048 MiB hits=12519 misses=32151 mrs_reads=1490 mrs_fallbacks=0 mrs_updates=1490 mrs_victims=4255 protected_evictions=0 prefetch_requests=1457 prefetch_experts=5242 prefetch_bytes=10366150144 prefetch_dropped=7174 window_layers=0 window_recycles=0 prefetch_required=14570 prefetch_predicted=10696 prefetch_ready=3804 fallback_prefetch=0 fate=0 fate_predictions=0 fate_gate_inputs=0 fate_gate_ms=0.00 smoe=1 smoe_predictions=
+########## dsh-E2-err.txt
+[MOE-CACHE] timing per decode graph: total=167.4 ms
+    ids_wait=1.6 ms partition=1.20 ms copy_queue=0.03 ms cpu=25.6 msgpu_queue=23.4 ms pre=114.6 ms mrs=0.39 ms prefetch_submit=4.18 ms smoe=18.99 ms
+[MOE-CACHE] timeline per decode graph: prologue=0.00 ms
+    drain=22.49 ms wait=0.05 ms inputs=92.0 ms compute=49.0 ms post=0.71 ms tail=0.00 ms
+    epilogue=2.78 ms
+[MOE-CACHE] inputs branch counts per graph: iterations=286.7 host_weights=16.1
+    evt_path n=0.0 0.00 ms
+    sync_path n=189.6 59.09 ms
+[MOE-CACHE] policy=MRS requested=2048 MiB effective=2048 MiB hits=13071 misses=31599 mrs_reads=1490 mrs_fallbacks=0 mrs_updates=1490 mrs_victims=4487 protected_evictions=0 prefetch_requests=1457 prefetch_experts=5474 prefetch_bytes=10822742016 prefetch_dropped=6747 window_layers=0 window_recycles=0 prefetch_required=14570 prefetch_predicted=10727 prefetch_ready=3994 fallback_prefetch=0 fate=0 fate_predictions=0 fate_gate_inputs=0 fate_gate_ms=0.00 smoe=1 smoe_predictions=
+########## dsh-E3-err.txt
+[MOE-CACHE] timing per decode graph: total=180.1 ms
+    ids_wait=0.0 ms partition=0.00 ms copy_queue=0.00 ms cpu=3.2 ms gpu_queue=22.6 ms pre=150.5 ms mrs=0.00 ms prefetch_submit=10.05 ms smoe=20.58 ms
+[MOE-CACHE] timeline per decode graph: prologue=0.00 ms
+    drain=32.95 ms wait=0.05 ms inputs=117.4 ms compute=25.8 ms post=0.66 ms tail=0.03 ms
+    epilogue=2.76 ms
+[MOE-CACHE] inputs branch counts per graph: iterations=329.3 host_weights=16.1
+    evt_path n=189.5 0.05 ms
+    sync_path n=127.8 0.01 ms
+[MOE-CACHE] policy=MRS requested=2048 MiB effective=2048 MiB hits=0 misses=0 mrs_reads=0 mrs_fallbacks=0 mrs_updates=0mrs_victims=15752 protected_evictions=0 prefetch_requests=1457 prefetch_experts=16692 prefetch_bytes=33088340480 prefetch_dropped=0 window_layers=0 window_recycles=0 prefetch_required=0 prefetch_predicted=0 prefetch_ready=0 fallback_prefetch=0 fate=0 fate_predictions=0 fate_gate_inputs=0 fate_gate_ms=0.00 smoe=1 smoe_predictions=1457 smoe_logits=745984

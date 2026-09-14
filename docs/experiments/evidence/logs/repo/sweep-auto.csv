@@ -1,0 +1,3 @@
+tag,prompt_tps,gen_tps,cache_mib,slots,hit_pct,hits,misses,crash,secs
+auto-256k-vis,,,,40,,,,,
+auto-256k-novis,27.8,15.8,3625,37,65.4,240174,127056,,45.2

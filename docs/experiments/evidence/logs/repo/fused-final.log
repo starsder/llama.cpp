@@ -1,0 +1,189 @@
+[MOE-CACHE] loaded prediction manifest LOCAL_MODELS\qwen38\traces\moe-predict-static96.bin: layers=48 experts=512 trans=32 static=96
+[MOE-CACHE] enabled: budget=8192 MiB predictor=1 prefetch=0 topk=1 static=0 split=1
+[MOE-CACHE] 144 expert tensors, 95049728 bytes per full round, 90 slots per tensor, 8158.2 MiB device total
+[MOE-CACHE] pinned 12960 static hot expert copies
+
+
+Loading model... 
+
+▄▄ ▄▄
+██ ██
+██ ██  ▀▀█▄ ███▄███▄  ▀▀█▄    ▄████ ████▄ ████▄
+██ ██ ▄█▀██ ██ ██ ██ ▄█▀██    ██    ██ ██ ██ ██
+██ ██ ▀█▄██ ██ ██ ██ ▀█▄██ ██ ▀████ ████▀ ████▀
+                                    ██    ██
+                                    ▀▀    ▀▀
+
+build      : b10722-b76199698
+model      : LOCAL_MODELS\qwen38\unsloth-iq3-xxs\UD-IQ3_XXS\Qwen3.8-Flash-Next-UD-IQ3_XXS-00001-of-00003.gguf
+ftype      : IQ3_XXS - 3.0625 bpw
+modalities : text
+
+available commands:
+  /exit or Ctrl+C     stop or exit
+  /regen              regenerate the last response
+  /clear              clear the chat history
+  /read <file>        add a text file
+  /glob <pattern>     add text files using globbing pattern
+
+
+
+> The capital of France is
+
+[Start thinking]
+
+The user is asking for the capital of France. This is a straightforward factual question. The capital of France is Paris.
+[End thinking]
+
+The capital of France is **Paris**.
+[MOE-CACHE] timing per decode graph: total=268.4 ms | ids_wait=1.5 ms partition=0.90 ms copy_queue=7.86 ms cpu=21.1 ms gpu_queue=16.6 ms pre=152.4 ms
+[MOE-CACHE] per-tensor summary:
+[MOE-CACHE]   blk.0.ffn_gate_exps.weight               slots= 90 hits=     152 misses=     198 hit%= 43.43
+[MOE-CACHE]   blk.0.ffn_up_exps.weight                 slots= 90 hits=     152 misses=     198 hit%= 43.43
+[MOE-CACHE]   blk.0.ffn_down_exps.weight               slots= 90 hits=     152 misses=     198 hit%= 43.43
+[MOE-CACHE]   blk.1.ffn_gate_exps.weight               slots= 90 hits=     208 misses=     142 hit%= 59.43
+[MOE-CACHE]   blk.1.ffn_up_exps.weight                 slots= 90 hits=     208 misses=     142 hit%= 59.43
+[MOE-CACHE]   blk.1.ffn_down_exps.weight               slots= 90 hits=     208 misses=     142 hit%= 59.43
+[MOE-CACHE]   blk.2.ffn_gate_exps.weight               slots= 90 hits=     187 misses=     163 hit%= 53.43
+[MOE-CACHE]   blk.2.ffn_up_exps.weight                 slots= 90 hits=     187 misses=     163 hit%= 53.43
+[MOE-CACHE]   blk.2.ffn_down_exps.weight               slots= 90 hits=     187 misses=     163 hit%= 53.43
+[MOE-CACHE]   blk.3.ffn_gate_exps.weight               slots= 90 hits=     250 misses=     100 hit%= 71.43
+[MOE-CACHE]   blk.3.ffn_up_exps.weight                 slots= 90 hits=     250 misses=     100 hit%= 71.43
+[MOE-CACHE]   blk.3.ffn_down_exps.weight               slots= 90 hits=     250 misses=     100 hit%= 71.43
+[MOE-CACHE]   blk.4.ffn_gate_exps.weight               slots= 90 hits=     212 misses=     138 hit%= 60.57
+[MOE-CACHE]   blk.4.ffn_up_exps.weight                 slots= 90 hits=     212 misses=     138 hit%= 60.57
+[MOE-CACHE]   blk.4.ffn_down_exps.weight               slots= 90 hits=     212 misses=     138 hit%= 60.57
+[MOE-CACHE]   blk.5.ffn_gate_exps.weight               slots= 90 hits=     210 misses=     140 hit%= 60.00
+[MOE-CACHE]   blk.5.ffn_up_exps.weight                 slots= 90 hits=     210 misses=     140 hit%= 60.00
+[MOE-CACHE]   blk.5.ffn_down_exps.weight               slots= 90 hits=     210 misses=     140 hit%= 60.00
+[MOE-CACHE]   blk.6.ffn_gate_exps.weight               slots= 90 hits=     186 misses=     164 hit%= 53.14
+[MOE-CACHE]   blk.6.ffn_up_exps.weight                 slots= 90 hits=     186 misses=     164 hit%= 53.14
+[MOE-CACHE]   blk.6.ffn_down_exps.weight               slots= 90 hits=     186 misses=     164 hit%= 53.14
+[MOE-CACHE]   blk.7.ffn_gate_exps.weight               slots= 90 hits=     192 misses=     158 hit%= 54.86
+[MOE-CACHE]   blk.7.ffn_up_exps.weight                 slots= 90 hits=     192 misses=     158 hit%= 54.86
+[MOE-CACHE]   blk.7.ffn_down_exps.weight               slots= 90 hits=     192 misses=     158 hit%= 54.86
+[MOE-CACHE]   blk.8.ffn_gate_exps.weight               slots= 90 hits=     241 misses=     109 hit%= 68.86
+[MOE-CACHE]   blk.8.ffn_up_exps.weight                 slots= 90 hits=     241 misses=     109 hit%= 68.86
+[MOE-CACHE]   blk.8.ffn_down_exps.weight               slots= 90 hits=     241 misses=     109 hit%= 68.86
+[MOE-CACHE]   blk.9.ffn_gate_exps.weight               slots= 90 hits=     222 misses=     128 hit%= 63.43
+[MOE-CACHE]   blk.9.ffn_up_exps.weight                 slots= 90 hits=     222 misses=     128 hit%= 63.43
+[MOE-CACHE]   blk.9.ffn_down_exps.weight               slots= 90 hits=     222 misses=     128 hit%= 63.43
+[MOE-CACHE]   blk.10.ffn_gate_exps.weight              slots= 90 hits=     234 misses=     116 hit%= 66.86
+[MOE-CACHE]   blk.10.ffn_up_exps.weight                slots= 90 hits=     234 misses=     116 hit%= 66.86
+[MOE-CACHE]   blk.10.ffn_down_exps.weight              slots= 90 hits=     234 misses=     116 hit%= 66.86
+[MOE-CACHE]   blk.11.ffn_gate_exps.weight              slots= 90 hits=     247 misses=     103 hit%= 70.57
+[MOE-CACHE]   blk.11.ffn_up_exps.weight                slots= 90 hits=     247 misses=     103 hit%= 70.57
+[MOE-CACHE]   blk.11.ffn_down_exps.weight              slots= 90 hits=     247 misses=     103 hit%= 70.57
+[MOE-CACHE]   blk.12.ffn_gate_exps.weight              slots= 90 hits=     224 misses=     126 hit%= 64.00
+[MOE-CACHE]   blk.12.ffn_up_exps.weight                slots= 90 hits=     224 misses=     126 hit%= 64.00
+[MOE-CACHE]   blk.12.ffn_down_exps.weight              slots= 90 hits=     224 misses=     126 hit%= 64.00
+[MOE-CACHE]   blk.13.ffn_gate_exps.weight              slots= 90 hits=     226 misses=     124 hit%= 64.57
+[MOE-CACHE]   blk.13.ffn_up_exps.weight                slots= 90 hits=     226 misses=     124 hit%= 64.57
+[MOE-CACHE]   blk.13.ffn_down_exps.weight              slots= 90 hits=     226 misses=     124 hit%= 64.57
+[MOE-CACHE]   blk.14.ffn_gate_exps.weight              slots= 90 hits=     239 misses=     111 hit%= 68.29
+[MOE-CACHE]   blk.14.ffn_up_exps.weight                slots= 90 hits=     239 misses=     111 hit%= 68.29
+[MOE-CACHE]   blk.14.ffn_down_exps.weight              slots= 90 hits=     239 misses=     111 hit%= 68.29
+[MOE-CACHE]   blk.15.ffn_gate_exps.weight              slots= 90 hits=     219 misses=     131 hit%= 62.57
+[MOE-CACHE]   blk.15.ffn_up_exps.weight                slots= 90 hits=     219 misses=     131 hit%= 62.57
+[MOE-CACHE]   blk.15.ffn_down_exps.weight              slots= 90 hits=     219 misses=     131 hit%= 62.57
+[MOE-CACHE]   blk.16.ffn_gate_exps.weight              slots= 90 hits=     236 misses=     114 hit%= 67.43
+[MOE-CACHE]   blk.16.ffn_up_exps.weight                slots= 90 hits=     236 misses=     114 hit%= 67.43
+[MOE-CACHE]   blk.16.ffn_down_exps.weight              slots= 90 hits=     236 misses=     114 hit%= 67.43
+[MOE-CACHE]   blk.17.ffn_gate_exps.weight              slots= 90 hits=     220 misses=     130 hit%= 62.86
+[MOE-CACHE]   blk.17.ffn_up_exps.weight                slots= 90 hits=     220 misses=     130 hit%= 62.86
+[MOE-CACHE]   blk.17.ffn_down_exps.weight              slots= 90 hits=     220 misses=     130 hit%= 62.86
+[MOE-CACHE]   blk.18.ffn_gate_exps.weight              slots= 90 hits=     210 misses=     140 hit%= 60.00
+[MOE-CACHE]   blk.18.ffn_up_exps.weight                slots= 90 hits=     210 misses=     140 hit%= 60.00
+[MOE-CACHE]   blk.18.ffn_down_exps.weight              slots= 90 hits=     210 misses=     140 hit%= 60.00
+[MOE-CACHE]   blk.19.ffn_gate_exps.weight              slots= 90 hits=     250 misses=     100 hit%= 71.43
+[MOE-CACHE]   blk.19.ffn_up_exps.weight                slots= 90 hits=     250 misses=     100 hit%= 71.43
+[MOE-CACHE]   blk.19.ffn_down_exps.weight              slots= 90 hits=     250 misses=     100 hit%= 71.43
+[MOE-CACHE]   blk.20.ffn_gate_exps.weight              slots= 90 hits=     196 misses=     154 hit%= 56.00
+[MOE-CACHE]   blk.20.ffn_up_exps.weight                slots= 90 hits=     196 misses=     154 hit%= 56.00
+[MOE-CACHE]   blk.20.ffn_down_exps.weight              slots= 90 hits=     196 misses=     154 hit%= 56.00
+[MOE-CACHE]   blk.21.ffn_gate_exps.weight              slots= 90 hits=     172 misses=     178 hit%= 49.14
+[MOE-CACHE]   blk.21.ffn_up_exps.weight                slots= 90 hits=     172 misses=     178 hit%= 49.14
+[MOE-CACHE]   blk.21.ffn_down_exps.weight              slots= 90 hits=     172 misses=     178 hit%= 49.14
+[MOE-CACHE]   blk.22.ffn_gate_exps.weight              slots= 90 hits=     184 misses=     166 hit%= 52.57
+[MOE-CACHE]   blk.22.ffn_up_exps.weight                slots= 90 hits=     184 misses=     166 hit%= 52.57
+[MOE-CACHE]   blk.22.ffn_down_exps.weight              slots= 90 hits=     184 misses=     166 hit%= 52.57
+[MOE-CACHE]   blk.23.ffn_gate_exps.weight              slots= 90 hits=     190 misses=     160 hit%= 54.29
+[MOE-CACHE]   blk.23.ffn_up_exps.weight                slots= 90 hits=     190 misses=     160 hit%= 54.29
+[MOE-CACHE]   blk.23.ffn_down_exps.weight              slots= 90 hits=     190 misses=     160 hit%= 54.29
+[MOE-CACHE]   blk.24.ffn_gate_exps.weight              slots= 90 hits=     223 misses=     127 hit%= 63.71
+[MOE-CACHE]   blk.24.ffn_up_exps.weight                slots= 90 hits=     223 misses=     127 hit%= 63.71
+[MOE-CACHE]   blk.24.ffn_down_exps.weight              slots= 90 hits=     223 misses=     127 hit%= 63.71
+[MOE-CACHE]   blk.25.ffn_gate_exps.weight              slots= 90 hits=     234 misses=     116 hit%= 66.86
+[MOE-CACHE]   blk.25.ffn_up_exps.weight                slots= 90 hits=     234 misses=     116 hit%= 66.86
+[MOE-CACHE]   blk.25.ffn_down_exps.weight              slots= 90 hits=     234 misses=     116 hit%= 66.86
+[MOE-CACHE]   blk.26.ffn_gate_exps.weight              slots= 90 hits=     267 misses=      83 hit%= 76.29
+[MOE-CACHE]   blk.26.ffn_up_exps.weight                slots= 90 hits=     267 misses=      83 hit%= 76.29
+[MOE-CACHE]   blk.26.ffn_down_exps.weight              slots= 90 hits=     267 misses=      83 hit%= 76.29
+[MOE-CACHE]   blk.27.ffn_gate_exps.weight              slots= 90 hits=     277 misses=      73 hit%= 79.14
+[MOE-CACHE]   blk.27.ffn_up_exps.weight                slots= 90 hits=     277 misses=      73 hit%= 79.14
+[MOE-CACHE]   blk.27.ffn_down_exps.weight              slots= 90 hits=     277 misses=      73 hit%= 79.14
+[MOE-CACHE]   blk.28.ffn_gate_exps.weight              slots= 90 hits=     236 misses=     114 hit%= 67.43
+[MOE-CACHE]   blk.28.ffn_up_exps.weight                slots= 90 hits=     236 misses=     114 hit%= 67.43
+[MOE-CACHE]   blk.28.ffn_down_exps.weight              slots= 90 hits=     236 misses=     114 hit%= 67.43
+[MOE-CACHE]   blk.29.ffn_gate_exps.weight              slots= 90 hits=     249 misses=     101 hit%= 71.14
+[MOE-CACHE]   blk.29.ffn_up_exps.weight                slots= 90 hits=     249 misses=     101 hit%= 71.14
+[MOE-CACHE]   blk.29.ffn_down_exps.weight              slots= 90 hits=     249 misses=     101 hit%= 71.14
+[MOE-CACHE]   blk.30.ffn_gate_exps.weight              slots= 90 hits=     266 misses=      84 hit%= 76.00
+[MOE-CACHE]   blk.30.ffn_up_exps.weight                slots= 90 hits=     266 misses=      84 hit%= 76.00
+[MOE-CACHE]   blk.30.ffn_down_exps.weight              slots= 90 hits=     266 misses=      84 hit%= 76.00
+[MOE-CACHE]   blk.31.ffn_gate_exps.weight              slots= 90 hits=     236 misses=     114 hit%= 67.43
+[MOE-CACHE]   blk.31.ffn_up_exps.weight                slots= 90 hits=     236 misses=     114 hit%= 67.43
+[MOE-CACHE]   blk.31.ffn_down_exps.weight              slots= 90 hits=     236 misses=     114 hit%= 67.43
+[MOE-CACHE]   blk.32.ffn_gate_exps.weight              slots= 90 hits=     254 misses=      96 hit%= 72.57
+[MOE-CACHE]   blk.32.ffn_up_exps.weight                slots= 90 hits=     254 misses=      96 hit%= 72.57
+[MOE-CACHE]   blk.32.ffn_down_exps.weight              slots= 90 hits=     254 misses=      96 hit%= 72.57
+[MOE-CACHE]   blk.33.ffn_gate_exps.weight              slots= 90 hits=     243 misses=     107 hit%= 69.43
+[MOE-CACHE]   blk.33.ffn_up_exps.weight                slots= 90 hits=     243 misses=     107 hit%= 69.43
+[MOE-CACHE]   blk.33.ffn_down_exps.weight              slots= 90 hits=     243 misses=     107 hit%= 69.43
+[MOE-CACHE]   blk.34.ffn_gate_exps.weight              slots= 90 hits=     216 misses=     134 hit%= 61.71
+[MOE-CACHE]   blk.34.ffn_up_exps.weight                slots= 90 hits=     216 misses=     134 hit%= 61.71
+[MOE-CACHE]   blk.34.ffn_down_exps.weight              slots= 90 hits=     216 misses=     134 hit%= 61.71
+[MOE-CACHE]   blk.35.ffn_gate_exps.weight              slots= 90 hits=     233 misses=     117 hit%= 66.57
+[MOE-CACHE]   blk.35.ffn_up_exps.weight                slots= 90 hits=     233 misses=     117 hit%= 66.57
+[MOE-CACHE]   blk.35.ffn_down_exps.weight              slots= 90 hits=     233 misses=     117 hit%= 66.57
+[MOE-CACHE]   blk.36.ffn_gate_exps.weight              slots= 90 hits=     209 misses=     141 hit%= 59.71
+[MOE-CACHE]   blk.36.ffn_up_exps.weight                slots= 90 hits=     209 misses=     141 hit%= 59.71
+[MOE-CACHE]   blk.36.ffn_down_exps.weight              slots= 90 hits=     209 misses=     141 hit%= 59.71
+[MOE-CACHE]   blk.37.ffn_gate_exps.weight              slots= 90 hits=     167 misses=     183 hit%= 47.71
+[MOE-CACHE]   blk.37.ffn_up_exps.weight                slots= 90 hits=     167 misses=     183 hit%= 47.71
+[MOE-CACHE]   blk.37.ffn_down_exps.weight              slots= 90 hits=     167 misses=     183 hit%= 47.71
+[MOE-CACHE]   blk.38.ffn_gate_exps.weight              slots= 90 hits=     191 misses=     159 hit%= 54.57
+[MOE-CACHE]   blk.38.ffn_up_exps.weight                slots= 90 hits=     191 misses=     159 hit%= 54.57
+[MOE-CACHE]   blk.38.ffn_down_exps.weight              slots= 90 hits=     191 misses=     159 hit%= 54.57
+[MOE-CACHE]   blk.39.ffn_gate_exps.weight              slots= 90 hits=     249 misses=     101 hit%= 71.14
+[MOE-CACHE]   blk.39.ffn_up_exps.weight                slots= 90 hits=     249 misses=     101 hit%= 71.14
+[MOE-CACHE]   blk.39.ffn_down_exps.weight              slots= 90 hits=     249 misses=     101 hit%= 71.14
+[MOE-CACHE]   blk.40.ffn_gate_exps.weight              slots= 90 hits=     245 misses=     105 hit%= 70.00
+[MOE-CACHE]   blk.40.ffn_up_exps.weight                slots= 90 hits=     245 misses=     105 hit%= 70.00
+[MOE-CACHE]   blk.40.ffn_down_exps.weight              slots= 90 hits=     245 misses=     105 hit%= 70.00
+[MOE-CACHE]   blk.41.ffn_gate_exps.weight              slots= 90 hits=     244 misses=     106 hit%= 69.71
+[MOE-CACHE]   blk.41.ffn_up_exps.weight                slots= 90 hits=     244 misses=     106 hit%= 69.71
+[MOE-CACHE]   blk.41.ffn_down_exps.weight              slots= 90 hits=     244 misses=     106 hit%= 69.71
+[MOE-CACHE]   blk.42.ffn_gate_exps.weight              slots= 90 hits=     225 misses=     125 hit%= 64.29
+[MOE-CACHE]   blk.42.ffn_up_exps.weight                slots= 90 hits=     225 misses=     125 hit%= 64.29
+[MOE-CACHE]   blk.42.ffn_down_exps.weight              slots= 90 hits=     225 misses=     125 hit%= 64.29
+[MOE-CACHE]   blk.43.ffn_gate_exps.weight              slots= 90 hits=     211 misses=     139 hit%= 60.29
+[MOE-CACHE]   blk.43.ffn_up_exps.weight                slots= 90 hits=     211 misses=     139 hit%= 60.29
+[MOE-CACHE]   blk.43.ffn_down_exps.weight              slots= 90 hits=     211 misses=     139 hit%= 60.29
+[MOE-CACHE]   blk.44.ffn_gate_exps.weight              slots= 90 hits=     212 misses=     138 hit%= 60.57
+[MOE-CACHE]   blk.44.ffn_up_exps.weight                slots= 90 hits=     212 misses=     138 hit%= 60.57
+[MOE-CACHE]   blk.44.ffn_down_exps.weight              slots= 90 hits=     212 misses=     138 hit%= 60.57
+[MOE-CACHE]   blk.45.ffn_gate_exps.weight              slots= 90 hits=     204 misses=     146 hit%= 58.29
+[MOE-CACHE]   blk.45.ffn_up_exps.weight                slots= 90 hits=     204 misses=     146 hit%= 58.29
+[MOE-CACHE]   blk.45.ffn_down_exps.weight              slots= 90 hits=     204 misses=     146 hit%= 58.29
+[MOE-CACHE]   blk.46.ffn_gate_exps.weight              slots= 90 hits=     201 misses=     149 hit%= 57.43
+[MOE-CACHE]   blk.46.ffn_up_exps.weight                slots= 90 hits=     201 misses=     149 hit%= 57.43
+[MOE-CACHE]   blk.46.ffn_down_exps.weight              slots= 90 hits=     201 misses=     149 hit%= 57.43
+[MOE-CACHE]   blk.47.ffn_gate_exps.weight              slots= 90 hits=     221 misses=     139 hit%= 61.39
+[MOE-CACHE]   blk.47.ffn_up_exps.weight                slots= 90 hits=     221 misses=     139 hit%= 61.39
+[MOE-CACHE]   blk.47.ffn_down_exps.weight              slots= 90 hits=     221 misses=     139 hit%= 61.39
+
+[ Prompt: 12.8 t/s | Generation: 14.3 t/s ]
+
+
+Exiting...

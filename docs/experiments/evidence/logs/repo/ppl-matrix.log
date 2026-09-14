@@ -1,0 +1,7 @@
+ppl-f16 done: I Final estimate: PPL = 2.0120 +/- 0.07904
+ppl-q8_0 done: I Final estimate: PPL = 2.0128 +/- 0.07914
+ppl-q4_0 done: I Final estimate: PPL = 2.0234 +/- 0.07892
+ppl-tbq4_0 done: 
+ppl-tbq3_0 done: I Final estimate: PPL = 2.0728 +/- 0.08335
+kld tbq4_0 done
+ALL_DONE

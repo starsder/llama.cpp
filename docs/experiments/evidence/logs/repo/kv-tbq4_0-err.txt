@@ -1,0 +1,316 @@
+[MOE-CACHE] enabled: budget=6144 MiB predictor=0 fate=0 smoe=1 prefetch=1 topk=32 static=32 pred_mrs=0.00 fallback=2 join=1 gate=1 split=1 mrs=1 alpha=0.750 topp=20 window_layers=0 vram_limit=15360 MiB guard=1024 MiB devpart=0
+[MOE-CACHE] ids readback #1: tensor='ffn_moe_topk-0' type=i32 ne=[10,2] bytes=2088 decode=0
+[MOE-CACHE] ids readback #2: tensor='ffn_moe_topk-1' type=i32 ne=[10,2] bytes=2088 decode=0
+[MOE-CACHE] ids readback #3: tensor='ffn_moe_topk-2' type=i32 ne=[10,2] bytes=2088 decode=0
+[MOE-CACHE] ids readback #4: tensor='ffn_moe_topk-3' type=i32 ne=[10,2] bytes=2088 decode=0
+[MOE-CACHE] ids readback #5: tensor='ffn_moe_topk-4' type=i32 ne=[10,2] bytes=2088 decode=0
+[MOE-CACHE] ids readback #6: tensor='ffn_moe_topk-5' type=i32 ne=[10,2] bytes=2088 decode=0
+[MOE-CACHE] ids readback #7: tensor='ffn_moe_topk-6' type=i32 ne=[10,2] bytes=2088 decode=0
+[MOE-CACHE] ids readback #8: tensor='ffn_moe_topk-7' type=i32 ne=[10,2] bytes=2088 decode=0
+[MOE-CACHE] clamp cache budget from 6144 MiB to 4499 MiB (device used=9836 MiB limit=15360 MiB guard=1024 MiB)
+[MOE-CACHE] 144 weight tensors grouped into 48 persistent layer bundles, 100210176 bytes per layer-slot round, 47 slots/layer, 4491.7 MiB physical cache (requested=6144 MiB effective=4499 MiB)
+[MOE-CACHE] pinned 1 weight buffers (45.8 GiB) in 0.0 s, 0 failed
+[MOE-CACHE] SMoE backend: topk=CUDA0
+[DIRECT-VIEW] blk.3.ffn_gate_exps.weight base=0000001F3C800000 slots=47 stride=2078208 esize=524800 ts=82
+[DIRECT-VIEW] blk.3.ffn_up_exps.weight base=0000001F3C880600 slots=47 stride=2078208 esize=524800 ts=82
+[DIRECT-VIEW] blk.3.ffn_down_exps.weight base=0000001F3C900C00 slots=47 stride=2078208 esize=921600 ts=18
+[DIRECT-VIEW] blk.4.ffn_gate_exps.weight base=0000001F42600000 slots=47 stride=2078208 esize=524800 ts=82
+[DIRECT-VIEW] blk.4.ffn_up_exps.weight base=0000001F42680600 slots=47 stride=2078208 esize=524800 ts=82
+[DIRECT-VIEW] blk.4.ffn_down_exps.weight base=0000001F42700C00 slots=47 stride=2078208 esize=921600 ts=18
+[DIRECT-VIEW] blk.5.ffn_gate_exps.weight base=0000001F48400000 slots=47 stride=2078208 esize=524800 ts=82
+[DIRECT-VIEW] blk.5.ffn_up_exps.weight base=0000001F48480600 slots=47 stride=2078208 esize=524800 ts=82
+[DIRECT-VIEW] blk.5.ffn_down_exps.weight base=0000001F48500C00 slots=47 stride=2078208 esize=921600 ts=18
+[DIRECT-VIEW] blk.6.ffn_gate_exps.weight base=0000001F4E200000 slots=47 stride=2078208 esize=524800 ts=82
+[DIRECT-VIEW] blk.6.ffn_up_exps.weight base=0000001F4E280600 slots=47 stride=2078208 esize=524800 ts=82
+[DIRECT-VIEW] blk.6.ffn_down_exps.weight base=0000001F4E300C00 slots=47 stride=2078208 esize=921600 ts=18
+[DIRECT-VIEW] blk.7.ffn_gate_exps.weight base=0000001F54000000 slots=47 stride=2078208 esize=524800 ts=82
+[DIRECT-VIEW] blk.7.ffn_up_exps.weight base=0000001F54080600 slots=47 stride=2078208 esize=524800 ts=82
+[DIRECT-VIEW] blk.7.ffn_down_exps.weight base=0000001F54100C00 slots=47 stride=2078208 esize=921600 ts=18
+[DIRECT-VIEW] blk.8.ffn_gate_exps.weight base=0000001F59E00000 slots=47 stride=2078208 esize=524800 ts=82
+[DIRECT-VIEW] blk.8.ffn_up_exps.weight base=0000001F59E80600 slots=47 stride=2078208 esize=524800 ts=82
+[DIRECT-VIEW] blk.8.ffn_down_exps.weight base=0000001F59F00C00 slots=47 stride=2078208 esize=921600 ts=18
+[DIRECT-VIEW] blk.9.ffn_gate_exps.weight base=0000001F5FC00000 slots=47 stride=2078208 esize=524800 ts=82
+[DIRECT-VIEW] blk.9.ffn_up_exps.weight base=0000001F5FC80600 slots=47 stride=2078208 esize=524800 ts=82
+[DIRECT-VIEW] blk.9.ffn_down_exps.weight base=0000001F5FD00C00 slots=47 stride=2078208 esize=921600 ts=18
+[DIRECT-VIEW] blk.10.ffn_gate_exps.weight base=0000001F65A00000 slots=47 stride=2078208 esize=524800 ts=82
+[DIRECT-VIEW] blk.10.ffn_up_exps.weight base=0000001F65A80600 slots=47 stride=2078208 esize=524800 ts=82
+[DIRECT-VIEW] blk.10.ffn_down_exps.weight base=0000001F65B00C00 slots=47 stride=2078208 esize=921600 ts=18
+[DIRECT-VIEW] blk.11.ffn_gate_exps.weight base=0000001F6B800000 slots=47 stride=2078208 esize=524800 ts=82
+[DIRECT-VIEW] blk.11.ffn_up_exps.weight base=0000001F6B880600 slots=47 stride=2078208 esize=524800 ts=82
+[DIRECT-VIEW] blk.11.ffn_down_exps.weight base=0000001F6B900C00 slots=47 stride=2078208 esize=921600 ts=18
+[DIRECT-VIEW] blk.12.ffn_gate_exps.weight base=0000001F71600000 slots=47 stride=2078208 esize=524800 ts=82
+[DIRECT-VIEW] blk.12.ffn_up_exps.weight base=0000001F71680600 slots=47 stride=2078208 esize=524800 ts=82
+[DIRECT-VIEW] blk.12.ffn_down_exps.weight base=0000001F71700C00 slots=47 stride=2078208 esize=921600 ts=18
+[DIRECT-VIEW] blk.13.ffn_gate_exps.weight base=0000001F77400000 slots=47 stride=2078208 esize=524800 ts=82
+[DIRECT-VIEW] blk.13.ffn_up_exps.weight base=0000001F77480600 slots=47 stride=2078208 esize=524800 ts=82
+[DIRECT-VIEW] blk.13.ffn_down_exps.weight base=0000001F77500C00 slots=47 stride=2078208 esize=921600 ts=18
+[DIRECT-VIEW] blk.14.ffn_gate_exps.weight base=0000001F7D200000 slots=47 stride=2078208 esize=524800 ts=82
+[DIRECT-VIEW] blk.14.ffn_up_exps.weight base=0000001F7D280600 slots=47 stride=2078208 esize=524800 ts=82
+[DIRECT-VIEW] blk.14.ffn_down_exps.weight base=0000001F7D300C00 slots=47 stride=2078208 esize=921600 ts=18
+[DIRECT-VIEW] blk.15.ffn_gate_exps.weight base=0000001F83000000 slots=47 stride=2078208 esize=524800 ts=82
+[DIRECT-VIEW] blk.15.ffn_up_exps.weight base=0000001F83080600 slots=47 stride=2078208 esize=524800 ts=82
+[DIRECT-VIEW] blk.15.ffn_down_exps.weight base=0000001F83100C00 slots=47 stride=2078208 esize=921600 ts=18
+[DIRECT-VIEW] blk.16.ffn_gate_exps.weight base=0000001F88E00000 slots=47 stride=2078208 esize=524800 ts=82
+[DIRECT-VIEW] blk.16.ffn_up_exps.weight base=0000001F88E80600 slots=47 stride=2078208 esize=524800 ts=82
+[DIRECT-VIEW] blk.16.ffn_down_exps.weight base=0000001F88F00C00 slots=47 stride=2078208 esize=921600 ts=18
+[DIRECT-VIEW] blk.17.ffn_gate_exps.weight base=0000001F8EC00000 slots=47 stride=2078208 esize=524800 ts=82
+[DIRECT-VIEW] blk.17.ffn_up_exps.weight base=0000001F8EC80600 slots=47 stride=2078208 esize=524800 ts=82
+[DIRECT-VIEW] blk.17.ffn_down_exps.weight base=0000001F8ED00C00 slots=47 stride=2078208 esize=921600 ts=18
+[DIRECT-VIEW] blk.18.ffn_gate_exps.weight base=0000001F94A00000 slots=47 stride=2078208 esize=524800 ts=82
+[DIRECT-VIEW] blk.18.ffn_up_exps.weight base=0000001F94A80600 slots=47 stride=2078208 esize=524800 ts=82
+[DIRECT-VIEW] blk.18.ffn_down_exps.weight base=0000001F94B00C00 slots=47 stride=2078208 esize=921600 ts=18
+[DIRECT-VIEW] blk.19.ffn_gate_exps.weight base=0000001F9A800000 slots=47 stride=2078208 esize=524800 ts=82
+[DIRECT-VIEW] blk.19.ffn_up_exps.weight base=0000001F9A880600 slots=47 stride=2078208 esize=524800 ts=82
+[DIRECT-VIEW] blk.19.ffn_down_exps.weight base=0000001F9A900C00 slots=47 stride=2078208 esize=921600 ts=18
+[DIRECT-VIEW] blk.20.ffn_gate_exps.weight base=0000001FA0600000 slots=47 stride=2078208 esize=524800 ts=82
+[DIRECT-VIEW] blk.20.ffn_up_exps.weight base=0000001FA0680600 slots=47 stride=2078208 esize=524800 ts=82
+[DIRECT-VIEW] blk.20.ffn_down_exps.weight base=0000001FA0700C00 slots=47 stride=2078208 esize=921600 ts=18
+[DIRECT-VIEW] blk.21.ffn_gate_exps.weight base=0000001FA6400000 slots=47 stride=2078208 esize=524800 ts=82
+[DIRECT-VIEW] blk.21.ffn_up_exps.weight base=0000001FA6480600 slots=47 stride=2078208 esize=524800 ts=82
+[DIRECT-VIEW] blk.21.ffn_down_exps.weight base=0000001FA6500C00 slots=47 stride=2078208 esize=921600 ts=18
+[DIRECT-VIEW] blk.22.ffn_gate_exps.weight base=0000001FAC200000 slots=47 stride=2078208 esize=524800 ts=82
+[DIRECT-VIEW] blk.22.ffn_up_exps.weight base=0000001FAC280600 slots=47 stride=2078208 esize=524800 ts=82
+[DIRECT-VIEW] blk.22.ffn_down_exps.weight base=0000001FAC300C00 slots=47 stride=2078208 esize=921600 ts=18
+[DIRECT-VIEW] blk.23.ffn_gate_exps.weight base=0000001FB2000000 slots=47 stride=2078208 esize=524800 ts=82
+[DIRECT-VIEW] blk.23.ffn_up_exps.weight base=0000001FB2080600 slots=47 stride=2078208 esize=524800 ts=82
+[DIRECT-VIEW] blk.23.ffn_down_exps.weight base=0000001FB2100C00 slots=47 stride=2078208 esize=921600 ts=18
+[DIRECT-VIEW] blk.24.ffn_gate_exps.weight base=0000001FB7E00000 slots=47 stride=2078208 esize=524800 ts=82
+[DIRECT-VIEW] blk.24.ffn_up_exps.weight base=0000001FB7E80600 slots=47 stride=2078208 esize=524800 ts=82
+[DIRECT-VIEW] blk.24.ffn_down_exps.weight base=0000001FB7F00C00 slots=47 stride=2078208 esize=921600 ts=18
+[DIRECT-VIEW] blk.25.ffn_gate_exps.weight base=0000001FBDC00000 slots=47 stride=2078208 esize=524800 ts=82
+[DIRECT-VIEW] blk.25.ffn_up_exps.weight base=0000001FBDC80600 slots=47 stride=2078208 esize=524800 ts=82
+[DIRECT-VIEW] blk.25.ffn_down_exps.weight base=0000001FBDD00C00 slots=47 stride=2078208 esize=921600 ts=18
+[DIRECT-VIEW] blk.26.ffn_gate_exps.weight base=0000001FC3A00000 slots=47 stride=2078208 esize=524800 ts=82
+[DIRECT-VIEW] blk.26.ffn_up_exps.weight base=0000001FC3A80600 slots=47 stride=2078208 esize=524800 ts=82
+[DIRECT-VIEW] blk.26.ffn_down_exps.weight base=0000001FC3B00C00 slots=47 stride=2078208 esize=921600 ts=18
+[DIRECT-VIEW] blk.27.ffn_gate_exps.weight base=0000001FC9800000 slots=47 stride=2078208 esize=524800 ts=82
+[DIRECT-VIEW] blk.27.ffn_up_exps.weight base=0000001FC9880600 slots=47 stride=2078208 esize=524800 ts=82
+[DIRECT-VIEW] blk.27.ffn_down_exps.weight base=0000001FC9900C00 slots=47 stride=2078208 esize=921600 ts=18
+[DIRECT-VIEW] blk.28.ffn_gate_exps.weight base=0000001FCF600000 slots=47 stride=2078208 esize=524800 ts=82
+[DIRECT-VIEW] blk.28.ffn_up_exps.weight base=0000001FCF680600 slots=47 stride=2078208 esize=524800 ts=82
+[DIRECT-VIEW] blk.28.ffn_down_exps.weight base=0000001FCF700C00 slots=47 stride=2078208 esize=921600 ts=18
+[DIRECT-VIEW] blk.29.ffn_gate_exps.weight base=0000001FD5400000 slots=47 stride=2078208 esize=524800 ts=82
+[DIRECT-VIEW] blk.29.ffn_up_exps.weight base=0000001FD5480600 slots=47 stride=2078208 esize=524800 ts=82
+[DIRECT-VIEW] blk.29.ffn_down_exps.weight base=0000001FD5500C00 slots=47 stride=2078208 esize=921600 ts=18
+[DIRECT-VIEW] blk.30.ffn_gate_exps.weight base=0000001FDB200000 slots=47 stride=2078208 esize=524800 ts=82
+[DIRECT-VIEW] blk.30.ffn_up_exps.weight base=0000001FDB280600 slots=47 stride=2078208 esize=524800 ts=82
+[DIRECT-VIEW] blk.30.ffn_down_exps.weight base=0000001FDB300C00 slots=47 stride=2078208 esize=921600 ts=18
+[DIRECT-VIEW] blk.31.ffn_gate_exps.weight base=0000001FE1000000 slots=47 stride=2078208 esize=524800 ts=82
+[DIRECT-VIEW] blk.31.ffn_up_exps.weight base=0000001FE1080600 slots=47 stride=2078208 esize=524800 ts=82
+[DIRECT-VIEW] blk.31.ffn_down_exps.weight base=0000001FE1100C00 slots=47 stride=2078208 esize=921600 ts=18
+[DIRECT-VIEW] blk.32.ffn_gate_exps.weight base=0000001FE6E00000 slots=47 stride=2078208 esize=524800 ts=82
+[DIRECT-VIEW] blk.32.ffn_up_exps.weight base=0000001FE6E80600 slots=47 stride=2078208 esize=524800 ts=82
+[DIRECT-VIEW] blk.32.ffn_down_exps.weight base=0000001FE6F00C00 slots=47 stride=2078208 esize=921600 ts=18
+[DIRECT-VIEW] blk.33.ffn_gate_exps.weight base=0000001FECC00000 slots=47 stride=2078208 esize=524800 ts=82
+[DIRECT-VIEW] blk.33.ffn_up_exps.weight base=0000001FECC80600 slots=47 stride=2078208 esize=524800 ts=82
+[DIRECT-VIEW] blk.33.ffn_down_exps.weight base=0000001FECD00C00 slots=47 stride=2078208 esize=921600 ts=18
+[DIRECT-VIEW] blk.34.ffn_gate_exps.weight base=0000001FF2A00000 slots=47 stride=2078208 esize=524800 ts=82
+[DIRECT-VIEW] blk.34.ffn_up_exps.weight base=0000001FF2A80600 slots=47 stride=2078208 esize=524800 ts=82
+[DIRECT-VIEW] blk.34.ffn_down_exps.weight base=0000001FF2B00C00 slots=47 stride=2078208 esize=921600 ts=18
+[DIRECT-VIEW] blk.35.ffn_gate_exps.weight base=0000001FF8800000 slots=47 stride=2078208 esize=524800 ts=82
+[DIRECT-VIEW] blk.35.ffn_up_exps.weight base=0000001FF8880600 slots=47 stride=2078208 esize=524800 ts=82
+[DIRECT-VIEW] blk.35.ffn_down_exps.weight base=0000001FF8900C00 slots=47 stride=2078208 esize=921600 ts=18
+[DIRECT-VIEW] blk.36.ffn_gate_exps.weight base=0000001FFE600000 slots=47 stride=2078208 esize=524800 ts=82
+[DIRECT-VIEW] blk.36.ffn_up_exps.weight base=0000001FFE680600 slots=47 stride=2078208 esize=524800 ts=82
+[DIRECT-VIEW] blk.36.ffn_down_exps.weight base=0000001FFE700C00 slots=47 stride=2078208 esize=921600 ts=18
+[DIRECT-VIEW] blk.37.ffn_gate_exps.weight base=0000002004400000 slots=47 stride=2078208 esize=524800 ts=82
+[DIRECT-VIEW] blk.37.ffn_up_exps.weight base=0000002004480600 slots=47 stride=2078208 esize=524800 ts=82
+[DIRECT-VIEW] blk.37.ffn_down_exps.weight base=0000002004500C00 slots=47 stride=2078208 esize=921600 ts=18
+[DIRECT-VIEW] blk.38.ffn_gate_exps.weight base=000000200A200000 slots=47 stride=2078208 esize=524800 ts=82
+[DIRECT-VIEW] blk.38.ffn_up_exps.weight base=000000200A280600 slots=47 stride=2078208 esize=524800 ts=82
+[DIRECT-VIEW] blk.38.ffn_down_exps.weight base=000000200A300C00 slots=47 stride=2078208 esize=921600 ts=18
+[DIRECT-VIEW] blk.39.ffn_gate_exps.weight base=0000002010000000 slots=47 stride=2078208 esize=524800 ts=82
+[DIRECT-VIEW] blk.39.ffn_up_exps.weight base=0000002010080600 slots=47 stride=2078208 esize=524800 ts=82
+[DIRECT-VIEW] blk.39.ffn_down_exps.weight base=0000002010100C00 slots=47 stride=2078208 esize=921600 ts=18
+[DIRECT-VIEW] blk.40.ffn_gate_exps.weight base=0000002015E00000 slots=47 stride=2078208 esize=524800 ts=82
+[DIRECT-VIEW] blk.40.ffn_up_exps.weight base=0000002015E80600 slots=47 stride=2078208 esize=524800 ts=82
+[DIRECT-VIEW] blk.40.ffn_down_exps.weight base=0000002015F00C00 slots=47 stride=2078208 esize=921600 ts=18
+[DIRECT-VIEW] blk.41.ffn_gate_exps.weight base=000000201BC00000 slots=47 stride=2078208 esize=524800 ts=82
+[DIRECT-VIEW] blk.41.ffn_up_exps.weight base=000000201BC80600 slots=47 stride=2078208 esize=524800 ts=82
+[DIRECT-VIEW] blk.41.ffn_down_exps.weight base=000000201BD00C00 slots=47 stride=2078208 esize=921600 ts=18
+[DIRECT-VIEW] blk.42.ffn_gate_exps.weight base=0000002021A00000 slots=47 stride=2078208 esize=524800 ts=82
+[DIRECT-VIEW] blk.42.ffn_up_exps.weight base=0000002021A80600 slots=47 stride=2078208 esize=524800 ts=82
+[DIRECT-VIEW] blk.42.ffn_down_exps.weight base=0000002021B00C00 slots=47 stride=2078208 esize=921600 ts=18
+[DIRECT-VIEW] blk.43.ffn_gate_exps.weight base=0000002027800000 slots=47 stride=2078208 esize=524800 ts=82
+[DIRECT-VIEW] blk.43.ffn_up_exps.weight base=0000002027880600 slots=47 stride=2078208 esize=524800 ts=82
+[DIRECT-VIEW] blk.43.ffn_down_exps.weight base=0000002027900C00 slots=47 stride=2078208 esize=921600 ts=18
+[DIRECT-VIEW] blk.44.ffn_gate_exps.weight base=000000202D600000 slots=47 stride=2078208 esize=524800 ts=82
+[DIRECT-VIEW] blk.44.ffn_up_exps.weight base=000000202D680600 slots=47 stride=2078208 esize=524800 ts=82
+[DIRECT-VIEW] blk.44.ffn_down_exps.weight base=000000202D700C00 slots=47 stride=2078208 esize=921600 ts=18
+[DIRECT-VIEW] blk.45.ffn_gate_exps.weight base=0000002033400000 slots=47 stride=2078208 esize=524800 ts=82
+[DIRECT-VIEW] blk.45.ffn_up_exps.weight base=0000002033480600 slots=47 stride=2078208 esize=524800 ts=82
+[DIRECT-VIEW] blk.45.ffn_down_exps.weight base=0000002033500C00 slots=47 stride=2078208 esize=921600 ts=18
+[DIRECT-VIEW] blk.46.ffn_gate_exps.weight base=0000002039200000 slots=47 stride=2078208 esize=524800 ts=82
+[DIRECT-VIEW] blk.46.ffn_up_exps.weight base=0000002039280600 slots=47 stride=2078208 esize=524800 ts=82
+[DIRECT-VIEW] blk.46.ffn_down_exps.weight base=0000002039300C00 slots=47 stride=2078208 esize=921600 ts=18
+[DIRECT-VIEW] blk.47.ffn_gate_exps.weight base=000000203F000000 slots=47 stride=2078208 esize=524800 ts=82
+[DIRECT-VIEW] blk.47.ffn_up_exps.weight base=000000203F080600 slots=47 stride=2078208 esize=524800 ts=82
+[DIRECT-VIEW] blk.47.ffn_down_exps.weight base=000000203F100C00 slots=47 stride=2078208 esize=921600 ts=18
+[DIRECT-VIEW] blk.0.ffn_gate_exps.weight base=0000001D02800000 slots=47 stride=2078208 esize=524800 ts=82
+[DIRECT-VIEW] blk.0.ffn_up_exps.weight base=0000001D02880600 slots=47 stride=2078208 esize=524800 ts=82
+[DIRECT-VIEW] blk.0.ffn_down_exps.weight base=0000001D02900C00 slots=47 stride=2078208 esize=921600 ts=18
+[DIRECT-VIEW] blk.1.ffn_gate_exps.weight base=0000001F2F800000 slots=47 stride=2078208 esize=524800 ts=82
+[DIRECT-VIEW] blk.1.ffn_up_exps.weight base=0000001F2F880600 slots=47 stride=2078208 esize=524800 ts=82
+[DIRECT-VIEW] blk.1.ffn_down_exps.weight base=0000001F2F900C00 slots=47 stride=2078208 esize=921600 ts=18
+[DIRECT-VIEW] blk.2.ffn_gate_exps.weight base=0000001F35600000 slots=47 stride=2534400 esize=704000 ts=110
+[DIRECT-VIEW] blk.2.ffn_up_exps.weight base=0000001F356AC200 slots=47 stride=2534400 esize=704000 ts=110
+[DIRECT-VIEW] blk.2.ffn_down_exps.weight base=0000001F35758400 slots=47 stride=2534400 esize=921600 ts=18
+[MOE-CACHE] timing per decode graph: total=72.7 ms | ids_wait=19.9 ms partition=2.84 ms copy_queue=0.00 ms cpu=2.5 ms gpu_queue=8.3 ms pre=56.1 ms mrs=0.41 ms prefetch_submit=4.57 ms smoe=0.86 ms
+[MOE-CACHE] timeline per decode graph: prologue=0.00 ms | drain=1.36 ms wait=0.04 ms inputs=54.7 ms compute=10.9 ms post=4.15 ms tail=0.04 ms | epilogue=0.89 ms
+[MOE-CACHE] inputs breakdown per DECODE graph (n_dec=0 of 203 graphs): evt_wait=0.06 ms node_scan=0.02 ms | ids_d2h=0.00 ms in 0 reads (enq=0.00 sync=0.00) total_bytes=5301600 | parse=0.00 expert_copy=0.56
+[MOE-CACHE] inputs branch counts per graph: iterations=301.2 host_weights=2.8 | evt_path n=195.0 0.06 ms | sync_path n=0.0 0.00 ms
+[MOE-CACHE] split_partition per graph: total=25.21 ms (n=141.2) | drain+flush=0.07 ms (n=47.1, 0.3% of split_partition) | act_d2h=0.43 ms
+[MOE-CACHE] split_partition split per graph: prologue=1.26 ids_wait=19.90 tail=3.97 mrs=19.90 body=0.41 (activate=2.84 on_ids=0.00) ms
+[MOE-CACHE] prologue split per graph: assign=0.01 find=0.73 mrs_queue=0.35 (of prologue=1.26) ms
+[MOE-CACHE] split_partition calls per graph: early=94.1 (0.01 ms) real=47.1 | accounted=23.65 ms of total=25.21 ms
+[MOE-CACHE] smoe per DECODE graph: total=175.04 ms (event_wait=16.65 ms process=19.68 ms) nonblock=1 deferred=8942 ahead=3
+[MOE-CACHE] cpu half: dispatched=9554 devpart_cpu_async=0 cpu_half_async=1 leaf_fills=0
+[MOE-CACHE] policy=MRS requested=6144 MiB effective=4499 MiB hits=180300 misses=106290 mrs_reads=9554 mrs_fallbacks=0 mrs_updates=9554 mrs_victims=21355 protected_evictions=0 prefetch_requests=32483 prefetch_experts=23611 prefetch_bytes=46733400064 prefetch_dropped=0 window_layers=0 window_recycles=0 prefetch_required=89550 prefetch_predicted=13917 prefetch_ready=13917 fallback_prefetch=16930 fate=0 fate_predictions=0 fate_gate_inputs=0 fate_gate_ms=0.00 smoe=1 smoe_predictions=8955 smoe_logits=4584960 dup_resident=12821 dup_pending=0 dup_list=0 dup_admit=0 readmit=14444 no_victim=0 halvings=0 hot_fill=1592 hot_idle=4 seeded=0 clipped=0 phase_fills=0 phase_experts=0
+[MOE-CACHE] hot-set oracle: routed=24458240 layers=48 slots/layer=47 | oracle_topC=62.7% resident_set=62.1% mrs_topC=0.1% actual_hit=62.9%
+[MOE-CACHE] prefill/decode tendency: graphs pre=3 dec=9554 | decode topC=62.7%  seeded-by-prompt-topC=25.0%  topC-overlap=25.3% | touched experts/layer pre=155.3 dec=232.6 of 0
+[MOE-CACHE] per-rank prediction accuracy: r1=81.8%/y5.84/ye5.84(8955) r2=73.6%/y3.89/ye3.89(8955) r3=66.2%/y0.00/ye3.86(8955) r4=59.1%/y0.00/ye3.45(8955) r5=53.0%/y0.00/ye3.09(8955) r6=47.3%/y0.00/ye2.76(8955) r7=42.3%/y0.00/ye2.47(8955) r8=38.0%/y0.00/ye2.22(8955) r9=33.8%/y0.00/ye1.97(8955) r10=29.4%/y0.00/ye1.71(8955) r11=26.2%/y0.00/ye1.53(8955) r12=22.7%/y0.00/ye1.32(8955) r13=20.6%/y0.00/ye1.20(8955) r14=18.3%/y0.00/ye1.07(8955) r15=17.3%/y0.00/ye1.01(8955) r16=15.1%/y0.00/ye0.88(8955) | cut=2 yield_min=0.00 auto_steps=0 trendV=0.0153 trendP=0.0233 budget=0.0MB fits=139 rej=64
+[MOE-CACHE] per-weight view summary (shared layer slots):
+[MOE-CACHE]   blk.0.ffn_gate_exps.weight               slots= 47 hits=     758 misses=    1232 hit%= 38.09
+[MOE-CACHE]   blk.0.ffn_up_exps.weight                 slots= 47 hits=     758 misses=    1232 hit%= 38.09
+[MOE-CACHE]   blk.0.ffn_down_exps.weight               slots= 47 hits=     758 misses=    1232 hit%= 38.09
+[MOE-CACHE]   blk.1.ffn_gate_exps.weight               slots= 47 hits=     845 misses=    1145 hit%= 42.46
+[MOE-CACHE]   blk.1.ffn_up_exps.weight                 slots= 47 hits=     845 misses=    1145 hit%= 42.46
+[MOE-CACHE]   blk.1.ffn_down_exps.weight               slots= 47 hits=     845 misses=    1145 hit%= 42.46
+[MOE-CACHE]   blk.2.ffn_gate_exps.weight               slots= 47 hits=     790 misses=    1200 hit%= 39.70
+[MOE-CACHE]   blk.2.ffn_up_exps.weight                 slots= 47 hits=     790 misses=    1200 hit%= 39.70
+[MOE-CACHE]   blk.2.ffn_down_exps.weight               slots= 47 hits=     790 misses=    1200 hit%= 39.70
+[MOE-CACHE]   blk.3.ffn_gate_exps.weight               slots= 47 hits=    1374 misses=     616 hit%= 69.05
+[MOE-CACHE]   blk.3.ffn_up_exps.weight                 slots= 47 hits=    1374 misses=     616 hit%= 69.05
+[MOE-CACHE]   blk.3.ffn_down_exps.weight               slots= 47 hits=    1374 misses=     616 hit%= 69.05
+[MOE-CACHE]   blk.4.ffn_gate_exps.weight               slots= 47 hits=    1327 misses=     663 hit%= 66.68
+[MOE-CACHE]   blk.4.ffn_up_exps.weight                 slots= 47 hits=    1327 misses=     663 hit%= 66.68
+[MOE-CACHE]   blk.4.ffn_down_exps.weight               slots= 47 hits=    1327 misses=     663 hit%= 66.68
+[MOE-CACHE]   blk.5.ffn_gate_exps.weight               slots= 47 hits=    1115 misses=     875 hit%= 56.03
+[MOE-CACHE]   blk.5.ffn_up_exps.weight                 slots= 47 hits=    1115 misses=     875 hit%= 56.03
+[MOE-CACHE]   blk.5.ffn_down_exps.weight               slots= 47 hits=    1115 misses=     875 hit%= 56.03
+[MOE-CACHE]   blk.6.ffn_gate_exps.weight               slots= 47 hits=    1004 misses=     986 hit%= 50.45
+[MOE-CACHE]   blk.6.ffn_up_exps.weight                 slots= 47 hits=    1004 misses=     986 hit%= 50.45
+[MOE-CACHE]   blk.6.ffn_down_exps.weight               slots= 47 hits=    1004 misses=     986 hit%= 50.45
+[MOE-CACHE]   blk.7.ffn_gate_exps.weight               slots= 47 hits=    1001 misses=     989 hit%= 50.30
+[MOE-CACHE]   blk.7.ffn_up_exps.weight                 slots= 47 hits=    1001 misses=     989 hit%= 50.30
+[MOE-CACHE]   blk.7.ffn_down_exps.weight               slots= 47 hits=    1001 misses=     989 hit%= 50.30
+[MOE-CACHE]   blk.8.ffn_gate_exps.weight               slots= 47 hits=    1276 misses=     714 hit%= 64.12
+[MOE-CACHE]   blk.8.ffn_up_exps.weight                 slots= 47 hits=    1276 misses=     714 hit%= 64.12
+[MOE-CACHE]   blk.8.ffn_down_exps.weight               slots= 47 hits=    1276 misses=     714 hit%= 64.12
+[MOE-CACHE]   blk.9.ffn_gate_exps.weight               slots= 47 hits=    1394 misses=     596 hit%= 70.05
+[MOE-CACHE]   blk.9.ffn_up_exps.weight                 slots= 47 hits=    1394 misses=     596 hit%= 70.05
+[MOE-CACHE]   blk.9.ffn_down_exps.weight               slots= 47 hits=    1394 misses=     596 hit%= 70.05
+[MOE-CACHE]   blk.10.ffn_gate_exps.weight              slots= 47 hits=    1157 misses=     833 hit%= 58.14
+[MOE-CACHE]   blk.10.ffn_up_exps.weight                slots= 47 hits=    1157 misses=     833 hit%= 58.14
+[MOE-CACHE]   blk.10.ffn_down_exps.weight              slots= 47 hits=    1157 misses=     833 hit%= 58.14
+[MOE-CACHE]   blk.11.ffn_gate_exps.weight              slots= 47 hits=    1274 misses=     716 hit%= 64.02
+[MOE-CACHE]   blk.11.ffn_up_exps.weight                slots= 47 hits=    1274 misses=     716 hit%= 64.02
+[MOE-CACHE]   blk.11.ffn_down_exps.weight              slots= 47 hits=    1274 misses=     716 hit%= 64.02
+[MOE-CACHE]   blk.12.ffn_gate_exps.weight              slots= 47 hits=    1010 misses=     980 hit%= 50.75
+[MOE-CACHE]   blk.12.ffn_up_exps.weight                slots= 47 hits=    1010 misses=     980 hit%= 50.75
+[MOE-CACHE]   blk.12.ffn_down_exps.weight              slots= 47 hits=    1010 misses=     980 hit%= 50.75
+[MOE-CACHE]   blk.13.ffn_gate_exps.weight              slots= 47 hits=    1134 misses=     856 hit%= 56.98
+[MOE-CACHE]   blk.13.ffn_up_exps.weight                slots= 47 hits=    1134 misses=     856 hit%= 56.98
+[MOE-CACHE]   blk.13.ffn_down_exps.weight              slots= 47 hits=    1134 misses=     856 hit%= 56.98
+[MOE-CACHE]   blk.14.ffn_gate_exps.weight              slots= 47 hits=    1299 misses=     691 hit%= 65.28
+[MOE-CACHE]   blk.14.ffn_up_exps.weight                slots= 47 hits=    1299 misses=     691 hit%= 65.28
+[MOE-CACHE]   blk.14.ffn_down_exps.weight              slots= 47 hits=    1299 misses=     691 hit%= 65.28
+[MOE-CACHE]   blk.15.ffn_gate_exps.weight              slots= 47 hits=    1618 misses=     372 hit%= 81.31
+[MOE-CACHE]   blk.15.ffn_up_exps.weight                slots= 47 hits=    1618 misses=     372 hit%= 81.31
+[MOE-CACHE]   blk.15.ffn_down_exps.weight              slots= 47 hits=    1618 misses=     372 hit%= 81.31
+[MOE-CACHE]   blk.16.ffn_gate_exps.weight              slots= 47 hits=    1508 misses=     482 hit%= 75.78
+[MOE-CACHE]   blk.16.ffn_up_exps.weight                slots= 47 hits=    1508 misses=     482 hit%= 75.78
+[MOE-CACHE]   blk.16.ffn_down_exps.weight              slots= 47 hits=    1508 misses=     482 hit%= 75.78
+[MOE-CACHE]   blk.17.ffn_gate_exps.weight              slots= 47 hits=    1296 misses=     694 hit%= 65.13
+[MOE-CACHE]   blk.17.ffn_up_exps.weight                slots= 47 hits=    1296 misses=     694 hit%= 65.13
+[MOE-CACHE]   blk.17.ffn_down_exps.weight              slots= 47 hits=    1296 misses=     694 hit%= 65.13
+[MOE-CACHE]   blk.18.ffn_gate_exps.weight              slots= 47 hits=     926 misses=    1064 hit%= 46.53
+[MOE-CACHE]   blk.18.ffn_up_exps.weight                slots= 47 hits=     926 misses=    1064 hit%= 46.53
+[MOE-CACHE]   blk.18.ffn_down_exps.weight              slots= 47 hits=     926 misses=    1064 hit%= 46.53
+[MOE-CACHE]   blk.19.ffn_gate_exps.weight              slots= 47 hits=    1225 misses=     765 hit%= 61.56
+[MOE-CACHE]   blk.19.ffn_up_exps.weight                slots= 47 hits=    1225 misses=     765 hit%= 61.56
+[MOE-CACHE]   blk.19.ffn_down_exps.weight              slots= 47 hits=    1225 misses=     765 hit%= 61.56
+[MOE-CACHE]   blk.20.ffn_gate_exps.weight              slots= 47 hits=    1329 misses=     661 hit%= 66.78
+[MOE-CACHE]   blk.20.ffn_up_exps.weight                slots= 47 hits=    1329 misses=     661 hit%= 66.78
+[MOE-CACHE]   blk.20.ffn_down_exps.weight              slots= 47 hits=    1329 misses=     661 hit%= 66.78
+[MOE-CACHE]   blk.21.ffn_gate_exps.weight              slots= 47 hits=    1177 misses=     813 hit%= 59.15
+[MOE-CACHE]   blk.21.ffn_up_exps.weight                slots= 47 hits=    1177 misses=     813 hit%= 59.15
+[MOE-CACHE]   blk.21.ffn_down_exps.weight              slots= 47 hits=    1177 misses=     813 hit%= 59.15
+[MOE-CACHE]   blk.22.ffn_gate_exps.weight              slots= 47 hits=     986 misses=    1004 hit%= 49.55
+[MOE-CACHE]   blk.22.ffn_up_exps.weight                slots= 47 hits=     986 misses=    1004 hit%= 49.55
+[MOE-CACHE]   blk.22.ffn_down_exps.weight              slots= 47 hits=     986 misses=    1004 hit%= 49.55
+[MOE-CACHE]   blk.23.ffn_gate_exps.weight              slots= 47 hits=    1467 misses=     523 hit%= 73.72
+[MOE-CACHE]   blk.23.ffn_up_exps.weight                slots= 47 hits=    1467 misses=     523 hit%= 73.72
+[MOE-CACHE]   blk.23.ffn_down_exps.weight              slots= 47 hits=    1467 misses=     523 hit%= 73.72
+[MOE-CACHE]   blk.24.ffn_gate_exps.weight              slots= 47 hits=    1286 misses=     704 hit%= 64.62
+[MOE-CACHE]   blk.24.ffn_up_exps.weight                slots= 47 hits=    1286 misses=     704 hit%= 64.62
+[MOE-CACHE]   blk.24.ffn_down_exps.weight              slots= 47 hits=    1286 misses=     704 hit%= 64.62
+[MOE-CACHE]   blk.25.ffn_gate_exps.weight              slots= 47 hits=    1409 misses=     581 hit%= 70.80
+[MOE-CACHE]   blk.25.ffn_up_exps.weight                slots= 47 hits=    1409 misses=     581 hit%= 70.80
+[MOE-CACHE]   blk.25.ffn_down_exps.weight              slots= 47 hits=    1409 misses=     581 hit%= 70.80
+[MOE-CACHE]   blk.26.ffn_gate_exps.weight              slots= 47 hits=    1109 misses=     881 hit%= 55.73
+[MOE-CACHE]   blk.26.ffn_up_exps.weight                slots= 47 hits=    1109 misses=     881 hit%= 55.73
+[MOE-CACHE]   blk.26.ffn_down_exps.weight              slots= 47 hits=    1109 misses=     881 hit%= 55.73
+[MOE-CACHE]   blk.27.ffn_gate_exps.weight              slots= 47 hits=    1354 misses=     636 hit%= 68.04
+[MOE-CACHE]   blk.27.ffn_up_exps.weight                slots= 47 hits=    1354 misses=     636 hit%= 68.04
+[MOE-CACHE]   blk.27.ffn_down_exps.weight              slots= 47 hits=    1354 misses=     636 hit%= 68.04
+[MOE-CACHE]   blk.28.ffn_gate_exps.weight              slots= 47 hits=    1051 misses=     939 hit%= 52.81
+[MOE-CACHE]   blk.28.ffn_up_exps.weight                slots= 47 hits=    1051 misses=     939 hit%= 52.81
+[MOE-CACHE]   blk.28.ffn_down_exps.weight              slots= 47 hits=    1051 misses=     939 hit%= 52.81
+[MOE-CACHE]   blk.29.ffn_gate_exps.weight              slots= 47 hits=    1166 misses=     824 hit%= 58.59
+[MOE-CACHE]   blk.29.ffn_up_exps.weight                slots= 47 hits=    1166 misses=     824 hit%= 58.59
+[MOE-CACHE]   blk.29.ffn_down_exps.weight              slots= 47 hits=    1166 misses=     824 hit%= 58.59
+[MOE-CACHE]   blk.30.ffn_gate_exps.weight              slots= 47 hits=    1367 misses=     623 hit%= 68.69
+[MOE-CACHE]   blk.30.ffn_up_exps.weight                slots= 47 hits=    1367 misses=     623 hit%= 68.69
+[MOE-CACHE]   blk.30.ffn_down_exps.weight              slots= 47 hits=    1367 misses=     623 hit%= 68.69
+[MOE-CACHE]   blk.31.ffn_gate_exps.weight              slots= 47 hits=    1677 misses=     313 hit%= 84.27
+[MOE-CACHE]   blk.31.ffn_up_exps.weight                slots= 47 hits=    1677 misses=     313 hit%= 84.27
+[MOE-CACHE]   blk.31.ffn_down_exps.weight              slots= 47 hits=    1677 misses=     313 hit%= 84.27
+[MOE-CACHE]   blk.32.ffn_gate_exps.weight              slots= 47 hits=    1556 misses=     434 hit%= 78.19
+[MOE-CACHE]   blk.32.ffn_up_exps.weight                slots= 47 hits=    1556 misses=     434 hit%= 78.19
+[MOE-CACHE]   blk.32.ffn_down_exps.weight              slots= 47 hits=    1556 misses=     434 hit%= 78.19
+[MOE-CACHE]   blk.33.ffn_gate_exps.weight              slots= 47 hits=    1338 misses=     652 hit%= 67.24
+[MOE-CACHE]   blk.33.ffn_up_exps.weight                slots= 47 hits=    1338 misses=     652 hit%= 67.24
+[MOE-CACHE]   blk.33.ffn_down_exps.weight              slots= 47 hits=    1338 misses=     652 hit%= 67.24
+[MOE-CACHE]   blk.34.ffn_gate_exps.weight              slots= 47 hits=     984 misses=    1006 hit%= 49.45
+[MOE-CACHE]   blk.34.ffn_up_exps.weight                slots= 47 hits=     984 misses=    1006 hit%= 49.45
+[MOE-CACHE]   blk.34.ffn_down_exps.weight              slots= 47 hits=     984 misses=    1006 hit%= 49.45
+[MOE-CACHE]   blk.35.ffn_gate_exps.weight              slots= 47 hits=    1351 misses=     639 hit%= 67.89
+[MOE-CACHE]   blk.35.ffn_up_exps.weight                slots= 47 hits=    1351 misses=     639 hit%= 67.89
+[MOE-CACHE]   blk.35.ffn_down_exps.weight              slots= 47 hits=    1351 misses=     639 hit%= 67.89
+[MOE-CACHE]   blk.36.ffn_gate_exps.weight              slots= 47 hits=    1455 misses=     535 hit%= 73.12
+[MOE-CACHE]   blk.36.ffn_up_exps.weight                slots= 47 hits=    1455 misses=     535 hit%= 73.12
+[MOE-CACHE]   blk.36.ffn_down_exps.weight              slots= 47 hits=    1455 misses=     535 hit%= 73.12
+[MOE-CACHE]   blk.37.ffn_gate_exps.weight              slots= 47 hits=    1272 misses=     718 hit%= 63.92
+[MOE-CACHE]   blk.37.ffn_up_exps.weight                slots= 47 hits=    1272 misses=     718 hit%= 63.92
+[MOE-CACHE]   blk.37.ffn_down_exps.weight              slots= 47 hits=    1272 misses=     718 hit%= 63.92
+[MOE-CACHE]   blk.38.ffn_gate_exps.weight              slots= 47 hits=    1015 misses=     975 hit%= 51.01
+[MOE-CACHE]   blk.38.ffn_up_exps.weight                slots= 47 hits=    1015 misses=     975 hit%= 51.01
+[MOE-CACHE]   blk.38.ffn_down_exps.weight              slots= 47 hits=    1015 misses=     975 hit%= 51.01
+[MOE-CACHE]   blk.39.ffn_gate_exps.weight              slots= 47 hits=    1640 misses=     350 hit%= 82.41
+[MOE-CACHE]   blk.39.ffn_up_exps.weight                slots= 47 hits=    1640 misses=     350 hit%= 82.41
+[MOE-CACHE]   blk.39.ffn_down_exps.weight              slots= 47 hits=    1640 misses=     350 hit%= 82.41
+[MOE-CACHE]   blk.40.ffn_gate_exps.weight              slots= 47 hits=    1556 misses=     434 hit%= 78.19
+[MOE-CACHE]   blk.40.ffn_up_exps.weight                slots= 47 hits=    1556 misses=     434 hit%= 78.19
+[MOE-CACHE]   blk.40.ffn_down_exps.weight              slots= 47 hits=    1556 misses=     434 hit%= 78.19
+[MOE-CACHE]   blk.41.ffn_gate_exps.weight              slots= 47 hits=    1443 misses=     547 hit%= 72.51
+[MOE-CACHE]   blk.41.ffn_up_exps.weight                slots= 47 hits=    1443 misses=     547 hit%= 72.51
+[MOE-CACHE]   blk.41.ffn_down_exps.weight              slots= 47 hits=    1443 misses=     547 hit%= 72.51
+[MOE-CACHE]   blk.42.ffn_gate_exps.weight              slots= 47 hits=    1130 misses=     860 hit%= 56.78
+[MOE-CACHE]   blk.42.ffn_up_exps.weight                slots= 47 hits=    1130 misses=     860 hit%= 56.78
+[MOE-CACHE]   blk.42.ffn_down_exps.weight              slots= 47 hits=    1130 misses=     860 hit%= 56.78
+[MOE-CACHE]   blk.43.ffn_gate_exps.weight              slots= 47 hits=    1461 misses=     529 hit%= 73.42
+[MOE-CACHE]   blk.43.ffn_up_exps.weight                slots= 47 hits=    1461 misses=     529 hit%= 73.42
+[MOE-CACHE]   blk.43.ffn_down_exps.weight              slots= 47 hits=    1461 misses=     529 hit%= 73.42
+[MOE-CACHE]   blk.44.ffn_gate_exps.weight              slots= 47 hits=    1423 misses=     567 hit%= 71.51
+[MOE-CACHE]   blk.44.ffn_up_exps.weight                slots= 47 hits=    1423 misses=     567 hit%= 71.51
+[MOE-CACHE]   blk.44.ffn_down_exps.weight              slots= 47 hits=    1423 misses=     567 hit%= 71.51
+[MOE-CACHE]   blk.45.ffn_gate_exps.weight              slots= 47 hits=    1390 misses=     600 hit%= 69.85
+[MOE-CACHE]   blk.45.ffn_up_exps.weight                slots= 47 hits=    1390 misses=     600 hit%= 69.85
+[MOE-CACHE]   blk.45.ffn_down_exps.weight              slots= 47 hits=    1390 misses=     600 hit%= 69.85
+[MOE-CACHE]   blk.46.ffn_gate_exps.weight              slots= 47 hits=    1285 misses=     705 hit%= 64.57
+[MOE-CACHE]   blk.46.ffn_up_exps.weight                slots= 47 hits=    1285 misses=     705 hit%= 64.57
+[MOE-CACHE]   blk.46.ffn_down_exps.weight              slots= 47 hits=    1285 misses=     705 hit%= 64.57
+[MOE-CACHE]   blk.47.ffn_gate_exps.weight              slots= 47 hits=    1092 misses=     908 hit%= 54.60
+[MOE-CACHE]   blk.47.ffn_up_exps.weight                slots= 47 hits=    1092 misses=     908 hit%= 54.60
+[MOE-CACHE]   blk.47.ffn_down_exps.weight              slots= 47 hits=    1092 misses=     908 hit%= 54.60

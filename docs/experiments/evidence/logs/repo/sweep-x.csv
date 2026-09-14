@@ -1,0 +1,3 @@
+tag,prompt_tps,gen_tps,cache_mib,slots,hit_pct,hits,misses,crash,vram_peak_mib,secs
+x-tiny,,,64,0,0.0,0,0,,6347,31.3
+x-big,29.1,15.7,6144,64,67.0,138897,68493,,12519,29.8

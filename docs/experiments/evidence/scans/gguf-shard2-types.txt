@@ -1,0 +1,102 @@
+归档时的只读解析输出；不是新的模型运行或性能测量。
+
+LOCAL_MODELS\qwen38\unsloth-iq3-xxs\UD-IQ3_XXS\Qwen3.8-Flash-Next-UD-IQ3_XXS-00002-of-00003.gguf
+  gguf v3: 468 tensors, 3 metadata keys
+
+== type histogram (by tensor count / by bytes) ==
+         f32  tensors=  213      0.11 GiB  (  0.2%)
+        q8_0  tensors=   98      0.35 GiB  (  0.8%)
+        q6_K  tensors=   94      1.78 GiB  (  3.9%)
+       iq2_s  tensors=   34      8.51 GiB  ( 18.4%)
+      iq4_nl  tensors=   19     34.73 GiB  ( 75.2%)
+        bf16  tensors=    8      0.01 GiB  (  0.0%)
+       iq3_s  tensors=    2      0.67 GiB  (  1.5%)
+       total  tensors=  468     46.16 GiB
+
+== MoE expert tensors (what the SMoE cache prefetches) ==
+  blk.0.ffn_down_exps.weight                     iq4_nl    450.00 MiB  ne=[640, 2560, 512]
+  blk.0.ffn_gate_exps.weight                      iq2_s    256.25 MiB  ne=[2560, 640, 512]
+  blk.0.ffn_up_exps.weight                        iq2_s    256.25 MiB  ne=[2560, 640, 512]
+  blk.1.ffn_down_exps.weight                     iq4_nl    450.00 MiB  ne=[640, 2560, 512]
+  blk.1.ffn_gate_exps.weight                      iq2_s    256.25 MiB  ne=[2560, 640, 512]
+  blk.1.ffn_up_exps.weight                        iq2_s    256.25 MiB  ne=[2560, 640, 512]
+  blk.2.ffn_down_exps.weight                     iq4_nl    450.00 MiB  ne=[640, 2560, 512]
+  blk.2.ffn_gate_exps.weight                      iq3_s    343.75 MiB  ne=[2560, 640, 512]
+  blk.2.ffn_up_exps.weight                        iq3_s    343.75 MiB  ne=[2560, 640, 512]
+  blk.3.ffn_down_exps.weight                     iq4_nl    450.00 MiB  ne=[640, 2560, 512]
+  blk.3.ffn_gate_exps.weight                      iq2_s    256.25 MiB  ne=[2560, 640, 512]
+  blk.3.ffn_up_exps.weight                        iq2_s    256.25 MiB  ne=[2560, 640, 512]
+  blk.4.ffn_down_exps.weight                     iq4_nl    450.00 MiB  ne=[640, 2560, 512]
+  blk.4.ffn_gate_exps.weight                      iq2_s    256.25 MiB  ne=[2560, 640, 512]
+  blk.4.ffn_up_exps.weight                        iq2_s    256.25 MiB  ne=[2560, 640, 512]
+  blk.5.ffn_down_exps.weight                     iq4_nl    450.00 MiB  ne=[640, 2560, 512]
+  blk.5.ffn_gate_exps.weight                      iq2_s    256.25 MiB  ne=[2560, 640, 512]
+  blk.5.ffn_up_exps.weight                        iq2_s    256.25 MiB  ne=[2560, 640, 512]
+  blk.6.ffn_down_exps.weight                     iq4_nl    450.00 MiB  ne=[640, 2560, 512]
+  blk.6.ffn_gate_exps.weight                      iq2_s    256.25 MiB  ne=[2560, 640, 512]
+  blk.6.ffn_up_exps.weight                        iq2_s    256.25 MiB  ne=[2560, 640, 512]
+  blk.7.ffn_down_exps.weight                     iq4_nl    450.00 MiB  ne=[640, 2560, 512]
+  blk.7.ffn_gate_exps.weight                      iq2_s    256.25 MiB  ne=[2560, 640, 512]
+  blk.7.ffn_up_exps.weight                        iq2_s    256.25 MiB  ne=[2560, 640, 512]
+  blk.8.ffn_down_exps.weight                     iq4_nl    450.00 MiB  ne=[640, 2560, 512]
+  blk.8.ffn_gate_exps.weight                      iq2_s    256.25 MiB  ne=[2560, 640, 512]
+  blk.8.ffn_up_exps.weight                        iq2_s    256.25 MiB  ne=[2560, 640, 512]
+  blk.9.ffn_down_exps.weight                     iq4_nl    450.00 MiB  ne=[640, 2560, 512]
+  blk.9.ffn_gate_exps.weight                      iq2_s    256.25 MiB  ne=[2560, 640, 512]
+  blk.9.ffn_up_exps.weight                        iq2_s    256.25 MiB  ne=[2560, 640, 512]
+  blk.10.ffn_down_exps.weight                    iq4_nl    450.00 MiB  ne=[640, 2560, 512]
+  blk.10.ffn_gate_exps.weight                     iq2_s    256.25 MiB  ne=[2560, 640, 512]
+  blk.10.ffn_up_exps.weight                       iq2_s    256.25 MiB  ne=[2560, 640, 512]
+  blk.11.ffn_down_exps.weight                    iq4_nl    450.00 MiB  ne=[640, 2560, 512]
+  blk.11.ffn_gate_exps.weight                     iq2_s    256.25 MiB  ne=[2560, 640, 512]
+  blk.11.ffn_up_exps.weight                       iq2_s    256.25 MiB  ne=[2560, 640, 512]
+  blk.12.ffn_down_exps.weight                    iq4_nl    450.00 MiB  ne=[640, 2560, 512]
+  blk.12.ffn_gate_exps.weight                     iq2_s    256.25 MiB  ne=[2560, 640, 512]
+  blk.12.ffn_up_exps.weight                       iq2_s    256.25 MiB  ne=[2560, 640, 512]
+  blk.13.ffn_down_exps.weight                    iq4_nl    450.00 MiB  ne=[640, 2560, 512]
+  blk.13.ffn_gate_exps.weight                     iq2_s    256.25 MiB  ne=[2560, 640, 512]
+  blk.13.ffn_up_exps.weight                       iq2_s    256.25 MiB  ne=[2560, 640, 512]
+  blk.14.ffn_down_exps.weight                    iq4_nl    450.00 MiB  ne=[640, 2560, 512]
+  blk.14.ffn_gate_exps.weight                     iq2_s    256.25 MiB  ne=[2560, 640, 512]
+  blk.14.ffn_up_exps.weight                       iq2_s    256.25 MiB  ne=[2560, 640, 512]
+  blk.15.ffn_down_exps.weight                    iq4_nl    450.00 MiB  ne=[640, 2560, 512]
+  blk.15.ffn_gate_exps.weight                     iq2_s    256.25 MiB  ne=[2560, 640, 512]
+  blk.15.ffn_up_exps.weight                       iq2_s    256.25 MiB  ne=[2560, 640, 512]
+  blk.16.ffn_down_exps.weight                    iq4_nl    450.00 MiB  ne=[640, 2560, 512]
+  blk.16.ffn_gate_exps.weight                     iq2_s    256.25 MiB  ne=[2560, 640, 512]
+  blk.16.ffn_up_exps.weight                       iq2_s    256.25 MiB  ne=[2560, 640, 512]
+  blk.17.ffn_down_exps.weight                    iq4_nl    450.00 MiB  ne=[640, 2560, 512]
+  blk.17.ffn_gate_exps.weight                     iq2_s    256.25 MiB  ne=[2560, 640, 512]
+  blk.17.ffn_up_exps.weight                       iq2_s    256.25 MiB  ne=[2560, 640, 512]
+  expert types: {'iq4_nl': 18, 'iq2_s': 34, 'iq3_s': 2}
+
+== other notable tensors ==
+  output.weight                                    q6_K    497.31 MiB
+  per_layer_token_embd.weight                    iq4_nl  27465.95 MiB
+  token_embd.weight                                q6_K    497.31 MiB
+  blk.0.ffn_gate_inp.weight                         f32      5.00 MiB
+  blk.1.ffn_gate_inp.weight                         f32      5.00 MiB
+  blk.2.ffn_gate_inp.weight                         f32      5.00 MiB
+  blk.3.attn_output.weight                         q6_K     12.30 MiB
+  blk.3.attn_q.weight                              q6_K     24.61 MiB
+  blk.3.ffn_gate_inp.weight                         f32      5.00 MiB
+  blk.4.ffn_gate_inp.weight                         f32      5.00 MiB
+  blk.5.ffn_gate_inp.weight                         f32      5.00 MiB
+  blk.6.ffn_gate_inp.weight                         f32      5.00 MiB
+  blk.7.attn_output.weight                         q6_K     12.30 MiB
+  blk.7.attn_q.weight                              q6_K     24.61 MiB
+  blk.7.ffn_gate_inp.weight                         f32      5.00 MiB
+  blk.8.ffn_gate_inp.weight                         f32      5.00 MiB
+  blk.9.ffn_gate_inp.weight                         f32      5.00 MiB
+  blk.10.ffn_gate_inp.weight                        f32      5.00 MiB
+  blk.11.attn_output.weight                        q6_K     12.30 MiB
+  blk.11.attn_q.weight                             q6_K     24.61 MiB
+  blk.11.ffn_gate_inp.weight                        f32      5.00 MiB
+  blk.12.ffn_gate_inp.weight                        f32      5.00 MiB
+  blk.13.ffn_gate_inp.weight                        f32      5.00 MiB
+  blk.14.ffn_gate_inp.weight                        f32      5.00 MiB
+  blk.15.attn_output.weight                        q6_K     12.30 MiB
+  blk.15.attn_q.weight                             q6_K     24.61 MiB
+  blk.15.ffn_gate_inp.weight                        f32      5.00 MiB
+  blk.16.ffn_gate_inp.weight                        f32      5.00 MiB
+  blk.17.ffn_gate_inp.weight                        f32      5.00 MiB

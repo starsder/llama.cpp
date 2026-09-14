@@ -1,0 +1,6 @@
+归档时的只读解析输出；不是新的模型运行或性能测量。
+
+LOCAL_MODELS\qwen38\unsloth-iq3-xxs\UD-IQ3_XXS\Qwen3.8-Flash-Next-UD-IQ3_XXS-00002-of-00003.gguf
+  gguf v3: 468 tensors, 3 metadata keys
+
+== geometry check: PASS (468 tensors)

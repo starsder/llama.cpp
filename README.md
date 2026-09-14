@@ -6,6 +6,18 @@
 
 > **严重资源风险：推荐参数以外的开关、组合和并发运行，可能耗尽整机主存、提交额度或显存，造成进程崩溃、系统无响应，甚至需要重启。128 GB 内存也不代表安全。推荐参数同样不是安全保证。请先保存其他工作，不要在承担重要任务的机器上无人值守运行。**
 
+## 实验档案：路线、失败与更正
+
+本项目的研发从 **SSD→主存的 PLE 行缓存**开始，随后是静态表＋XT、Fate、共享专家 SMoE、在线缓存与双门控、dev 路径时序、TBQ4 与 NXQ。最值得保留的是每次为什么尝试、为什么转向，以及哪些漂亮结果后来被推翻。
+
+- **[完整档案索引](docs/experiments/README.md)**：路径覆盖表、版本边界、保留／放弃／未完成状态。
+- **[按研发顺序阅读](docs/experiments/00-research-chronology.md)**：包括维护者补充的 PLE 约1G／90%+、SMoE teacher 99%，与在线指标分开记账。
+- [PLE、host、devpart、prefill、MTP](docs/experiments/01-host-and-devpart.md) · [预测、缓存与双门控](docs/experiments/02-prediction-and-cache.md)。
+- [权重量化选型与 IQ/Q 内核差异](docs/experiments/03-weight-quantization-and-kernels.md) · [TBQ3/TBQ4、NXQ 与 KV 质量](docs/experiments/04-kv-tbq-and-nxq.md)。
+- [正确性、测量失效与工程事故](docs/experiments/05-correctness-and-methodology.md) · **[原始证据与哈希清单](docs/experiments/evidence/README.md)**。
+
+档案也收录未发布和未验收的研究，**上传文档不等于合入这些实现**。原生代码基线仍为 `7e01451b2`；没有因本次归档重跑模型或启用新优化。
+
 ## 1. 测试硬件与适用范围
 
 | 项目 | 本机配置／测试工作点 |

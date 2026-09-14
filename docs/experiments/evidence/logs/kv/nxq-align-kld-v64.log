@@ -1,0 +1,6 @@
+
+kv                           PPL   Mean KLD   99.9% KLD  PPL vs base
+=== kld q8_0/q8_0: -m LOCAL_MODELS\qwen38\unsloth-iq3-xxs\UD-IQ3_XXS\Qwen3.8-Flash-Next-UD-IQ3_XXS-00001-of-00003.gguf -ngl 49 --cpu-moe -f SOURCE_TREE\ppl\wikitext-2-raw\wiki.test.raw -c 512 --chunks 8 -fa 1 -ctk q8_0 -ctv q8_0 --kl-divergence-base SOURCE_TREE\ppl\base-f16.kld --kl-divergence
+q8_0/q8_0                      -   0.030848    1.202733            -
+=== kld nxq3_0/nxq2_0: -m LOCAL_MODELS\qwen38\unsloth-iq3-xxs\UD-IQ3_XXS\Qwen3.8-Flash-Next-UD-IQ3_XXS-00001-of-00003.gguf -ngl 49 --cpu-moe -f SOURCE_TREE\ppl\wikitext-2-raw\wiki.test.raw -c 512 --chunks 8 -fa 1 -ctk nxq3_0 -ctv nxq2_0 --kl-divergence-base SOURCE_TREE\ppl\base-f16.kld --kl-divergence
+nxq3_0/nxq2_0                  -   0.266610    6.916856            -

@@ -1,0 +1,13 @@
+[kld] generating base logits with f16 KV -> base-f16.kld
+=== kld base f16: -m LOCAL_MODELS\qwen38\unsloth-iq3-xxs\UD-IQ3_XXS\Qwen3.8-Flash-Next-UD-IQ3_XXS-00001-of-00003.gguf -ngl 49 --cpu-moe -f SOURCE_TREE\ppl\wikitext-2-raw\wiki.test.raw -c 512 --chunks 8 -fa 1 -ctk f16 -ctv f16 --kl-divergence-base SOURCE_TREE\ppl\base-f16.kld
+   base PPL = 2.0120
+
+kv                PPL   Mean KLD   99.9% KLD  PPL vs base
+=== kld q8_0: -m LOCAL_MODELS\qwen38\unsloth-iq3-xxs\UD-IQ3_XXS\Qwen3.8-Flash-Next-UD-IQ3_XXS-00001-of-00003.gguf -ngl 49 --cpu-moe -f SOURCE_TREE\ppl\wikitext-2-raw\wiki.test.raw -c 512 --chunks 8 -fa 1 -ctk q8_0 -ctv q8_0 --kl-divergence-base SOURCE_TREE\ppl\base-f16.kld --kl-divergence
+q8_0                -   0.030848    1.202733            -
+=== kld q4_0: -m LOCAL_MODELS\qwen38\unsloth-iq3-xxs\UD-IQ3_XXS\Qwen3.8-Flash-Next-UD-IQ3_XXS-00001-of-00003.gguf -ngl 49 --cpu-moe -f SOURCE_TREE\ppl\wikitext-2-raw\wiki.test.raw -c 512 --chunks 8 -fa 1 -ctk q4_0 -ctv q4_0 --kl-divergence-base SOURCE_TREE\ppl\base-f16.kld --kl-divergence
+q4_0                -   0.056886    1.988480            -
+=== kld tbq4_0: -m LOCAL_MODELS\qwen38\unsloth-iq3-xxs\UD-IQ3_XXS\Qwen3.8-Flash-Next-UD-IQ3_XXS-00001-of-00003.gguf -ngl 49 --cpu-moe -f SOURCE_TREE\ppl\wikitext-2-raw\wiki.test.raw -c 512 --chunks 8 -fa 1 -ctk tbq4_0 -ctv tbq4_0 --kl-divergence-base SOURCE_TREE\ppl\base-f16.kld --kl-divergence
+tbq4_0              -          -           -            -
+=== kld tbq3_0: -m LOCAL_MODELS\qwen38\unsloth-iq3-xxs\UD-IQ3_XXS\Qwen3.8-Flash-Next-UD-IQ3_XXS-00001-of-00003.gguf -ngl 49 --cpu-moe -f SOURCE_TREE\ppl\wikitext-2-raw\wiki.test.raw -c 512 --chunks 8 -fa 1 -ctk tbq3_0 -ctv tbq3_0 --kl-divergence-base SOURCE_TREE\ppl\base-f16.kld --kl-divergence
+tbq3_0              -   0.116397    2.714735            -

@@ -1,0 +1,39 @@
+
+
+Loading model... 
+
+▄▄ ▄▄
+██ ██
+██ ██  ▀▀█▄ ███▄███▄  ▀▀█▄    ▄████ ████▄ ████▄
+██ ██ ▄█▀██ ██ ██ ██ ▄█▀██    ██    ██ ██ ██ ██
+██ ██ ▀█▄██ ██ ██ ██ ▀█▄██ ██ ▀████ ████▀ ████▀
+                                    ██    ██
+                                    ▀▀    ▀▀
+
+build      : b10722-b76199698
+model      : LOCAL_MODELS/qwen38/unsloth-iq3-xxs/UD-IQ3_XXS/Qwen3.8-Flash-Next-UD-IQ3_XXS-00001-of-00003.gguf
+ftype      : IQ3_XXS - 3.0625 bpw
+modalities : text
+
+available commands:
+  /exit or Ctrl+C     stop or exit
+  /regen              regenerate the last response
+  /clear              clear the chat history
+  /read <file>        add a text file
+  /glob <pattern>     add text files using globbing pattern
+
+
+
+> The capital of France is
+
+[Start thinking]
+
+We need to answer user's query: "The capital of France is". Simple factual completion. Need final answer concise.
+[End thinking]
+
+Paris. The capital of France is Paris. 🇫🇷🗼🥐🍷🏰🎨🚄🌍👑🥖🧀🍇🎭🏛️🚲🌸📚🎶🥂🏰🌟🇪🇺🥖🍷🎨🏛️🚄🌍👑🥐🧀🍇🎭🏰🌸📚🎶🥂🌟🇪🇺🥖🍷🎨🏛️🚄🌍👑🥐🧀🍇🎭
+
+[ Prompt: 28.1 t/s | Generation: 16.2 t/s ]
+
+
+Exiting...

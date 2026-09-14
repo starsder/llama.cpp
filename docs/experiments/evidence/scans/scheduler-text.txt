@@ -1,0 +1,21 @@
+归档时的只读解析输出；不是新的模型运行或性能测量。
+
+nodes parsed: 82447
+
+== backends ==
+   CUDA0    81967
+   CPU      480
+
+== ops on CPU ==
+   MOE_CPU                    x438    e.g. ffn_moe_cpu_fused-0, ffn_moe_cpu_fused-1, ffn_moe_cpu_fused-10
+   GET_ROWS                   x34     e.g. model.input_embed, node_1
+   MUL_MAT_ID                 x6      e.g. ffn_moe_down-47, ffn_moe_gate-47, ffn_moe_up-47
+   SWIGLU                     x2      e.g. ffn_moe_swiglu-47
+   CPU nodes 480 / 82447 = 0.6%
+
+== splits ==
+   CUDA0    2899
+   CPU      457
+
+== vision-flavoured ops present ==
+   SSM_CONV                   x612    backends=['CUDA0']

@@ -1,0 +1,20 @@
+PASS: compare against eligible victim, not protected cold resident
+PASS: equal-frequency admission preserves tie behavior
+PASS: resident dedup remains intact
+PASS: zero-frequency cold start uses empty slot
+PASS: missing routed-use history retains fallback admission
+PASS: FIFO is not changed into frequency admission
+PASS: imminent prediction is not blocked by historical frequency
+PASS: explicit warming keeps its existing admission semantics
+PASS: global pool compares actual victim owner
+PASS: position-weighted admission favors next layer and preserves zero slot
+hot backfill covered 48/48 layers in six eight-expert budgets
+PASS: round-robin backfill does not starve eligible layers
+PASS: backfill visits sparse actual layer ids
+PASS: actual-use backfill populates an entirely empty cache
+PASS: backfill uses free capacity without requiring a hotter candidate
+PASS: hot backfill stops when eligible replacement would only tie
+failures=0
+
+
+Wall time: 0.11 seconds

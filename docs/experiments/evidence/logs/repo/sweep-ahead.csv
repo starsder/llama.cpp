@@ -1,0 +1,6 @@
+tag,prompt_tps,gen_tps,cache_mib,slots,hit_pct,hits,misses,crash,vram_peak_mib,secs
+ah1,,,,21,,,,1,,
+ah2,,,,21,,,,1,,
+ah3,,,,21,,,,1,,
+ah4,,,,21,,,,1,,
+ah6,26.5,18.5,6144,64,80.6,295845,71385,,12516,35.4

@@ -1,0 +1,45 @@
+
+
+Loading model... 
+
+▄▄ ▄▄
+██ ██
+██ ██  ▀▀█▄ ███▄███▄  ▀▀█▄    ▄████ ████▄ ████▄
+██ ██ ▄█▀██ ██ ██ ██ ▄█▀██    ██    ██ ██ ██ ██
+██ ██ ▀█▄██ ██ ██ ██ ▀█▄██ ██ ▀████ ████▀ ████▀
+                                    ██    ██
+                                    ▀▀    ▀▀
+
+build      : b10742-17ca0de85
+model      : LOCAL_MODELS\qwen38\unsloth-iq3-xxs\UD-IQ3_XXS\Qwen3.8-Flash-Next-UD-IQ3_XXS-00001-of-00003.gguf
+ftype      : IQ3_XXS - 3.0625 bpw
+modalities : text
+
+available commands:
+  /exit or Ctrl+C     stop or exit
+  /regen              regenerate the last response
+  /clear              clear the chat history
+  /read <file>        add a text file
+  /glob <pattern>     add text files using globbing pattern
+
+
+
+> The capital of France is
+
+[Start thinking]
+
+The user is asking for the capital of France. This is a straightforward factual question. The capital of France is Paris.
+[End thinking]
+
+The capital of France is **Paris**. 🇫🇷
+
+Paris is the largest city in France and serves as the country's political, economic, and cultural center. It's located along the Seine River in the north-central part of the country. The city is renowned for landmarks such as the Eiffel Tower, the Louvre Museum, and Notre-Dame Cathedral.
+
+Paris has been the capital of France since the late 10th century, when Hugh Capet, the first king of the Capetian dynasty, established his court there. It remains one of the most visited cities in the world and a major global hub for art, fashion, gastronomy, and diplomacy.
+
+If you'd like to know more about Paris or France, feel free to ask! 😊🗼🥐🍷🎨🏛️🌍🇫🇷✨🥖🧀🏰🌸🎭📚🚄🌉🕰️🎨🥂🌹🗼🇫🇷✨🥐🍷🎨🏛️🌍🇫🇷✨🥖🧀🏰🌸🎭📚🚄🌉🕰️🎨🥂🌹🗼🇫🇷✨🥐🍷🎨🏛️🌍🇫🇷✨🥖🧀🏰🌸🎭📚🚄🌉🕰️🎨🥂🌹🗼🇫🇷✨🥐
+
+[ Prompt: 27.1 t/s | Generation: 18.6 t/s ]
+
+
+Exiting...
