@@ -28,6 +28,7 @@
 |---|---|---|
 | 数据总览与逐文件指路 | **[证据索引](docs/experiments/evidence/README.md)** | 125份原始小日志、14份数值来源记录、缺失材料和读取规则 |
 | 提示词、token历史与离线评估小文件 | **[路由轻量数据包](docs/experiments/data/routing-small/README.md)** | 164份原始小文件副本，正文约0.70 MiB；51／20／8提示词的批次关系和原件哈希 |
+| hidden／router原始大数据的批次与格式 | **[大数据目录说明](docs/experiments/data/hidden-routing/README.md)** | 5批、85个采集请求目录；这里只放元数据，压缩包不进Git／Git LFS，云盘链接尚未提供 |
 | 吞吐、命中、传输、正确性与失败运行 | **[聚合结果 JSON](docs/experiments/evidence/measurements.json)** | CLI、pressure128、固定历史400步及旧baseline400；不是同一协议的一组成绩 |
 | 原始 stdout／stderr 与统计日志 | [日志目录](docs/experiments/evidence/logs/) | PLE／静态表／XT、host／devpart、KV／NXQ、最后CLI及逻辑探针；按证据索引选择文件 |
 | 权重类型、几何与后端放置 | [只读解析输出](docs/experiments/evidence/scans/) | GGUF头／tensor目录与已有调度日志解析，不是新跑的模型实验 |

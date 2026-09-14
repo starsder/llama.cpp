@@ -43,6 +43,16 @@
       "sha256": "ff81695871e842fa1906551b23e3f6c7b5841d636a969efacaa4a78090688d8e"
     },
     {
+      "path": "data/hidden-routing/README.md",
+      "bytes": 4602,
+      "sha256": "8fac545b8ddc4f1b2409fd1f654e4aa6fa67d78df794d8a864a3099bea6ca604"
+    },
+    {
+      "path": "data/hidden-routing/inventory.json",
+      "bytes": 17394,
+      "sha256": "c5a89ed8deb3446dc4bea8d48cbace36669ac25ad7b0b2238303b92ec5a640d6"
+    },
+    {
       "path": "data/routing-small/README.md",
       "bytes": 3689,
       "sha256": "efa1e01e0c36a4c2b9f0b5efd2ee87323302b9fbb15b4947059ff12ec19f7a30"

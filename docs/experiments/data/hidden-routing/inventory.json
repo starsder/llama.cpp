@@ -1,0 +1,579 @@
+{
+  "schema": "hidden-routing-inventory/1",
+  "distribution": "External local archive only; no Git or Git LFS payloads. Cloud URL not yet supplied.",
+  "archive_name": "qwen3.8-hidden-routing-research.7z",
+  "included_batches": [
+    {
+      "directory": "collect-run1",
+      "requests": 3,
+      "role": "early hidden/expert collection; no router directory",
+      "limitations": [
+        "No complete launch/exit-code manifest retained."
+      ]
+    },
+    {
+      "directory": "collect-run1b",
+      "requests": 3,
+      "role": "independent rerun of the three prompts with router capture",
+      "limitations": [
+        "Not a router-only supplement of the original run. Token histories diverge.",
+        "No complete launch/exit-code manifest retained."
+      ]
+    },
+    {
+      "directory": "collect-run2",
+      "requests": 51,
+      "role": "multi-domain hidden/router/expert collection",
+      "hidden_metadata_records": 1197360,
+      "hidden_logical_bytes": 14348677120,
+      "token_rows": 29285,
+      "expert_csv_records": 14012380,
+      "expert_csv_bytes": 562712739,
+      "limitations": [
+        "Router dumps cover single-token graphs, not all prefill graphs.",
+        "Layer 47 prefill coverage differs; graph output selection must be resolved before alignment.",
+        "No complete launch/exit-code manifest retained."
+      ],
+      "request_inventory": [
+        {
+          "prompt": "chat_en_1",
+          "token_rows": 591,
+          "graphs": 515,
+          "last_graph": 514,
+          "hidden_records": 24720,
+          "hidden_logical_bytes": 289689600,
+          "duplicate_hidden_keys": 0
+        },
+        {
+          "prompt": "chat_en_2",
+          "token_rows": 585,
+          "graphs": 515,
+          "last_graph": 514,
+          "hidden_records": 24720,
+          "hidden_logical_bytes": 286801920,
+          "duplicate_hidden_keys": 0
+        },
+        {
+          "prompt": "chat_en_3",
+          "token_rows": 590,
+          "graphs": 515,
+          "last_graph": 514,
+          "hidden_records": 24720,
+          "hidden_logical_bytes": 289208320,
+          "duplicate_hidden_keys": 0
+        },
+        {
+          "prompt": "chat_en_4",
+          "token_rows": 326,
+          "graphs": 255,
+          "last_graph": 254,
+          "hidden_records": 12240,
+          "hidden_logical_bytes": 159488000,
+          "duplicate_hidden_keys": 0
+        },
+        {
+          "prompt": "chat_zh_1",
+          "token_rows": 589,
+          "graphs": 515,
+          "last_graph": 514,
+          "hidden_records": 24720,
+          "hidden_logical_bytes": 288727040,
+          "duplicate_hidden_keys": 0
+        },
+        {
+          "prompt": "chat_zh_2",
+          "token_rows": 590,
+          "graphs": 515,
+          "last_graph": 514,
+          "hidden_records": 24720,
+          "hidden_logical_bytes": 289208320,
+          "duplicate_hidden_keys": 0
+        },
+        {
+          "prompt": "chat_zh_3",
+          "token_rows": 590,
+          "graphs": 515,
+          "last_graph": 514,
+          "hidden_records": 24720,
+          "hidden_logical_bytes": 289208320,
+          "duplicate_hidden_keys": 0
+        },
+        {
+          "prompt": "code-algorithm",
+          "token_rows": 597,
+          "graphs": 515,
+          "last_graph": 514,
+          "hidden_records": 24720,
+          "hidden_logical_bytes": 292577280,
+          "duplicate_hidden_keys": 0
+        },
+        {
+          "prompt": "code-cpp",
+          "token_rows": 602,
+          "graphs": 515,
+          "last_graph": 514,
+          "hidden_records": 24720,
+          "hidden_logical_bytes": 294983680,
+          "duplicate_hidden_keys": 0
+        },
+        {
+          "prompt": "code-python",
+          "token_rows": 595,
+          "graphs": 515,
+          "last_graph": 514,
+          "hidden_records": 24720,
+          "hidden_logical_bytes": 291614720,
+          "duplicate_hidden_keys": 0
+        },
+        {
+          "prompt": "code-rust",
+          "token_rows": 600,
+          "graphs": 515,
+          "last_graph": 514,
+          "hidden_records": 24720,
+          "hidden_logical_bytes": 294021120,
+          "duplicate_hidden_keys": 0
+        },
+        {
+          "prompt": "code-sql",
+          "token_rows": 621,
+          "graphs": 515,
+          "last_graph": 514,
+          "hidden_records": 24720,
+          "hidden_logical_bytes": 304128000,
+          "duplicate_hidden_keys": 0
+        },
+        {
+          "prompt": "code_cpp_1",
+          "token_rows": 595,
+          "graphs": 515,
+          "last_graph": 514,
+          "hidden_records": 24720,
+          "hidden_logical_bytes": 291614720,
+          "duplicate_hidden_keys": 0
+        },
+        {
+          "prompt": "code_cpp_2",
+          "token_rows": 587,
+          "graphs": 515,
+          "last_graph": 514,
+          "hidden_records": 24720,
+          "hidden_logical_bytes": 287764480,
+          "duplicate_hidden_keys": 0
+        },
+        {
+          "prompt": "code_js_1",
+          "token_rows": 593,
+          "graphs": 515,
+          "last_graph": 514,
+          "hidden_records": 24720,
+          "hidden_logical_bytes": 290652160,
+          "duplicate_hidden_keys": 0
+        },
+        {
+          "prompt": "code_py_1",
+          "token_rows": 590,
+          "graphs": 515,
+          "last_graph": 514,
+          "hidden_records": 24720,
+          "hidden_logical_bytes": 289208320,
+          "duplicate_hidden_keys": 0
+        },
+        {
+          "prompt": "code_py_2",
+          "token_rows": 584,
+          "graphs": 515,
+          "last_graph": 514,
+          "hidden_records": 24720,
+          "hidden_logical_bytes": 286320640,
+          "duplicate_hidden_keys": 0
+        },
+        {
+          "prompt": "code_sql_1",
+          "token_rows": 610,
+          "graphs": 515,
+          "last_graph": 514,
+          "hidden_records": 24720,
+          "hidden_logical_bytes": 298833920,
+          "duplicate_hidden_keys": 0
+        },
+        {
+          "prompt": "dialogue",
+          "token_rows": 602,
+          "graphs": 515,
+          "last_graph": 514,
+          "hidden_records": 24720,
+          "hidden_logical_bytes": 294983680,
+          "duplicate_hidden_keys": 0
+        },
+        {
+          "prompt": "en-biology",
+          "token_rows": 599,
+          "graphs": 515,
+          "last_graph": 514,
+          "hidden_records": 24720,
+          "hidden_logical_bytes": 293539840,
+          "duplicate_hidden_keys": 0
+        },
+        {
+          "prompt": "en-climate",
+          "token_rows": 598,
+          "graphs": 515,
+          "last_graph": 514,
+          "hidden_records": 24720,
+          "hidden_logical_bytes": 293058560,
+          "duplicate_hidden_keys": 0
+        },
+        {
+          "prompt": "en-cooking",
+          "token_rows": 594,
+          "graphs": 515,
+          "last_graph": 514,
+          "hidden_records": 24720,
+          "hidden_logical_bytes": 291133440,
+          "duplicate_hidden_keys": 0
+        },
+        {
+          "prompt": "en-economics",
+          "token_rows": 601,
+          "graphs": 515,
+          "last_graph": 514,
+          "hidden_records": 24720,
+          "hidden_logical_bytes": 294502400,
+          "duplicate_hidden_keys": 0
+        },
+        {
+          "prompt": "en-history",
+          "token_rows": 594,
+          "graphs": 515,
+          "last_graph": 514,
+          "hidden_records": 24720,
+          "hidden_logical_bytes": 291133440,
+          "duplicate_hidden_keys": 0
+        },
+        {
+          "prompt": "en-legal",
+          "token_rows": 596,
+          "graphs": 515,
+          "last_graph": 514,
+          "hidden_records": 24720,
+          "hidden_logical_bytes": 292096000,
+          "duplicate_hidden_keys": 0
+        },
+        {
+          "prompt": "en-medicine",
+          "token_rows": 606,
+          "graphs": 515,
+          "last_graph": 514,
+          "hidden_records": 24720,
+          "hidden_logical_bytes": 296908800,
+          "duplicate_hidden_keys": 0
+        },
+        {
+          "prompt": "en-philosophy",
+          "token_rows": 594,
+          "graphs": 515,
+          "last_graph": 514,
+          "hidden_records": 24720,
+          "hidden_logical_bytes": 291133440,
+          "duplicate_hidden_keys": 0
+        },
+        {
+          "prompt": "en-physics",
+          "token_rows": 602,
+          "graphs": 515,
+          "last_graph": 514,
+          "hidden_records": 24720,
+          "hidden_logical_bytes": 294983680,
+          "duplicate_hidden_keys": 0
+        },
+        {
+          "prompt": "en-story",
+          "token_rows": 599,
+          "graphs": 515,
+          "last_graph": 514,
+          "hidden_records": 24720,
+          "hidden_logical_bytes": 293539840,
+          "duplicate_hidden_keys": 0
+        },
+        {
+          "prompt": "japanese",
+          "token_rows": 596,
+          "graphs": 515,
+          "last_graph": 514,
+          "hidden_records": 24720,
+          "hidden_logical_bytes": 292096000,
+          "duplicate_hidden_keys": 0
+        },
+        {
+          "prompt": "long_en_1",
+          "token_rows": 595,
+          "graphs": 515,
+          "last_graph": 514,
+          "hidden_records": 24720,
+          "hidden_logical_bytes": 291614720,
+          "duplicate_hidden_keys": 0
+        },
+        {
+          "prompt": "long_en_2",
+          "token_rows": 594,
+          "graphs": 515,
+          "last_graph": 514,
+          "hidden_records": 24720,
+          "hidden_logical_bytes": 291133440,
+          "duplicate_hidden_keys": 0
+        },
+        {
+          "prompt": "long_zh_1",
+          "token_rows": 593,
+          "graphs": 515,
+          "last_graph": 514,
+          "hidden_records": 24720,
+          "hidden_logical_bytes": 290652160,
+          "duplicate_hidden_keys": 0
+        },
+        {
+          "prompt": "math-calc",
+          "token_rows": 614,
+          "graphs": 515,
+          "last_graph": 514,
+          "hidden_records": 24720,
+          "hidden_logical_bytes": 300759040,
+          "duplicate_hidden_keys": 0
+        },
+        {
+          "prompt": "math-proof",
+          "token_rows": 603,
+          "graphs": 515,
+          "last_graph": 514,
+          "hidden_records": 24720,
+          "hidden_logical_bytes": 295464960,
+          "duplicate_hidden_keys": 0
+        },
+        {
+          "prompt": "math_1",
+          "token_rows": 605,
+          "graphs": 515,
+          "last_graph": 514,
+          "hidden_records": 24720,
+          "hidden_logical_bytes": 296427520,
+          "duplicate_hidden_keys": 0
+        },
+        {
+          "prompt": "math_2",
+          "token_rows": 592,
+          "graphs": 515,
+          "last_graph": 514,
+          "hidden_records": 24720,
+          "hidden_logical_bytes": 290170880,
+          "duplicate_hidden_keys": 0
+        },
+        {
+          "prompt": "math_3",
+          "token_rows": 597,
+          "graphs": 515,
+          "last_graph": 514,
+          "hidden_records": 24720,
+          "hidden_logical_bytes": 292577280,
+          "duplicate_hidden_keys": 0
+        },
+        {
+          "prompt": "reason_1",
+          "token_rows": 597,
+          "graphs": 515,
+          "last_graph": 514,
+          "hidden_records": 24720,
+          "hidden_logical_bytes": 292577280,
+          "duplicate_hidden_keys": 0
+        },
+        {
+          "prompt": "reason_2",
+          "token_rows": 624,
+          "graphs": 515,
+          "last_graph": 514,
+          "hidden_records": 24720,
+          "hidden_logical_bytes": 305571840,
+          "duplicate_hidden_keys": 0
+        },
+        {
+          "prompt": "sum_1",
+          "token_rows": 343,
+          "graphs": 203,
+          "last_graph": 202,
+          "hidden_records": 9744,
+          "hidden_logical_bytes": 167137280,
+          "duplicate_hidden_keys": 0
+        },
+        {
+          "prompt": "summarize",
+          "token_rows": 260,
+          "graphs": 118,
+          "last_graph": 117,
+          "hidden_records": 5664,
+          "hidden_logical_bytes": 126320640,
+          "duplicate_hidden_keys": 0
+        },
+        {
+          "prompt": "trans_1",
+          "token_rows": 474,
+          "graphs": 391,
+          "last_graph": 390,
+          "hidden_records": 18768,
+          "hidden_logical_bytes": 232110080,
+          "duplicate_hidden_keys": 0
+        },
+        {
+          "prompt": "trans_2",
+          "token_rows": 379,
+          "graphs": 288,
+          "last_graph": 287,
+          "hidden_records": 13824,
+          "hidden_logical_bytes": 185333760,
+          "duplicate_hidden_keys": 0
+        },
+        {
+          "prompt": "translation",
+          "token_rows": 619,
+          "graphs": 515,
+          "last_graph": 514,
+          "hidden_records": 24720,
+          "hidden_logical_bytes": 303165440,
+          "duplicate_hidden_keys": 0
+        },
+        {
+          "prompt": "zh-economy",
+          "token_rows": 590,
+          "graphs": 515,
+          "last_graph": 514,
+          "hidden_records": 24720,
+          "hidden_logical_bytes": 289208320,
+          "duplicate_hidden_keys": 0
+        },
+        {
+          "prompt": "zh-history",
+          "token_rows": 599,
+          "graphs": 515,
+          "last_graph": 514,
+          "hidden_records": 24720,
+          "hidden_logical_bytes": 293539840,
+          "duplicate_hidden_keys": 0
+        },
+        {
+          "prompt": "zh-physics",
+          "token_rows": 600,
+          "graphs": 515,
+          "last_graph": 514,
+          "hidden_records": 24720,
+          "hidden_logical_bytes": 294021120,
+          "duplicate_hidden_keys": 0
+        },
+        {
+          "prompt": "zh-poem",
+          "token_rows": 595,
+          "graphs": 515,
+          "last_graph": 514,
+          "hidden_records": 24720,
+          "hidden_logical_bytes": 291614720,
+          "duplicate_hidden_keys": 0
+        },
+        {
+          "prompt": "zh-story",
+          "token_rows": 596,
+          "graphs": 515,
+          "last_graph": 514,
+          "hidden_records": 24720,
+          "hidden_logical_bytes": 292096000,
+          "duplicate_hidden_keys": 0
+        },
+        {
+          "prompt": "zh-tech",
+          "token_rows": 600,
+          "graphs": 515,
+          "last_graph": 514,
+          "hidden_records": 24720,
+          "hidden_logical_bytes": 294021120,
+          "duplicate_hidden_keys": 0
+        }
+      ]
+    },
+    {
+      "batch": "standard-smoe-20-20260910b",
+      "requests": 20,
+      "rows": 196460,
+      "rows_per_request": [
+        9823
+      ],
+      "kinds": {
+        "attn_input": 18240,
+        "attn_output": 49780,
+        "hc_after_attn": 18240,
+        "ffn_moe_logits": 18240,
+        "ffn_moe_topk": 18240,
+        "ffn_moe_weighted": 18240,
+        "ffn_shexp_gated": 18240,
+        "hc_ffn_inject": 18240,
+        "l_last": 19000
+      },
+      "missing_ffn_input_requests": 20,
+      "manifest_bytes": 22815352804
+    },
+    {
+      "batch": "standard-smoe-8-20260911",
+      "requests": 8,
+      "rows": 93176,
+      "rows_per_request": [
+        11647
+      ],
+      "kinds": {
+        "attn_input": 7296,
+        "attn_output": 19912,
+        "hc_after_attn": 7296,
+        "ffn_moe_input": 14592,
+        "ffn_moe_logits": 7296,
+        "ffn_moe_topk": 7296,
+        "ffn_moe_weighted": 7296,
+        "ffn_shexp_gated": 7296,
+        "hc_ffn_inject": 7296,
+        "l_last": 7600
+      },
+      "missing_ffn_input_requests": 0,
+      "manifest_bytes": 9655116956
+    }
+  ],
+  "prompt_relationship": "The 8 standard prompts are a subset of the 20 standard prompts, which are a subset of collect-run2's 51 prompts. Runs are not interchangeable.",
+  "excluded_batches": [
+    {
+      "directory": "standard-smoe-20-20260910",
+      "reason": "Only r01 remains; truncated graph, orphan zero-byte payload, no manifest."
+    },
+    {
+      "directory": "standard-smoe-smoke-20260910",
+      "reason": "10003 metadata rows reference only 4704 unique filenames; stage files were overwritten."
+    },
+    {
+      "directory": "standard-smoe-smoke2-20260910",
+      "reason": "Development smoke data; not part of the principal evaluation collection."
+    },
+    {
+      "directory": "standard-smoe-smoke3-20260910",
+      "reason": "Development smoke data; not part of the principal evaluation collection."
+    },
+    {
+      "directory": "collect-smoke",
+      "reason": "Development smoke data without retained prompt/log; not a principal evaluation request."
+    }
+  ],
+  "excluded_content": [
+    "Model weights and extracted gate/HC matrices",
+    "GGUF/NPY files",
+    "EXE/DLL/PDB/OBJ files",
+    "Original run logs and miscellaneous TXT outputs; selected sanitized reports are available in Git"
+  ],
+  "verification_before_archiving": [
+    "All 51 collect-run2 hidden metadata files streamed: zero duplicate (graph_id,sched_id,layer) keys, F32 and ne0=2560 throughout.",
+    "All 51 collect-run2 experts.csv files streamed: correct eight-column headers; zero malformed or repeated-header rows.",
+    "First and last hidden payload sizes per collect-run2 request sampled; one single-token layer-0 logits/probabilities pair per request checked at 2048 bytes each.",
+    "All 20+8 standard tensors.csv metadata files counted; request manifests report successful exits.",
+    "Numeric tensor values and every raw payload size have not been fully validated. Archive integrity testing is separate from experiment validity."
+  ]
+}
