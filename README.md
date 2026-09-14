@@ -6,15 +6,33 @@
 
 > **严重资源风险：推荐参数以外的开关、组合和并发运行，可能耗尽整机主存、提交额度或显存，造成进程崩溃、系统无响应，甚至需要重启。128 GB 内存也不代表安全。推荐参数同样不是安全保证。请先保存其他工作，不要在承担重要任务的机器上无人值守运行。**
 
-## 实验档案：路线、失败与更正
+## 文档与数据导航
 
 本项目的研发从 **SSD→主存的 PLE 行缓存**开始，随后是静态表＋XT、Fate、共享专家 SMoE、在线缓存与双门控、dev 路径时序、TBQ4 与 NXQ。最值得保留的是每次为什么尝试、为什么转向，以及哪些漂亮结果后来被推翻。
+
+### 研究文档：先看过程与结论
 
 - **[完整档案索引](docs/experiments/README.md)**：路径覆盖表、版本边界、保留／放弃／未完成状态。
 - **[按研发顺序阅读](docs/experiments/00-research-chronology.md)**：包括维护者补充的 PLE 约1G／90%+、SMoE teacher 99%，与在线指标分开记账。
 - [PLE、host、devpart、prefill、MTP](docs/experiments/01-host-and-devpart.md) · [预测、缓存与双门控](docs/experiments/02-prediction-and-cache.md)。
 - [权重量化选型与 IQ/Q 内核差异](docs/experiments/03-weight-quantization-and-kernels.md) · [TBQ3/TBQ4、NXQ 与 KV 质量](docs/experiments/04-kv-tbq-and-nxq.md)。
 - [正确性、测量失效与工程事故](docs/experiments/05-correctness-and-methodology.md) · **[原始证据与哈希清单](docs/experiments/evidence/README.md)**。
+
+专题共包含 **91个编号的路线／诊断条目**，逐项对应原 handoff 的 **45节**；每条记录尝试动机、技术机制、结果、放弃或保留理由与遗留问题。编号数量不代表有效优化数量。
+
+### 实验数据：再查原始证据
+
+| 想查什么 | 直接入口 | 内容与边界 |
+|---|---|---|
+| 数据总览与逐文件指路 | **[证据索引](docs/experiments/evidence/README.md)** | 125份原始小日志、14份数值来源记录、缺失材料和读取规则 |
+| 吞吐、命中、传输、正确性与失败运行 | **[聚合结果 JSON](docs/experiments/evidence/measurements.json)** | CLI、pressure128、固定历史400步及旧baseline400；不是同一协议的一组成绩 |
+| 原始 stdout／stderr 与统计日志 | [日志目录](docs/experiments/evidence/logs/) | PLE／静态表／XT、host／devpart、KV／NXQ、最后CLI及逻辑探针；按证据索引选择文件 |
+| 权重类型、几何与后端放置 | [只读解析输出](docs/experiments/evidence/scans/) | GGUF头／tensor目录与已有调度日志解析，不是新跑的模型实验 |
+| 历史计划、旧结论与维护者补充 | [历史文档目录](docs/experiments/sources/) | 5份历史快照及补充记录；旧结论的撤回与更正见专题 |
+| 来源、脱敏规则与文件哈希 | [来源清单](docs/experiments/evidence/provenance.json) · [公开文件哈希](docs/experiments/evidence/publication-files.json) | 区分原件与公开副本SHA-256；公开文件清单不含其自身及根README |
+| 提交说明与日志误删事件 | [commit notes](docs/experiments/evidence/commit-notes.txt) · [事件记录](docs/experiments/evidence/deleted-logs-incident.json) | 保留历史陈述与事故事实，不把它们当作验收证明 |
+
+**数据使用注意：** 对照必须核对二进制、提示词、上下文、KV、缓存预算和步数；高命中或runner的`pass`字段不等于数值正确、稳定加速。完整模型、logits大数组和实验二进制未上传；缺失日志明确列出，没有补造。
 
 档案也收录未发布和未验收的研究，**上传文档不等于合入这些实现**。原生代码基线仍为 `7e01451b2`；没有因本次归档重跑模型或启用新优化。
 
