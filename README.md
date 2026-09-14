@@ -1,8 +1,10 @@
-# llama.cpp：Qwen MoE host 推理实验分支
+# 基于 llama.cpp 的 Qwen3.8 Flash Next 推理优化研究：NGRAM 卸载、MoE 预取与踩坑实录
 
-本仓库是 [starsder/llama.cpp](https://github.com/starsder/llama.cpp)，直接派生自 [unslothai/llama.cpp](https://github.com/unslothai/llama.cpp)，基础推理引擎来自 [ggml-org/llama.cpp](https://github.com/ggml-org/llama.cpp) 与 [ggml](https://github.com/ggml-org/ggml)。本 fork 主要探索大于显存容量的 MoE 模型在单机 CPU/GPU 混合推理中的专家缓存、预取与执行重叠。
+本仓库是 [starsder/qwen3.8-flash-next-inference-research](https://github.com/starsder/qwen3.8-flash-next-inference-research)，直接派生自 [unslothai/llama.cpp](https://github.com/unslothai/llama.cpp)，基础推理引擎来自 [ggml-org/llama.cpp](https://github.com/ggml-org/llama.cpp) 与 [ggml](https://github.com/ggml-org/ggml)。本项目聚焦 **Qwen3.8 Flash Next 的 NGRAM／PLE 卸载、MoE 专家预取与缓存、CPU/GPU 混合执行**，并记录优化尝试、失败路径和结论更正，而非维护通用推理引擎。
 
-**状态：不稳定、研究用途，不是生产稳定版。** 当前发布的保守 host 代码基线为 [`7e01451b2`](https://github.com/starsder/llama.cpp/commit/7e01451b2d7aab6a4ff58ecfdd2f3b13fcaeb0bf)，包含 host 分区路由错位修复及混合量化权重寻址保护；不包含后续 repack/KV 实验及尚未提交的缓存策略候选。“保守基线”不代表无崩溃、无计算错误或已经完成全面回归。
+> **兼容性警告：这不是通用 llama.cpp 的兼容替代品。** 为研究特定模型，本分支已深度修改加载、调度、缓存与执行路径，可能严重影响原有模型、后端、工具和接口的兼容性。未验证的上游功能不应视为仍然可用；需要通用模型支持或稳定兼容性，请使用上游 llama.cpp。本仓库保留 fork 来源与致谢，但以独立研究项目命名，避免与上游能力混淆。
+
+**状态：不稳定、研究用途，不是生产稳定版。** 当前发布的保守 host 代码基线为 [`7e01451b2`](https://github.com/starsder/qwen3.8-flash-next-inference-research/commit/7e01451b2d7aab6a4ff58ecfdd2f3b13fcaeb0bf)，包含 host 分区路由错位修复及混合量化权重寻址保护；不包含后续 repack/KV 实验及尚未提交的缓存策略候选。“保守基线”不代表无崩溃、无计算错误或已经完成全面回归。
 
 > **严重资源风险：推荐参数以外的开关、组合和并发运行，可能耗尽整机主存、提交额度或显存，造成进程崩溃、系统无响应，甚至需要重启。128 GB 内存也不代表安全。推荐参数同样不是安全保证。请先保存其他工作，不要在承担重要任务的机器上无人值守运行。**
 
@@ -114,8 +116,8 @@
 使用装有 Visual Studio C++ 工具链、CMake、Ninja、CUDA Toolkit 和 Python 的 **x64 Developer PowerShell**。详细平台要求见 [构建文档](docs/build.md)。从本 fork 构建，不要把上游发布页的通用二进制当成包含本分支功能的版本：
 
 ```powershell
-git clone --branch master https://github.com/starsder/llama.cpp.git llama.cpp-host
-Set-Location llama.cpp-host
+git clone --branch master https://github.com/starsder/qwen3.8-flash-next-inference-research.git
+Set-Location qwen3.8-flash-next-inference-research
 cmake -S . -B build-ple-trace-mrs -G Ninja -DCMAKE_BUILD_TYPE=Release -DGGML_CUDA=ON -DCMAKE_CUDA_ARCHITECTURES=86
 cmake --build build-ple-trace-mrs --target llama-cli -j 16
 ```
@@ -204,7 +206,7 @@ CPU/GPU 对同一专家的数值实现可能产生浮点差异，缓存放置改
 |---|---|
 | [ggml-org/llama.cpp](https://github.com/ggml-org/llama.cpp)、[ggml](https://github.com/ggml-org/ggml) | 基础推理框架、GGUF、量化算子与各 backend；保留原作者版权、许可证和贡献历史 |
 | [unslothai/llama.cpp](https://github.com/unslothai/llama.cpp) | 本 fork 的直接上游；模型适配及相关继承代码以 Git 历史和文件声明为准，不将已有 Qwen 模型支持冒认为本 fork 原创 |
-| [starsder/llama.cpp](https://github.com/starsder/llama.cpp) | 本 fork 的缓存、调度、修复、测试工具及实验记录；不是上游官方稳定发行版 |
+| [starsder/qwen3.8-flash-next-inference-research](https://github.com/starsder/qwen3.8-flash-next-inference-research) | 本研究项目的缓存、调度、修复、测试工具及实验记录；不是上游官方稳定发行版，也不保证上游兼容性 |
 | [Fate: Fast Edge Inference of Mixture-of-Experts Models via Cross-Layer Gate](https://arxiv.org/abs/2502.12224) | 跨层 gate 预测／专家预取的技术参考；仓库另有 Fate 路径，但推荐配置明确 `PREDICT_FATE=0` |
 | [HybriMoE: Hybrid CPU-GPU Scheduling and Cache Management for Efficient MoE Inference](https://arxiv.org/abs/2504.05897)、[作者代码仓库](https://github.com/PKU-SEC-Lab/HybriMoE) | 混合调度、预取和 score-based 缓存的技术参考；不是整套 HybriMoE／kTransformers 的移植或其性能复现 |
 | [Unsloth](https://github.com/unslothai/unsloth)、[其 Hugging Face 组织](https://huggingface.co/unsloth) | 本地测试量化文件标称的来源；具体权重必须以下载时的模型卡、分片校验值及许可证为准 |
@@ -220,7 +222,7 @@ CPU/GPU 对同一专家的数值实现可能产生浮点差异，缓存放置改
 - CUDA Toolkit、驱动及其他专有运行时按各自条款使用和分发，不因本项目开源而自动获得再分发授权。请自行从合法来源安装，不要无条件打包第三方组件。
 - 软件按许可证的 **“AS IS”** 条款提供，不作适销性、特定用途适用性或其他保证；责任限制以原许可证及适用法律为准。本 README 不是对全部依赖完成法律审计的证明，也不替代正式法律意见。
 
-如发现遗漏的版权声明、来源引用或许可冲突，请通过 [Issues](https://github.com/starsder/llama.cpp/issues) 提供具体文件、版本与原始来源，以便核查和修正。提交代码时请注明借用来源及许可，并提供可复现的正确性／性能证据；请勿上传无权分发的模型、私密日志或凭据。
+如发现遗漏的版权声明、来源引用或许可冲突，请通过 [Issues](https://github.com/starsder/qwen3.8-flash-next-inference-research/issues) 提供具体文件、版本与原始来源，以便核查和修正。提交代码时请注明借用来源及许可，并提供可复现的正确性／性能证据；请勿上传无权分发的模型、私密日志或凭据。
 
 ---
 
