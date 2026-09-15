@@ -23,7 +23,7 @@ In one sentence: **the 3-bit mixed-quantization MoE model fits entirely in 128 G
 
 ## About me, and why this repository exists
 
-I am a **hobbyist beginner researcher**, and this is **not professional research**: no team, no review, no compute budget — I just wanted to know whether a MoE model could still run a bit faster on a single laptop with 16 GB of VRAM.
+I am a **hobbyist beginner researcher**, and this is **not professional research**: no team, no review, no compute budget — just one 16 GB **modded card** (not a laptop; a modified card, because I could not afford anything better), and a wish to know whether a MoE model could still run a bit faster with that little VRAM.
 
 So the material here **may well be imprecise**: too few repeats at the same working point, comparisons I never ran, conclusions I later overturned myself. I have tried to write the conventions, the counterexamples and the retractions into the documents, but **there are certainly still mistakes**. **Corrections, challenges to the conclusions and discussion are all welcome** — just open an issue; if you point at something that turns out to be fine, I will take that too.
 
