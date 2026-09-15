@@ -1,6 +1,6 @@
 # Qwen3.8 Flash Next hidden／router原始采集包
 
-这是一份离线研究数据包，不是模型权重，不是可直接替代上游llama.cpp的发布版。原始数组仅通过外部压缩包分发，不进Git或Git LFS。云盘链接尚未提供。
+这是一份离线研究数据包，不是模型权重，不是可直接替代上游llama.cpp的发布版。原始数组以单个压缩包分发，不进Git或Git LFS；下载入口见[Hugging Face Dataset](https://huggingface.co/datasets/satsder/qwen3.8-flash-next-routing-traces)。
 
 ## 主包内容
 
@@ -45,6 +45,6 @@
 
 ## 完整性与解压
 
-压缩文件名为`qwen3.8-hidden-routing-research.7z`，外部同时提供SHA256SUMS.txt。下载后先核对SHA-256，再用7-Zip执行`7z t qwen3.8-hidden-routing-research.7z`。解压到独立空目录，不要覆盖源码工作树；文件数量非常多，应预留足够容量与解压时间。
+压缩文件名为`qwen3.8-hidden-routing-research.7z`（49,235,820,003字节），与`SHA256SUMS.txt`、`archive-receipt.json`位于同一[Hugging Face Dataset](https://huggingface.co/datasets/satsder/qwen3.8-flash-next-routing-traces)。下载后先核对SHA-256，再用7-Zip执行`7z t qwen3.8-hidden-routing-research.7z`。解压到独立空目录，不要覆盖源码工作树；文件数量非常多，应预留足够容量与解压时间。
 
 Git仓库只保存本说明、元数据和轻量小文件。外部分发不改变模型或第三方材料的许可要求，不应把仓库许可证自动外推到其他资产。

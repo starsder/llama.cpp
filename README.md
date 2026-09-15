@@ -28,7 +28,7 @@
 |---|---|---|
 | 数据总览与逐文件指路 | **[证据索引](docs/experiments/evidence/README.md)** | 125份原始小日志、14份数值来源记录、缺失材料和读取规则 |
 | 提示词、token历史与离线评估小文件 | **[路由轻量数据包](docs/experiments/data/routing-small/README.md)** | 164份原始小文件副本，正文约0.70 MiB；51／20／8提示词的批次关系和原件哈希 |
-| hidden／router原始大数据的批次与格式 | **[大数据目录说明](docs/experiments/data/hidden-routing/README.md)** | 5批、85个采集请求目录；这里只放元数据，压缩包不进Git／Git LFS，云盘链接尚未提供 |
+| hidden／router原始大数据的批次与格式 | **[大数据目录说明](docs/experiments/data/hidden-routing/README.md)** · **[HF Dataset](https://huggingface.co/datasets/satsder/qwen3.8-flash-next-routing-traces)** | 5批、85个采集请求目录；49.2 GB压缩包由Hugging Face分发，不进Git／Git LFS，仓库内只放元数据 |
 | 吞吐、命中、传输、正确性与失败运行 | **[聚合结果 JSON](docs/experiments/evidence/measurements.json)** | CLI、pressure128、固定历史400步及旧baseline400；不是同一协议的一组成绩 |
 | 原始 stdout／stderr 与统计日志 | [日志目录](docs/experiments/evidence/logs/) | PLE／静态表／XT、host／devpart、KV／NXQ、最后CLI及逻辑探针；按证据索引选择文件 |
 | 权重类型、几何与后端放置 | [只读解析输出](docs/experiments/evidence/scans/) | GGUF头／tensor目录与已有调度日志解析，不是新跑的模型实验 |
@@ -38,7 +38,7 @@
 
 **数据使用注意：** 对照必须核对二进制、提示词、上下文、KV、缓存预算和步数；高命中或runner的`pass`字段不等于数值正确、稳定加速。完整模型、logits大数组和实验二进制未上传；缺失日志明确列出，没有补造。
 
-**大体积数据不随仓库分发：** hidden／router原始数组仅在本地打包，由维护者上传云盘后另给下载链接；不进入Git或Git LFS。当前轻量包不包含这些二进制数组。
+**大体积数据不随仓库分发：** hidden／router原始数组打包为49.2 GB的压缩包，发布在 [Hugging Face Dataset](https://huggingface.co/datasets/satsder/qwen3.8-flash-next-routing-traces)；不进入Git或Git LFS，校验值在同仓库的`SHA256SUMS.txt`与`archive-receipt.json`。当前轻量包不包含这些二进制数组。
 
 档案也收录未发布和未验收的研究，**上传文档不等于合入这些实现**。原生代码基线仍为 `7e01451b2`；没有因本次归档重跑模型或启用新优化。
 

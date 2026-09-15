@@ -1,6 +1,6 @@
 {
   "schema": "hidden-routing-inventory/1",
-  "distribution": "External local archive only; no Git or Git LFS payloads. Cloud URL not yet supplied.",
+  "distribution": "Distributed as a single archive from the Hugging Face dataset satsder/qwen3.8-flash-next-routing-traces; no Git or Git LFS payloads. Archive SHA-256 is recorded in the accompanying SHA256SUMS.txt and archive-receipt.json.",
   "archive_name": "qwen3.8-hidden-routing-research.7z",
   "included_batches": [
     {

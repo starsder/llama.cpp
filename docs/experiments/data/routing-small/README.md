@@ -1,6 +1,6 @@
 # 路由研究轻量数据包
 
-先提供容易下载、便于核对的原始小文件：**164份，公开正文合计735,256字节（约0.70 MiB）**，另附本说明与来源清单。大体积hidden／router二进制不进Git、不使用Git LFS，后续由维护者上传云盘后单独提供入口。
+先提供容易下载、便于核对的原始小文件：**164份，公开正文合计735,256字节（约0.70 MiB）**，另附本说明与来源清单。大体积hidden／router二进制不进Git、不使用Git LFS，改由[Hugging Face Dataset](https://huggingface.co/datasets/satsder/qwen3.8-flash-next-routing-traces)分发。
 
 返回[实验档案](../../README.md) · [证据总览](../../evidence/README.md)。
 
@@ -36,4 +36,4 @@
 
 提示词内容、输入token与生成token记录均保留，便于核对实验；本包不是完整tokenizer或模型快照。模型权重、抽取的gate／HC权重、激活数组、完整词表logits、可执行文件和本机环境凭据均不包含在内。不要把本仓库许可证自动外推为未提供的模型或第三方数据的许可。
 
-**大数据下载：尚无云盘链接。** 大体积原始数据将只在本地打包，待维护者上传并提供链接后更新下载说明；仓库克隆不需要下载这些数组。
+**大数据下载：** 49.2 GB原始压缩包（`qwen3.8-hidden-routing-research.7z`）已发布在[Hugging Face Dataset](https://huggingface.co/datasets/satsder/qwen3.8-flash-next-routing-traces)，同仓库附`SHA256SUMS.txt`与`archive-receipt.json`；仓库克隆不需要下载这些数组。

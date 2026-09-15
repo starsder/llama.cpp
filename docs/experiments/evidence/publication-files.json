@@ -44,18 +44,18 @@
     },
     {
       "path": "data/hidden-routing/README.md",
-      "bytes": 4602,
-      "sha256": "8fac545b8ddc4f1b2409fd1f654e4aa6fa67d78df794d8a864a3099bea6ca604"
+      "bytes": 4831,
+      "sha256": "e4f2a377746b8746b1b228ef60e5490b8a7d08ce3753e38040186a799260c5f4"
     },
     {
       "path": "data/hidden-routing/inventory.json",
-      "bytes": 17394,
-      "sha256": "c5a89ed8deb3446dc4bea8d48cbace36669ac25ad7b0b2238303b92ec5a640d6"
+      "bytes": 18110,
+      "sha256": "90bc3404400702be5e32a93af46478608eaaa7b226b4345ebd39b6a20daa70ef"
     },
     {
       "path": "data/routing-small/README.md",
-      "bytes": 3689,
-      "sha256": "efa1e01e0c36a4c2b9f0b5efd2ee87323302b9fbb15b4947059ff12ec19f7a30"
+      "bytes": 3856,
+      "sha256": "4fedb68af41ff7125bc9810b380ac33d2e9559fd665377979c53e63bfcb27aac"
     },
     {
       "path": "data/routing-small/files/collect-prompts/code.txt",
@@ -884,8 +884,8 @@
     },
     {
       "path": "evidence/README.md",
-      "bytes": 20629,
-      "sha256": "7b7abc5a0f91f7feb036e69565a616b0d51b609368964be88d43a5c652519e95"
+      "bytes": 20724,
+      "sha256": "e5631a2d80fb5d41a16fec2f694ae4a095d64e352384a39304f65d4334db3404"
     },
     {
       "path": "evidence/commit-notes.txt",
