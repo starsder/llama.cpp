@@ -1,6 +1,6 @@
 {
   "schema": "publication-files/1",
-  "scope": "Paths are relative to docs/experiments; this manifest excludes itself and the root README. UTF-8 LF checkout bytes.",
+  "scope": "Paths are relative to docs/experiments; this manifest excludes itself and the root READMEs (README.md, README.en.md). UTF-8 LF checkout bytes.",
   "files": [
     {
       "path": ".gitattributes",

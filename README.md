@@ -2,6 +2,41 @@
 
 # 基于 llama.cpp 的 Qwen3.8 Flash Next 推理优化研究：NGRAM 卸载、MoE 预取与踩坑实录
 
+## 成果速览
+
+一句话：**把 3-bit 混合量化的 MoE 大模型完整放进单机 128 GB 主存，靠专家预取 + 显存专家缓存把 8k 上下文的解码跑到约 19 token/s**；同时把一堆"看起来很美"的数字撤回，写进失败记录。
+
+- **可以看的数字（本机观测，不是发布构建验收）**：保守工作点 400-token 解码 **19.2／19.3 token/s**（`-c 8192`、K/V `q8_0`、6144 MiB 缓存预算、64 槽／层）；页锁定权重缓冲 **72.6 GiB、0 次锁定失败**；缓存**访问**命中率 **69.7%**（访问命中，不是预测器准确率）。
+- **不能引用的数字**：历史 20.8 对比 9.2（2.26×／约 +126.1%）只是历史记录的算术比较，不是同条件实测净提升；路由错位修复前的 20.3–22 token/s、devpart 计算错误状态下的 28–32 token/s、只降传输字节而无稳定整步收益的候选峰值，都不算成果。逐条原因写在[正确性文档](docs/experiments/05-correctness-and-methodology.md)。
+- **比成绩更值得看的**：**91 个编号路线／诊断条目**，逐条记录动机、机制、结果、撤回理由与遗留问题——包括被我自己推翻的结论、一次没能定位的原生崩溃，和测量口径上踩过的坑。
+
+## 数据和记录（本仓库最重要的部分）
+
+| 想要什么 | 直接入口 |
+|---|---|
+| **全部实验文档（中文／English）** | [档案索引](docs/experiments/README.md) · [English](docs/experiments/README.en.md) · [按研发顺序读](docs/experiments/00-research-chronology.md) |
+| **原始证据与哈希清单** | [证据索引](docs/experiments/evidence/README.md)：125 份原始小日志、14 份数值来源、缺失材料与读取规则 |
+| **聚合结果 JSON** | [measurements.json](docs/experiments/evidence/measurements.json)：CLI、pressure128、固定历史 400 步、旧 baseline400，保留失败与退出码 |
+| **提示词、token 历史、离线评估小文件** | [路由轻量数据包](docs/experiments/data/routing-small/README.md)：164 份，正文约 0.70 MiB |
+| **原始 hidden／router 采集（49.2 GB）** | [Hugging Face Dataset](https://huggingface.co/datasets/satsder/qwen3.8-flash-next-routing-traces) · [格式与批次说明](docs/experiments/data/hidden-routing/README.md) |
+| **来源、脱敏与逐文件哈希** | [provenance.json](docs/experiments/evidence/provenance.json) · [publication-files.json](docs/experiments/evidence/publication-files.json) |
+
+## 关于我，以及为什么会有这个仓库
+
+我是**兴趣使然的菜鸟研究者**，这是**非专业研究**：没有团队、没有评审、没有算力预算，只是自己想知道"MoE 大模型在单机 16 GB 显存的笔记本上还能不能跑快一点"。
+
+所以这里的东西**可能存在不严谨**——同一工作点重复次数不够、有些对照没做、有些结论我自己后来推翻了。我已经尽量把口径、反例和撤回都写进文档，但**肯定还有错**。**欢迎指出错误、质疑结论、一起讨论**：开 issue 就好，指错了我也认。
+
+我选择**开放大部分研究数据**：除模型权重、完整 logits 大数组和实验二进制外，提示词、token 记录、聚合结果、原始小日志和 49.2 GB 采集数组都可以下载。**希望可以帮到别人**——哪怕只是让你少踩一个坑，或者早点知道某条路走不通。
+
+## 下一步（进行中）
+
+这个仓库的起点是 **SSD→主存的 PLE 行缓存**，但后续大部分精力放在了**主存→显存**的专家预取与缓存上。
+
+**现在正在尝试：把预取算法适配到主存本身，实现 SSD→主存的高效预测加载。** 让"预测"不只决定哪些专家进显存，也决定哪些权重／行该提前从 SSD 拉进主存，尽量避免在解码的关键路径上等磁盘。
+
+这一步还没有结论，也没有可以引用的数字；有进展会照旧写进文档，失败也会写进去。
+
 本仓库是 [starsder/qwen3.8-flash-next-inference-research](https://github.com/starsder/qwen3.8-flash-next-inference-research)，直接派生自 [unslothai/llama.cpp](https://github.com/unslothai/llama.cpp)，基础推理引擎来自 [ggml-org/llama.cpp](https://github.com/ggml-org/llama.cpp) 与 [ggml](https://github.com/ggml-org/ggml)。本项目聚焦 **Qwen3.8 Flash Next 的 NGRAM／PLE 卸载、MoE 专家预取与缓存、CPU/GPU 混合执行**，并记录优化尝试、失败路径和结论更正，而非维护通用推理引擎。
 
 > **兼容性警告：这不是通用 llama.cpp 的兼容替代品。** 为研究特定模型，本分支已深度修改加载、调度、缓存与执行路径，可能严重影响原有模型、后端、工具和接口的兼容性。未验证的上游功能不应视为仍然可用；需要通用模型支持或稳定兼容性，请使用上游 llama.cpp。本仓库保留 fork 来源与致谢，但以独立研究项目命名，避免与上游能力混淆。

@@ -2,6 +2,41 @@
 
 # Qwen3.8 Flash Next inference optimization research based on llama.cpp: NGRAM offload, MoE prefetching, and a record of pitfalls
 
+## Results at a glance
+
+In one sentence: **the 3-bit mixed-quantization MoE model fits entirely in 128 GB of main memory on a single machine, and expert prefetching plus a VRAM expert cache push 8k-context decoding to about 19 token/s** — while a pile of impressive-looking numbers got retracted and written up as failures.
+
+- **Numbers you may look at (local observations, not an acceptance run of the release build)**: 400-token decoding at the conservative working point **19.2 / 19.3 token/s** (`-c 8192`, K/V `q8_0`, 6144 MiB cache budget, 64 slots per layer); a pinned weight buffer of **72.6 GiB with 0 lock failures**; a cache **access** hit rate of **69.7%** (access hits, not predictor accuracy).
+- **Numbers you must not cite**: the historical 20.8 vs 9.2 (2.26× / about +126.1%) is only an arithmetic comparison of historical records, not a same-conditions measured net gain; the 20.3–22 token/s from before the routing-misalignment fix, the 28–32 token/s produced by devpart in a computationally wrong state, and candidate peaks that only cut transferred bytes without a stable end-to-end gain are all excluded. The reason for each is written up in the [correctness document](docs/experiments/05-correctness-and-methodology.en.md).
+- **More worth reading than the scores**: **91 numbered route / diagnosis entries** recording, one by one, the motivation, the mechanism, the result, the reason for retraction, and the open questions — including conclusions I later overturned myself, a native crash that was never localized, and the measurement traps I walked into.
+
+## Data and records (the most important part of this repository)
+
+| What you want | Where to go |
+|---|---|
+| **All experiment documents (Chinese / English)** | [Archive index](docs/experiments/README.en.md) · [中文](docs/experiments/README.md) · [Read in research order](docs/experiments/00-research-chronology.en.md) |
+| **Raw evidence and hash manifest** | [Evidence index](docs/experiments/evidence/README.en.md): 125 original small logs, 14 numeric sources, missing material, and the reading rules |
+| **Aggregated result JSON** | [measurements.json](docs/experiments/evidence/measurements.json): CLI, pressure128, fixed-history 400 steps, old baseline400 — failures and exit codes retained |
+| **Prompts, token histories, offline evaluation small files** | [Lightweight routing data package](docs/experiments/data/routing-small/README.en.md): 164 files, about 0.70 MiB of body text |
+| **Raw hidden/router captures (49.2 GB)** | [Hugging Face Dataset](https://huggingface.co/datasets/satsder/qwen3.8-flash-next-routing-traces) · [Format and batch notes](docs/experiments/data/hidden-routing/README.en.md) |
+| **Provenance, redaction, per-file hashes** | [provenance.json](docs/experiments/evidence/provenance.json) · [publication-files.json](docs/experiments/evidence/publication-files.json) |
+
+## About me, and why this repository exists
+
+I am a **hobbyist beginner researcher**, and this is **not professional research**: no team, no review, no compute budget — I just wanted to know whether a MoE model could still run a bit faster on a single laptop with 16 GB of VRAM.
+
+So the material here **may well be imprecise**: too few repeats at the same working point, comparisons I never ran, conclusions I later overturned myself. I have tried to write the conventions, the counterexamples and the retractions into the documents, but **there are certainly still mistakes**. **Corrections, challenges to the conclusions and discussion are all welcome** — just open an issue; if you point at something that turns out to be fine, I will take that too.
+
+I chose to **open up most of the research data**: apart from model weights, the large complete-logits arrays and the experiment binaries, the prompts, token records, aggregated results, original small logs and the 49.2 GB capture arrays are all downloadable. **I hope it helps someone** — even if it only saves you one pitfall, or tells you early that some direction does not work.
+
+## Next step (in progress)
+
+This repository started from an **SSD→main-memory PLE row cache**, but most of the later effort went into expert prefetching and caching on the **main memory→VRAM** side.
+
+**What I am trying now: adapting the prefetch algorithm to main memory itself, to achieve efficient predictive loading from SSD to memory.** That is, letting "prediction" decide not only which experts go to VRAM, but also which weights/rows should be pulled from SSD into main memory ahead of time, so that decoding does not sit waiting on the disk in the critical path.
+
+There is no conclusion from this yet, and no number worth citing; progress will go into the documents as usual, and so will failures.
+
 This repository is [starsder/qwen3.8-flash-next-inference-research](https://github.com/starsder/qwen3.8-flash-next-inference-research), derived directly from [unslothai/llama.cpp](https://github.com/unslothai/llama.cpp); the base inference engine comes from [ggml-org/llama.cpp](https://github.com/ggml-org/llama.cpp) and [ggml](https://github.com/ggml-org/ggml). This project focuses on **NGRAM/PLE offloading for Qwen3.8 Flash Next, MoE expert prefetching and caching, and mixed CPU/GPU execution**, and records optimization attempts, failed paths, and corrections to conclusions, rather than maintaining a general-purpose inference engine.
 
 > **Compatibility warning: this is not a compatible replacement for general-purpose llama.cpp.** To study a specific model, this branch has deeply modified the loading, scheduling, caching, and execution paths, and may severely affect compatibility with existing models, backends, tools, and interfaces. Unverified upstream features should not be regarded as still working; if you need general model support or stable compatibility, use upstream llama.cpp. This repository retains its fork origin and acknowledgements, but is named as an independent research project to avoid confusion with upstream capabilities.
