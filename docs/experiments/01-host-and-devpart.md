@@ -1,3 +1,5 @@
+[中文](01-host-and-devpart.md) · [English](01-host-and-devpart.en.md)
+
 # 01 — host 路径、split、devpart、CPU 异步、逐层回读、pinned、worker、prefill 与投机
 
 本文件是实验档案，不是实现说明。每条路线给出同一组字段：路线 ID、状态、为何尝试、技术机制、

@@ -1,3 +1,5 @@
+[中文](README.md) · [English](README.en.md)
+
 # 基于 llama.cpp 的 Qwen3.8 Flash Next 推理优化研究：NGRAM 卸载、MoE 预取与踩坑实录
 
 本仓库是 [starsder/qwen3.8-flash-next-inference-research](https://github.com/starsder/qwen3.8-flash-next-inference-research)，直接派生自 [unslothai/llama.cpp](https://github.com/unslothai/llama.cpp)，基础推理引擎来自 [ggml-org/llama.cpp](https://github.com/ggml-org/llama.cpp) 与 [ggml](https://github.com/ggml-org/ggml)。本项目聚焦 **Qwen3.8 Flash Next 的 NGRAM／PLE 卸载、MoE 专家预取与缓存、CPU/GPU 混合执行**，并记录优化尝试、失败路径和结论更正，而非维护通用推理引擎。

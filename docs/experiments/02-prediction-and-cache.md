@@ -1,3 +1,5 @@
+[中文](02-prediction-and-cache.md) · [English](02-prediction-and-cache.en.md)
+
 # 02 预测与缓存：静态表/XT → Fate → SMoE → 在线缓存与双门控
 
 本章覆盖 MoE/SMoE 专家预测与设备侧专家缓存的全部已尝试路线：从静态热表与 XT 转移清单，到 Fate 在线跨层 gate、共享专家 SMoE 预测，再到在线缓存工程化（预取量、排名截止线、去重、淘汰分数、热区回填、双门控自适应传输阈值），最后到共享池/位置权重与 `LOCAL_EVIDENCE/moe-cache/optimization400` 的生命周期统计与两个未提交候选。

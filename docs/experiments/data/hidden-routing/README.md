@@ -1,3 +1,5 @@
+[中文](README.md) · [English](README.en.md)
+
 # Qwen3.8 Flash Next hidden／router原始采集包
 
 这是一份离线研究数据包，不是模型权重，不是可直接替代上游llama.cpp的发布版。原始数组以单个压缩包分发，不进Git或Git LFS；下载入口见[Hugging Face Dataset](https://huggingface.co/datasets/satsder/qwen3.8-flash-next-routing-traces)。

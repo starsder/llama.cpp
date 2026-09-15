@@ -1,3 +1,5 @@
+[中文](03-weight-quantization-and-kernels.md) · [English](03-weight-quantization-and-kernels.en.md)
+
 # 03 权重与量化：格式选型、混合 dtype、反量化内核与覆盖矩阵
 
 本章记录"权重侧"的量化选型与内核工作：为什么用这个 UD-IQ3_XXS、一个文件里到底装了什么、

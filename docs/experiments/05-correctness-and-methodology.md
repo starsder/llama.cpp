@@ -1,3 +1,5 @@
+[中文](05-correctness-and-methodology.md) · [English](05-correctness-and-methodology.en.md)
+
 # 05 正确性、测量失效与工程事故
 
 本项目最需要保留的不只是“哪个开关快”，还有**为什么一度相信某个结果，以及后来用什么证据撤回它**。本章与[研发主线](00-research-chronology.md)、[host/devpart](01-host-and-devpart.md)、[预测与缓存](02-prediction-and-cache.md)、[权重内核](03-weight-quantization-and-kernels.md)、[KV 量化](04-kv-tbq-and-nxq.md)配套。

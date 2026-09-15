@@ -1,3 +1,5 @@
+[中文](04-kv-tbq-and-nxq.md) · [English](04-kv-tbq-and-nxq.en.md)
+
 # 04 KV 缓存量化：TBQ3/TBQ4（TQ3/TQ4）与 NXQ/E8
 
 本文把「KV 缓存量化」这条线的每一次尝试、动机、机制、失败点、量化选择、保留/放弃理由与重新开启条件，

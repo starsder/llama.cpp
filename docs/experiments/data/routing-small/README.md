@@ -1,3 +1,5 @@
+[中文](README.md) · [English](README.en.md)
+
 # 路由研究轻量数据包
 
 先提供容易下载、便于核对的原始小文件：**164份，公开正文合计735,256字节（约0.70 MiB）**，另附本说明与来源清单。大体积hidden／router二进制不进Git、不使用Git LFS，改由[Hugging Face Dataset](https://huggingface.co/datasets/satsder/qwen3.8-flash-next-routing-traces)分发。
